@@ -9,7 +9,14 @@ int main(int argc, char *argv[]){
 
 //    stringConstruct();
 
-    str_cstring();
+//    str_cstring();
+
+//    str_sizeCapacity();
+
+    str_elementAccess();
+
+
+
 
     return 0;
 }

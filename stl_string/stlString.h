@@ -60,6 +60,10 @@ void stringConstruct();
 
 void str_cstring();
 
+void str_sizeCapacity();
+
+void str_elementAccess();
+
 
 
 
