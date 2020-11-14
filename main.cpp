@@ -2,18 +2,18 @@
 // Created by lhy on 2020/11/10.
 //
 #include "stlString.h"
+#include "basic_class.h"
 #include <iostream>
 
 using namespace std;
+using namespace fundamental;
+
+
 int main(int argc, char *argv[]){
 
-//    stringConstruct();
 
-//    str_cstring();
-
-//    str_sizeCapacity();
-
-    str_elementAccess();
+//  model a(1.0, 2.0, 3.0);
+    model::showGlobal();
 
 
 

@@ -4,13 +4,17 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(lib stlString)
+set(lib stlString basic_class)
 
 include_directories(stl_string)
+include_directories(fundamental)
 
 link_directories(stl_string)
+link_directories(fundamental)
+
 
 add_subdirectory(stl_string)
+add_subdirectory(fundamental)
 
 add_executable(main main.cpp)
 target_link_libraries(main ${lib})
