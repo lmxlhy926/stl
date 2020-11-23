@@ -12,8 +12,7 @@ using namespace fundamental;
 int main(int argc, char *argv[]){
 
 
-//  model a(1.0, 2.0, 3.0);
-    model::showGlobal();
+    basicClassTest();
 
 
 

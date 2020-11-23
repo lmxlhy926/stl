@@ -97,6 +97,7 @@ this指针
 */
 
 #include <iostream>
+#include <utility>
 using namespace std;
 
 namespace fundamental{
@@ -106,18 +107,41 @@ namespace fundamental{
         int a_;
         float b_;
         double *c_;
+        struct {
+            int max = 2;
+            int min = 1;
+        }range;
+
+    public:
+        class comment{
+        private:
+            string str_;
+        public:
+            explicit comment(string str) : str_(std::move(str)){
+                cout << "===>comment constructor" << endl;
+            }
+            virtual ~comment(){
+                cout << "===>comment destructor" << endl;
+            }
+
+            void showStr(){
+                cout << "str_ in comment: " << str_ << endl;
+            }
+        };
+        comment cm;
+
     public:
         static int modelGlobal; //本质上就是一个全局变量, 必须在类的外部通过范围解析运算符重新声明静态变量来对其进行初始化.
 
     public:
     //构造器：创建对象, 创建对象后立即执行某些动作
-        model(){
+        model() : cm("hello"){
             modelGlobal++;
         }
 
         model(int a, float b, double c);
 
-        model(const model& m);
+        model(const model& m);  //拷贝构造函数
 
     /*
      * 成员函数：
@@ -125,7 +149,12 @@ namespace fundamental{
      *      先创建对象, 调用时调用的对象会将其内存地址传递给函数的默认隐含参数即this指针变量
      *      有了this指针的存在, 使得相同的函数可以操作不同的对象. 即对象的内存空间是独占的, 类的函数是唯一的共享的.
      */
+    public:
         void printValue();
+
+        model modelChange(model& m);
+
+        void lamda();
 
     /*
      * 静态函数：
@@ -141,11 +170,14 @@ namespace fundamental{
      *      函数里定义了销毁对象前执行的动作, 主要是释放一些内存空间
      */
         virtual ~model(){
-            cout << "--- deconstructor ---" << endl;
+            cout << "===>model deconstructor" << endl;
             delete(c_);
         }
 
     };
+
+    void basicClassTest();
+
 
 }
 
