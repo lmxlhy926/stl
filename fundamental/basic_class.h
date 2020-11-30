@@ -126,7 +126,7 @@ namespace fundamental{
     };
 
     class model{
-    private:
+    protected:
     //成员变量
         int a_;
         double *b_;
@@ -152,8 +152,14 @@ namespace fundamental{
 
         void lamda();
 
-        virtual void messageShow(){
-            cout << "---in model messageShow()" << endl;
+        virtual void manipulate(){
+            cout << "---in model manipulate()" << endl;
+            cout << "a: " << a_ << endl;
+            cout << "b: " << *b_ << endl;
+        }
+
+        virtual void polyfunc(void){
+            cout << "in model polyfunc" << endl;
         }
 
     //静态函数

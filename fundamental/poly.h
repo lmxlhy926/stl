@@ -1,33 +1,111 @@
 //
-// Created by lhy on 2020/11/28.
+// Created by lhy on 2020/11/30.
 //
 
 #ifndef STL_POLY_H
 #define STL_POLY_H
 
+/*
+ * 赋值兼容规则： 在需要基类对象的任何地方都可以使用公有派生类的对象来替代
+ *      1.派生类的对象可以赋值给基类对象
+ *      2.派生类的对象可以初始化基类的引用
+ *      3.派生类对象的地址可以赋值给指向基类的指针
+ *  在替代之后，派生类对象就可以作为基类的对象使用，但只能使用从基类继承的成员
+ */
+
+
+/*
+ * 多态形成的条件：
+ *      1. 父类中有虚函数
+ *      2. 子类覆写父类中的虚函数
+ *      3. 通过已被子类对象赋值的父类指针或引用，调用公用接口。   **指针或引用
+ */
+
+
+/*
+ * 虚函数：
+ *      1. 在基类中用virtual声明成员函数为虚函数。类外实现虚函数时，不必再加virtual。
+ *      2. 在派生类中重新定义此函数称为覆写，要求函数名，返回值类型，函数参数个数及类型全部匹配。并根据派生类的需要重新定义函数体。
+ *      3. 当一个成员函数被声明为虚函数后，派生类中对其覆写的函数也为虚函数。可以添加virtual明示。
+ *      4. 定义一个指向基类对象的指针，并使其指向其子类的对象，通过该指针调用虚函数，此时调用的就是该指针变量指向对象的同名函数
+ *      5. 子类中覆写的函数，可以为任意访类型，依子类需求决定。
+ *
+ *      虚函数仅适用于有继承关系的类对象，普通函数不能声明为虚函数
+ *      构造函数不能是虚函数。调用构造函数后，对象的创建才算真正的完成
+ *      析构函数可以是虚函数且通常声明为虚函数
+ */
+
+
+/*
+ * 抽象类/接口
+ *      含有纯虚函数的类，称为抽象基类，不可实例化。即不能创建对象，存在的意义就是被继承，提供族类的公共接口，java中称为interface。
+ *      纯虚函数只有声明，没有实现，被初始化为0.
+ *       一个类中声明了纯虚函数，而在派生类中没有对该函数定义，则该函数在派生类中仍然为纯虚函数，派生类仍然为纯虚基类
+ */
+
+
+/*
+ * 虚析构函数：
+ *      c++中基类采用virtual析构函数是为了防止内存泄漏。
+ *      如果派生类中申请了内存空间，并在其析构函数中对这些内存空间进行释放
+ *      假设基类中采用的是非虚析构函数，当删除基类指针指向的派生类对象时就不会触发动态绑定，
+ *      因而只会调用基类的析构函数，而不会调用派生类的析构函数
+ *      那么在这种情况下，派生类中申请的空间就得不到释放从而产生内存泄漏。
+ */
+
+
+
 #include "basic_class.h"
 
 namespace fundamental{
 
-    class poly : public model
-    {
+    class poly : public model{
+
+    private:
+        int a_;
+
     public:
-        poly(int a, float b, string cmstr) :model(a, b, cmstr){
+        explicit poly(int a) : model(100, 200, "hello"), a_(a){
             cout << "==>poly constructor" << endl;
-
         }
 
-        void messageShow() override{
-            cout << "---in poly messageShow" << endl;
+    public:
+        void polyfunc() override{
+            cout << "in poly polyfunc" << endl;
+            this->poly::call();
         }
 
-        ~poly(){
+        void call(){
+            cout << "a_: " << a_ << endl;
+        }
+
+        ~poly() override{
             cout << "==>poly deconstructor" << endl;
         }
     };
 
-    void polyclassTest();
+
+    void show(model &m){
+        m.polyfunc();
+    }
+
+    void show1(model *m){
+       m->polyfunc();
+    }
+
+    void polyClassTest(){
+
+        model d(1, 2, "hello");
+        poly p(1000);
+
+        show(p);
+        show(p);
+    }
+
+
 }
+
+
 
 
 

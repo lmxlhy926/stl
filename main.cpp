@@ -3,6 +3,7 @@
 //
 #include "stlString.h"
 #include "basic_class.h"
+#include "inherit.h"
 #include "poly.h"
 #include <iostream>
 
@@ -12,8 +13,7 @@ using namespace fundamental;
 
 int main(int argc, char *argv[]){
 
-    polyclassTest();
-
+    polyClassTest();
 
 
 
