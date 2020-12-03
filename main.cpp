@@ -6,6 +6,7 @@
 #include "inherit.h"
 #include "poly.h"
 #include "callableObj.h"
+#include "fileaccess.h"
 #include <iostream>
 
 using namespace std;
@@ -14,8 +15,7 @@ using namespace fundamental;
 
 int main(int argc, char *argv[]){
 
-    callobj::callobjTest();
-
+    fileaccess::func4();
 
 
     return 0;

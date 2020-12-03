@@ -1,2 +1,2 @@
 
-add_library(stlString stlString.cpp)
+add_library(stl_string stlString.cpp)
