@@ -10,7 +10,7 @@
  *      1.派生类的对象可以赋值给基类对象
  *      2.派生类的对象可以初始化基类的引用
  *      3.派生类对象的地址可以赋值给指向基类的指针
- *  在替代之后，派生类对象就可以作为基类的对象使用，但只能使用从基类继承的成员
+ *      在替代之后，派生类对象就可以作为基类的对象使用，但只能访问从基类继承的成员
  */
 
 
@@ -18,7 +18,7 @@
  * 多态形成的条件：
  *      1. 父类中有虚函数
  *      2. 子类覆写父类中的虚函数
- *      3. 通过已被子类对象赋值的父类指针或引用，调用公用接口。   **指针或引用
+ *      3. 通过已被子类对象赋值的父类指针或引用, 调用公用接口。   **指针或引用
  */
 
 
@@ -30,7 +30,7 @@
  *      4. 定义一个指向基类对象的指针，并使其指向其子类的对象，通过该指针调用虚函数，此时调用的就是该指针变量指向对象的同名函数
  *      5. 子类中覆写的函数，可以为任意访类型，依子类需求决定。
  *
- *      虚函数仅适用于有继承关系的类对象，普通函数不能声明为虚函数
+ *      虚函数仅适用于有继承关系的类对象, 普通函数不能声明为虚函数
  *      构造函数不能是虚函数。调用构造函数后，对象的创建才算真正的完成
  *      析构函数可以是虚函数且通常声明为虚函数
  */
@@ -65,19 +65,24 @@ namespace fundamental{
         int a_;
 
     public:
-        explicit poly(int a) : model(100, 200, "hello"), a_(a){
+    //构造函数
+        explicit poly(int a) : model(1, 2, "hello"){
             cout << "==>poly constructor" << endl;
+            this->poly::a_ = 100;
         }
 
     public:
-        void polyfunc() override{
-            cout << "in poly polyfunc" << endl;
-            this->poly::call();
+    //成员函数
+        void show() override{
+            cout << "poly::a_: " << this->poly::a_ << endl;
         }
 
-        void call(){
-            cout << "a_: " << a_ << endl;
+        void interfacefunc() override{
+            cout << "in poly polyfunc" << endl;
+            cout << "poly::a_: " << this->poly::a_ << endl;
+
         }
+
 
         ~poly() override{
             cout << "==>poly deconstructor" << endl;
@@ -85,21 +90,33 @@ namespace fundamental{
     };
 
 
-    void show(model &m){
-        m.polyfunc();
-    }
 
-    void show1(model *m){
-       m->polyfunc();
-    }
-
+/*
+ *  派生类对象赋值给基类对象
+ *  派生类对象初始化基类对象的引用
+ *  派生类对象的地址赋值给指向基类对象的指针
+ */
     void polyClassTest(){
 
-        model d(1, 2, "hello");
+        model d(100, 200, "hello");
         poly p(1000);
+        d = p;  //扩展类对象赋值给父类，丢弃扩展类对象的扩展成员
+        d.printValue();
 
-        show(p);
-        show(p);
+        model& d1 = p;  //派生类对象初始化基类的引用
+        d1.interfacefunc();
+
+        model* d2 = &p; //派生类对象的地址赋值给指向基类对象的指针
+        d2->interfacefunc();
+
+    }
+
+/*
+ * 虚析构函数触发动态绑定，避免派生类对象的内存泄漏
+ */
+    void virtualFunctionTest(){
+        poly p(1000);
+        model& d = p;
     }
 
 

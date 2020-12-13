@@ -125,6 +125,7 @@ namespace fundamental{
         }
     };
 
+
     class model{
     protected:
     //成员变量
@@ -138,11 +139,10 @@ namespace fundamental{
         }range;
 
     public:
-    //普通构造函数
-        model(int a, float b, string commentstr);
+    //构造函数
+        model(int a, float b, string commentstr);   //普通构造函数
 
-    //拷贝构造函数
-        model(const model& m);
+        model(const model& m);  //拷贝构造函数
 
     public:
     //成员函数
@@ -152,18 +152,22 @@ namespace fundamental{
 
         void lamda();
 
-        virtual void manipulate(){
-            cout << "---in model manipulate()" << endl;
-            cout << "a: " << a_ << endl;
-            cout << "b: " << *b_ << endl;
-        }
-
-        virtual void polyfunc(void){
-            cout << "in model polyfunc" << endl;
-        }
-
     //静态函数
-        void static showGlobal();
+        void static showGlobal();   //static只能在类定义中声明
+
+
+    //虚函数
+        virtual void show(){
+            cout << "---in model show()" << endl;
+            cout << "model:a_: " << this->model::a_ << endl;
+            cout << "model:b_： " << *this->model::b_ << endl;
+
+        }
+
+        virtual void interfacefunc(){
+            cout << "in model interfacefunc" << endl;
+        }
+
 
     //析构函数
         virtual ~model(){

@@ -43,32 +43,34 @@ namespace fundamental{
         double *b_;
 
     public:
+    //构造函数
         inherit(int a, float b, string cmstr) : model(a, b, std::move(cmstr)){
-            cout << "==>poly constructor" << endl;
+            cout << "==>inherit constructor" << endl;
             this->inherit::a_ = 100;
             this->inherit::b_ = new double();
             *this->inherit::b_ = 200;
         }
 
-        void manipulate() override{
-            cout << "---in poly manipulate" << endl;
-            cout << "poly::a: " << this->inherit::a_ << endl;
-            cout << "poly::b " << *this->inherit::b_ << endl;
-            cout << "model::a: " << this->model::a_ << endl;
-            cout << "model::b: " << *this->model::b_ << endl;
+    //覆写函数
+        void show() override{
+            cout << "---inherit show()" << endl;
+            cout << "inherit::a_: " << this->inherit::a_ << endl;
+            cout << "inherit::b_ " << *this->inherit::b_ << endl;
+
         }
 
         ~inherit() override{
-            cout << "==>poly deconstructor" << endl;
-            delete(this->b_);
+            cout << "==>inherit deconstructor" << endl;
+            delete(this->inherit::b_);
         }
     };
 
     void inheritClassTest(){
 
         inherit p(1, 2, "hello");
-        p.inherit::manipulate();
-        p.model::manipulate();
+        p.show();
+        p.model::show();
+        p.inherit::show();
 
     }
 
