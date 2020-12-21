@@ -10,6 +10,10 @@
 #include "callableObj.h"
 #include "fileaccess.h"
 #include "opoverload.h"
+#include "mthread.h"
+
+#include <thread>
+#include <future>
 
 using namespace std;
 using namespace fundamental;
@@ -17,8 +21,7 @@ using namespace fundamental;
 
 int main(int argc, char *argv[]){
 
-    optest();
-
+    mthread::test();
 
     return 0;
 }
