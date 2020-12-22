@@ -68,6 +68,13 @@
  */
 
 
+/*
+ * 传递实参
+ *      如果以by reference方式传递实参, 被传递值甚至可能在后台任务启动前就变得无效.
+ *      如果在一个线程中改动c, 在另一个线程中读取c, 这是对同一对象的异步并发处理, 将导致不可预期的行为, 除非使用mutex或atomic保护并发处理动作.
+ *      如果使用async(), 就因该尽可能以by value方式传递实参, 使async()只需使用局部拷贝.使用引用时尽可能使用const reference, 且不使用mutable.
+ */
+
 namespace mthread{
 
     void test();
@@ -75,6 +82,8 @@ namespace mthread{
     void test1();
 
     void test2();
+
+    void test3();
 }
 
 

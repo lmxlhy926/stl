@@ -21,7 +21,8 @@ using namespace fundamental;
 
 int main(int argc, char *argv[]){
 
-    mthread::test();
+    mthread::test3();
+    while(1);
 
     return 0;
 }
