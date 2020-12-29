@@ -75,6 +75,42 @@
  *      如果使用async(), 就因该尽可能以by value方式传递实参, 使async()只需使用局部拷贝.使用引用时尽可能使用const reference, 且不使用mutable.
  */
 
+
+/*
+ * 低层接口thread
+ *      class thread没有所谓的发射策略.c++标准库永远试着将目标函数启动于一个新线程中,如果无法做到则抛出异常.
+ *      没有接口可处理线程结果.
+ *      如果发生异常,但未捕捉于线程之内,程序会立刻终止并调用std::terminate().
+ *
+ *      想要等待线程结束则调用join(), 将它自母体卸离使它运行于后台而不受任何控制则调用detach(), 必须在thread object寿命结束前这么做,
+ *      否则程序会终止并调用std::terminate().
+ *
+ *      如果你让线程运行于后台而main()结束了, 所有线程会被鲁莽而硬性的终止.
+ *
+ * detached thread
+ *      detached thread很容易形成问题, 如果它们使用nonlocal资源的话.
+ *      问题在于丧失了对detached thread的控制,没有办法得知它是否运行,以及运行多久.
+ *
+ *      寿命问题一样困扰着global和static object, 因为当程序退离(exit)时, detached thread可能还在运行.
+ *      意味着它仍有可能访问已被销毁或正在析构的global或static object, 这会导致不可预期的行为.
+ *
+ *      终止detached thread的唯一安全方法就是搭配"...at_thread_exit()"函数群中的某一个. 这会强制main thread
+ *      等待detached thread真正结束
+ *
+ */
+
+/*
+ * namespace this_thread
+ *      针对任何线程包括主线程main thread, <thread>声明一个命名空间std::this_thread用以提供线程专属的global函数
+ *      this_thread::get_id()               获取当前线程id
+ *      this_thread::sleep_for(dur)         将某个线程阻塞dur时间段
+ *      this_thread::sleep_until(tp)        将某个线程阻塞直到时间点tp
+ *      this_thread::yield()                放弃当前线程的时间切片，让下一个线程能够执行
+ *
+ */
+
+
+
 namespace mthread{
 
     void test();

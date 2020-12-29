@@ -107,17 +107,33 @@ namespace mthread{
     }
 
 
+/*
+ * 使用thread时需要try-catch, 在thread启动的函数内部也需要try-catch.
+ */
     void test3(){
-        std::thread t([]{
-            int i{};
-            while(i++ < 3){
-                this_thread::sleep_for(chrono::milliseconds(1000));
-                cout << "hhhh" << endl;
-            }
+        try{
+            std::thread t([]{
+                cout << "thread id: " << this_thread::get_id() << endl;
+                try{
+                    int i{};
+                    while(i++ < 3){
+                        this_thread::sleep_for(chrono::milliseconds(1000));
+                        cout << "hhhh" << endl;
+                    }
+                }catch(const exception& e){
+                    cout << e.what() << endl;
+                }
 
-        });
-        t.detach();
-        cout << "end of test3" << endl;
+
+            });
+
+            t.detach();
+            cout << "end of test3" << endl;
+        }catch(const exception& e){
+            cout << e.what() << endl;
+        }
+
+
     }
 
 
