@@ -17,12 +17,12 @@
  *      RAII守则：构造函数将获得资源, 而析构函数则负责释放资源。
  *                即使当异常造成生命期结束, 析构函数也总是会被调用.
  *
- *
- *
- *
- *
- *
  *      死锁：2个线程在释放它们自己的锁之前彼此等待对方的lock.
+ *
+ * lock_guard()
+ * unique_lock()
+ *      通过以上2个类来使用mutex, 可以保证即使发生异常mutex也可以被正常解锁.
+ *
  */
 
 namespace mthread{
@@ -35,7 +35,11 @@ namespace mthread{
 
     void lockGuaed1();
 
+    void lockGuard2();
+
     void multilock();
+
+    void uniqueLock();
 
 
 }

@@ -12,6 +12,8 @@
 #include "opoverload.h"
 #include "mthread.h"
 #include "mmutex.h"
+#include "condition.h"
+#include "matomic.h"
 
 #include <thread>
 #include <future>
@@ -23,13 +25,7 @@ using namespace mthread;
 
 int main(int argc, char *argv[]){
 
-//    recursive_mutextest();
-
-//    multilock();
-
-
-    lockGuard();
-
+    atomictest();
 
     return 0;
 }
