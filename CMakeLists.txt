@@ -4,12 +4,12 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(element stl_string fundamental callableObject fileaccess operatoroverload mthread)
+set(element stl_string fundamental callableObject lstream operatoroverload mthread)
 
 include_directories(stl_string)
 include_directories(fundamental)
 include_directories(callableObject)
-include_directories(fileaccess)
+include_directories(stream)
 include_directories(operatoroverload)
 include_directories(multithread)
 
@@ -24,7 +24,7 @@ include_directories(multithread)
 add_subdirectory(stl_string)
 add_subdirectory(fundamental)
 add_subdirectory(callableObject)
-add_subdirectory(fileaccess)
+add_subdirectory(stream)
 add_subdirectory(operatoroverload)
 add_subdirectory(multithread)
 

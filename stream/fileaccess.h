@@ -30,7 +30,7 @@
  *
  */
 
-namespace fileaccess{
+namespace mstream{
 
     void func1();
 

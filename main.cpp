@@ -14,6 +14,7 @@
 #include "mmutex.h"
 #include "condition.h"
 #include "matomic.h"
+#include "stream.h"
 
 #include <thread>
 #include <future>
@@ -21,11 +22,12 @@
 using namespace std;
 using namespace fundamental;
 using namespace mthread;
+using namespace mstream;
 
 
 int main(int argc, char *argv[]){
 
-    atomictest();
+    statetest();
 
     return 0;
 }

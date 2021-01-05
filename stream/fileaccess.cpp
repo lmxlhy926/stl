@@ -7,7 +7,7 @@
 
 using namespace std;
 
-namespace fileaccess{
+namespace mstream{
 
     std::ofstream func2(const std::string& filename){
 
