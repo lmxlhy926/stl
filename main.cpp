@@ -27,7 +27,7 @@ using namespace mstream;
 
 int main(int argc, char *argv[]){
 
-    statetest();
+    inputfunctest2();
 
     return 0;
 }

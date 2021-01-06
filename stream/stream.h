@@ -36,6 +36,12 @@ namespace mstream{
 
     void statetest();
 
+    void inputfunctest();
+
+    void inputfunctest1();
+
+    void inputfunctest2();
+
 
 }
 
