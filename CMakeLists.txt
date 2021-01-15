@@ -12,6 +12,7 @@ include_directories(callableObject)
 include_directories(stream)
 include_directories(operatoroverload)
 include_directories(multithread)
+include_directories(exception)
 
 
 #link_directories(stl_string)
@@ -27,6 +28,7 @@ add_subdirectory(callableObject)
 add_subdirectory(stream)
 add_subdirectory(operatoroverload)
 add_subdirectory(multithread)
+add_subdirectory(exception)
 
 add_executable(main main.cpp)
 target_link_libraries(main ${element})

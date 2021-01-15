@@ -42,6 +42,8 @@ namespace mstream{
 
     void inputfunctest2();
 
+    void outputtest();
+
 
 }
 

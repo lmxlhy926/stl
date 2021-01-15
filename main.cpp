@@ -27,7 +27,7 @@ using namespace mstream;
 
 int main(int argc, char *argv[]){
 
-    inputfunctest2();
+    filetest3();
 
     return 0;
 }
