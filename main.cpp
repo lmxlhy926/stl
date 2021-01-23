@@ -15,6 +15,7 @@
 #include "condition.h"
 #include "matomic.h"
 #include "stream.h"
+#include "overload.h"
 
 #include <thread>
 #include <future>
@@ -27,7 +28,7 @@ using namespace mstream;
 
 int main(int argc, char *argv[]){
 
-    filetest3();
+    fundamental::overloadtest();
 
     return 0;
 }

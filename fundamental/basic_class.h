@@ -14,8 +14,8 @@
 类成员函数：
 	成员函数可以在类声明中直接定义，或者在类外单独使用类名称+范围解析运算符::来定义。
 	在类中定义的成员函数把函数声明为内联的，即便没有使用inline标识符。
-    调用时调用的对象会将其内存地址传递给函数的默认隐含参数即this指针变量
-    有了this指针形参的存在, 使得相同的函数可以操作不同的对象. 即对象的内存空间是独占的, 但类的函数是唯一的共享的.
+    **调用时调用的对象会将其内存地址传递给函数的默认隐含参数即this指针变量
+    **有了this指针形参的存在, 使得相同的函数可以操作不同的对象. 即对象的内存空间是独占的, 但类的函数是唯一的共享的.
 */
 
 
@@ -68,14 +68,14 @@
 	c++内联函数通常与类一起使用。如果一个函数是内联的，那么在编译时，编译器会把该函数的代码副本放置在每个调用该函数的地方。
 	对内联函数进行任何修改，都要重新编译函数的所有客户端，因为编译器需要重新更换一次所有的代码，否则将会继续使用旧的函数。
 	在函数名前面放置关键字inline，在调用函数之前需要对函数进行定义。
-	在类定义中的定义的函数都是内联函数，即使没有使用inline说明符。
+	**在类定义中的定义的函数都是内联函数，即使没有使用inline说明符。
 */
 
 
 /*
 this指针
 		在c++中，this指针存放对象成员变量的地址。this指针是所有成员函数的隐含参数。因此在成员函数内部，它可以用来
-	标示调用对象。友元函数没有this指针，因为友元不是类的成员。只有成员函数才有this指针。
+	标识调用对象。友元函数没有this指针，因为友元不是类的成员。只有非静态成员函数才有this指针。
 
 指向类的指针
 		一个指向C++类的指针与指向结构的指针类似，使用类的指针访问类的成员需要使用成员访问运算符->。
@@ -105,8 +105,6 @@ this指针
 using namespace std;
 
 namespace fundamental{
-
-    void basicClassTest();
 
     class comment{
     private:
@@ -144,6 +142,9 @@ namespace fundamental{
 
         model(const model& m);  //拷贝构造函数
 
+    //静态函数
+        void static showGlobal();   //static只能在类定义中声明
+
     public:
     //成员函数
         void printValue();
@@ -152,16 +153,11 @@ namespace fundamental{
 
         void lamda();
 
-    //静态函数
-        void static showGlobal();   //static只能在类定义中声明
-
-
     //虚函数
         virtual void show(){
             cout << "---in model show()" << endl;
             cout << "model:a_: " << this->model::a_ << endl;
             cout << "model:b_： " << *this->model::b_ << endl;
-
         }
 
         virtual void interfacefunc(){
@@ -176,6 +172,12 @@ namespace fundamental{
         }
 
     };
+
+    void basicClassTest();
+
+//引用，运算符重载， 返回栈上引用与对象
+
+
 
 }
 

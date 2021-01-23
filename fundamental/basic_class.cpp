@@ -14,12 +14,11 @@ namespace fundamental{
 
     int model::modelGlobal = 0;   //静态成员变量： 必须在类外声明
 
-
 //构造函数
     model::model(int a, float b, string commentstr) : a_(a), cm(std::move(commentstr)){
         cout << "===>model constructor(int, float, commentstr)" << endl;
         modelGlobal++;
-        b_ = new double();
+        b_ = new double();  //申请内存, 并赋值
         *b_ = b;
     }
 
@@ -31,13 +30,11 @@ namespace fundamental{
         *b_ = *(m.b_);
     }
 
-
 //静态成员函数
     void model::showGlobal() {
         printMessage();
         cout << modelGlobal << endl;
     }
-
 
 //成员函数
     void model::printValue() {
@@ -69,8 +66,6 @@ namespace fundamental{
         lamda_y = 3333;     //传递地址
         l();
     }
-
-
 
     void basicClassTest(){
         model m(1, 2, "hello");
