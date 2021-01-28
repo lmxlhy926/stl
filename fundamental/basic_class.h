@@ -102,6 +102,8 @@ this指针
 
 #include <iostream>
 #include <utility>
+#include <cstring>
+
 using namespace std;
 
 namespace fundamental{
@@ -109,17 +111,29 @@ namespace fundamental{
     class comment{
     private:
         string str_;
-
     public:
+        comment()= default;
+
         explicit comment(string str) : str_(std::move(str)){
-            cout << "===>comment constructor" << endl;
+            cout << "==>comment(string)" << endl;
         }
+
+        comment(const comment& cm){
+            cout << "==>comment(const comment&)" << endl;
+            str_ = cm.str_;
+        }
+
         virtual ~comment(){
-            cout << "===>comment destructor" << endl;
+            cout << "==>~comment()" << endl;
+        }
+
+        comment& operator+(const comment& other){
+            str_ = str_ + other.str_;
+            return *this;
         }
 
         void showStr(){
-            cout << "str_ in comment: " << str_ << endl;
+            cout << "str_ in_comment: " << str_ << endl;
         }
     };
 
@@ -176,6 +190,159 @@ namespace fundamental{
     void basicClassTest();
 
 //引用，运算符重载， 返回栈上引用与对象
+
+
+
+
+/*
+ * 类的基本构成
+ * new/delete的用法
+ */
+    class Basic{
+    private:
+        int a_;
+        char* str_{nullptr};
+        comment cm;
+    public:
+        Basic() = default;
+
+        Basic(int a, char* str, char* cmstr) : a_(a), cm(cmstr){
+            cout << "==>Basic(int, char*, char*)" << endl;
+            if(str == nullptr){
+               str_ = new char[1];
+               str_[0] = '\0';
+           }else{
+               int len = strlen(str);
+               str_ = new char[len + 1];
+               strcpy(str_, str);
+           }
+        }
+
+        Basic(const Basic &other){
+            cout << "==>Basic(const Basic& other)" << endl;
+            a_ = other.a_;
+            cm = other.cm;
+            int len = strlen(other.str_);
+            str_ = new char[len];
+            strcpy(str_, other.str_);
+        }
+
+        virtual ~Basic(){
+            cout << "==>~Basic()" << endl;
+            delete(str_);
+        }
+
+        static void showGlobal(){
+            cout << "global function" << endl;
+        }
+
+        void showValue(){
+           cout << "a_: " << a_ << endl;
+           cout << "strAddress_: " << static_cast<void *>(str_) << " str_: " << str_ << endl;
+           cm.showStr();
+        }
+
+        virtual void printValue(){
+            cout << "Basic::a_: " << a_ << endl;
+        }
+
+        Basic& operator+(const Basic& other){
+            this->a_ = this->a_ + other.a_;
+            int len = strlen(str_) + strlen(other.str_);
+            char * temp = new char[len + 1];
+            strcpy(temp, str_);
+            strcpy(temp + strlen(str_), other.str_);
+            delete(str_);
+            str_ = temp;
+            cm = cm + other.cm;
+            return *this;
+        }
+
+        Basic& operator=(const Basic& other){
+            if(this == &other)
+                return *this;
+            this->a_ = other.a_;
+            delete(str_);
+            int len = strlen(other.str_);
+            str_ = new char[len + 1];
+            strcpy(str_, other.str_);
+            cm = other.cm;
+            return *this;
+        }
+
+    };
+
+
+/*
+ * static变量的初始化
+ */
+    class BasicStatic{
+    private:
+        const int a_{1};
+        const static int b_{1};
+        static int c_;
+    public:
+        void show(){
+            cout << "a_: " << a_ << " b_: " << b_ << " c_: " << c_ << endl;
+        }
+    };
+
+
+    class MinBasic{
+    public:
+        int a_;
+    public:
+        explicit MinBasic(int a): a_(a){}
+
+        virtual void dis(){
+            cout << "a_: " << a_ << endl;
+        }
+    };
+
+
+
+    class MinExtend :public MinBasic{
+    public:
+        int a_;
+        int b_{1000};
+    public:
+        explicit MinExtend(int a): a_(a), MinBasic(100){}
+
+        void dis() override {
+            cout << "a_: " << a_ << endl;
+            cout << "b_: " << b_ << endl;
+        }
+
+        void disaddress(){
+            cout << "basic: " << static_cast<void *>(&this->MinExtend::a_) << endl;
+            cout << "extend: " << static_cast<void *>(&this->MinExtend::MinBasic::a_) << endl;
+        }
+    };
+
+    class Mintest{
+    public:
+        /*
+         * 多态分析：
+         *      1. 声明为基类的指针，但是指向的是扩展类的对象，即该对象包含扩展类的一切元素（包括一张虚函数表）
+         *      2. 调用函数的本质还是将对象内存地址传递给函数，然后函数提取对象的元素进行处理
+         *      3. 传递的对象是扩展类对象，函数地址指向扩展类覆写的函数
+         * 结论：
+         *      使用的地址： 扩展类对象首地址
+         *      找到的函数： 扩展类中覆写的函数
+         *      结果： 写的是基类调用，结果是扩展类调用
+         */
+        static void show(MinBasic& m){
+            cout << "m.a_: " << m.a_ << endl;
+            cout << "------" << endl;
+            m.dis();
+            cout << "------" << endl;
+            m.MinBasic::dis();
+        }
+    };
+
+
+
+
 
 
 

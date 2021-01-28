@@ -14,6 +14,10 @@ namespace fundamental{
 
     int model::modelGlobal = 0;   //静态成员变量： 必须在类外声明
 
+    int BasicStatic::c_ = 2;
+
+
+
 //构造函数
     model::model(int a, float b, string commentstr) : a_(a), cm(std::move(commentstr)){
         cout << "===>model constructor(int, float, commentstr)" << endl;
