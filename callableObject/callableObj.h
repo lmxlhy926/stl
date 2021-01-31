@@ -16,62 +16,123 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
 namespace callobj{
-
-
 
     int add(int a, int b){
         cout << "a + b = " << a + b << endl;
         return a + b;
     }
 
-    auto l = [] (int a, int b){
+    auto sub = [] (int a, int b) -> int{
         cout << "a - b = " << a - b << endl;
         return a - b;
     };
 
-    class obj{
+    class Multi{
     private:
         int c_;
     public:
-        obj(int c): c_(c){}
+        explicit Multi(int c): c_(c){}
 
         int operator () (int a, int b){
-            cout << "a * b = " << a * b * c_ << endl;
-            return a * b;
+            cout << "a * b * c = " << a * b * c_ << endl;
+            return a * b * c_;
         }
 
-        int div(int a, int b){
-            cout << "a / b = " << a / b * c_ << endl;
-            return a/b;
-        }
-
-        int func1(int a, int b, int c){
-            return a + b + c;
+        int getValue(int a){
+            return a + c_;
         }
     };
 
 
-
     void callobjTest(){
-
-        std::vector<std::function<int(int, int)>> task;
+        /*
+         *  class std::function<>， 声明于<functional>， 提供多态外覆器，可以概括function pointer记号。
+         *  这个class允许你把可调用对象当作最高级对象
+         */
+        std::vector<std::function<int(int, int)>> task; //存储函数
         task.emplace_back(add);
-        task.emplace_back(l);
-        for(std::function<int(int, int)> f : task){
-            f(100,2 );
+        task.emplace_back(add);
+        task.emplace_back(sub);
+        task.emplace_back(Multi(2));
+
+        for(const std::function<int(int, int)>& f : task){
+            f(100, 2);
         }
 
-        obj ob(100);
-        std::function<int(obj &, int, int)> mf = &obj::div;
-        mf(ob, 100, 2);
-
-
-
     }
+
+/*
+    类型模板参数/非类型模板参数: 既可以传入类型参数，也可以传入非类型参数
+    模板参数默认值： 默认的template实参可以其前一个实参为依据而定义
+
+
+ */
+    template<typename T, int loopNumber = 1>    //类型参数， 非类型参数，参数默认值
+    class addValue{
+    private:
+        T theValue;
+    public:
+        explicit addValue(int value) : theValue(value){}
+
+        template<typename U>    //成员函数模板， 不可以是virtual
+        explicit addValue(const addValue<U>& other){
+            theValue = other.getValue();
+        }
+
+        template<typename U>
+        void assign(const addValue<U>& other){  //实参的类型和函数调用对象的类型不同，因此不可以直接访问private和protected成员
+            theValue = other.getValue();    //参数声明为const, 只能调用const函数
+        }
+
+        void operator() (int& elem){
+            for(int i = 0; i < loopNumber; i++){
+                elem += theValue;
+            }
+        }
+
+        T getValue() const{
+            return theValue;
+        }
+    };
+
+
+    template<typename Iterator, typename Operation>
+    void show_each(Iterator begin, Iterator end, Operation opr){
+       for(; begin < end; begin++){
+           opr(*begin); //函数对象的使用
+       }
+    }
+
+    void memberTemplateTest(){
+        addValue<int> s(20);
+        addValue<float> u(30);
+        addValue<float> v(s);
+
+        s.assign(u);
+
+        cout << "s.theValue: " << s.getValue() << endl;
+        cout << "v.tehValue: " << v.getValue() << endl;
+    }
+
+
+    void functionobjtest(){
+       vector<int> v;
+       v.reserve(50);
+       v.assign({1, 2, 3});
+
+       show_each(v.begin(), v.end(), addValue<int>(10));    //传入一个临时函数对象
+
+       for(const auto& elem : v){
+           cout << elem << endl;
+       }
+    }
+
+
 
 
 }

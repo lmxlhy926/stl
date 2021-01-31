@@ -16,6 +16,7 @@
 #include "matomic.h"
 #include "stream.h"
 #include "overload.h"
+#include "mvector.h"
 
 #include <thread>
 #include <future>
@@ -30,12 +31,9 @@ void func(int a){
 }
 
 int main(int argc, char *argv[]){
+//    callobj::functionobjtest();
 
-    MinExtend e(1000);
-    Mintest::show(e);
-
-
-
+    callobj::callobjTest();
 
 
 

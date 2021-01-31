@@ -4,7 +4,7 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(element stl_string fundamental callableObject lstream operatoroverload mthread)
+set(element stl_string fundamental callableObject lstream operatoroverload mthread mcontainer)
 
 include_directories(stl_string)
 include_directories(fundamental)
@@ -13,6 +13,7 @@ include_directories(stream)
 include_directories(operatoroverload)
 include_directories(multithread)
 include_directories(exception)
+include_directories(container)
 
 
 #link_directories(stl_string)
@@ -29,6 +30,7 @@ add_subdirectory(stream)
 add_subdirectory(operatoroverload)
 add_subdirectory(multithread)
 add_subdirectory(exception)
+add_subdirectory(container)
 
 add_executable(main main.cpp)
 target_link_libraries(main ${element})
