@@ -32,78 +32,112 @@
  *      解决： 作用域
  *          成员的引用：携带作用域
  *          单继承时，访问成员时如果没有类作用域信息，则按照派生类到子类的顺序查找成员。
- *          多继承时，多个基类中重名的成员，继承到派生类中后，访问时需要基类作用于信息，
+ *          多继承时，多个基类中重名的成员，继承到派生类中后，访问时必须需要基类作用域信息，
 */
 
 
 namespace fundamental{
 
-    class inherit : public model
-    {
+    class MemInt{
     private:
         int a_;
-        double *b_;
-
     public:
-    //构造函数
-        inherit(int a, float b, string cmstr) : model(a, b, std::move(cmstr)){
-            cout << "==>inherit constructor(int a, float b, string cmstr)" << endl;
-            this->inherit::a_ = 100;
-            this->inherit::b_ = new double();
-            *this->inherit::b_ = 200;
+        explicit MemInt(int a) : a_(a){
+            cout << "==>MemInt constructor" << endl;
         }
 
-    //覆写函数
-        void show() override{
-            cout << "---inherit show()" << endl;
-            cout << "inherit::a_: " << this->inherit::a_ << endl;
-            cout << "inherit::b_ " << *this->inherit::b_ << endl;
-            cout << "inherit::model::a_: " << this->inherit::model::a_ << endl;
-            cout << "inherit::model::b_: " << *this->inherit::model::b_ << endl;
+        ~MemInt(){
+            cout << "==>MemInt deconstructor" << endl;
         }
 
-        ~inherit() override{
-            cout << "==>inherit deconstructor" << endl;
-            delete(this->inherit::b_);
+        int getValue(){
+            return a_;
         }
     };
 
 
-    class A{
+    class MemStr{
+    private:
+        string str_;
+    public:
+        explicit MemStr(string& str) : str_(str){
+            cout << "==>MemStr constructor" << endl;
+        }
+
+        ~MemStr(){
+            cout << "==>MemStr deconstructor" << endl;
+        }
+
+        string getValue(){
+            return str_;
+        }
+    };
+
+
+    class ParInt{
     protected:
         int a_;
     public:
-        A():a_(2){}
-    };
-
-    class B{
-    protected:
-        int a_;
-    public:
-        B():a_(3){}
-    };
-
-    class C : A, B{
-    public:
-    //多继承中访问同名基类成员会产生二异性，必须携带类作用域信息
-        void show(){
-            std::cout << "A::a_: " << this->A::a_ << std::endl;
-            std::cout << "B::a_: " << this->B::a_ << std::endl;
+        explicit ParInt(int a) :a_(a){
+            cout << "==>ParInt constructor" << endl;
+        }
+        ~ParInt(){
+            cout << "==>ParInt deconstructor" << endl;
         }
     };
 
+    class ParIntAnother{
+    protected:
+        int a_;
+    public:
+        explicit ParIntAnother(int a) : a_(a){
+            cout << "==>ParIntAnother constructor" << endl;
+        }
+        ~ParIntAnother(){
+            cout << "==>ParIntAnother deconstructor" << endl;
+        }
+    };
 
-//******************************功能测试*************************************************
-    void inheritClassTest(){
+/*
+ *
+ * 构造函数调用顺序：
+ *      按照声明的顺序调用构造函数
+ *      先调用基类构造函数，再调用成员对象构造函数
+ */
+    class Inherit : public ParInt, ParIntAnother{
+    private:
+        int a_;
+        MemInt i;   //必须在构造函数里初始化成员对象
+        MemStr s;
+    public:
+        explicit Inherit(string& str): a_(0), s(str), i(3), ParIntAnother(2),  ParInt(1){
+           cout << "==>Inherit constructor" << endl;
+        }
 
-        inherit p(1, 2, "hello");
-        p.show();
-        p.model::show();
-        p.inherit::show();
+        ~Inherit(){
+            cout << "==>Inherit deconstructor" << endl;
+        }
+
+        void printValue(){
+            cout << "Inherit::a_: " << a_ << endl;
+            cout << "Inherit::a_: " << Inherit::a_ << endl;
+
+            cout << "ParInt::a_: " << ParInt::a_ << endl;
+            cout << "ParIntAnother::a_: " << ParIntAnother::a_ << endl;
+            cout << "MemInt::a_: " << i.getValue() << endl;
+            cout << "MemStr::str_: " << s.getValue() << endl;
+        }
+    };
+
+    namespace InheritClassTest{
+        void test(){
+            string s = "hello";
+            Inherit i(s);
+            i.printValue();
+        }
     }
 
 }
-
 
 
 #endif //STL_INHERIT_H

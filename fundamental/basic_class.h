@@ -16,10 +16,7 @@
 	在类中定义的成员函数把函数声明为内联的，即便没有使用inline标识符。
     **调用时调用的对象会将其内存地址传递给函数的默认隐含参数即this指针变量
     **有了this指针形参的存在, 使得相同的函数可以操作不同的对象. 即对象的内存空间是独占的, 但类的函数是唯一的共享的.
-*/
 
-
-/*
 数据封装：
 	数据封装是面向对象编程的一个重要特点，可以限制对类内部成员的访问。
 	访问修饰符：public, private, protected
@@ -28,7 +25,6 @@
 	private:在类的外部是不可访问的，只有本类和友元函数可以访问私有成员。默认情况下，类的所有成员都是私有的。
 	protected:和private很相似，可以被派生类所访问。
 */
-
 
 /*
 类的构造函数和析构函数：初始化/收尾处理
@@ -52,16 +48,14 @@
         主要作用是跳出程序前释放资源
 */
 
-
 /*
 友元函数：
-		类的友元函数定义在类外部，但有权访问类的所有私有成员和保护成员。尽管友元函数的原型有在类定义中
+    类的友元函数定义在类外部，但有权访问类的所有私有成员和保护成员。尽管友元函数的原型有在类定义中
 	出现过，但是友元函数并不是成员函数。友元可以是一个函数，该函数被称为友元函数；友元也可以是一个类，该
 	类被称为友元类。在这种情况下，整个类及其所有成员都是友元。
 
-        如果要声明函数为一个类的友元，需要在类定义中该函数原型前使用关键字friend。
+    如果要声明函数为一个类的友元，需要在类定义中该函数原型前使用关键字friend。
 */
-
 
 /*
 内联函数
@@ -71,43 +65,165 @@
 	**在类定义中的定义的函数都是内联函数，即使没有使用inline说明符。
 */
 
-
 /*
 this指针
-		在c++中，this指针存放对象成员变量的地址。this指针是所有成员函数的隐含参数。因此在成员函数内部，它可以用来
+	在c++中，this指针存放对象成员变量的地址。this指针是所有成员函数的隐含参数。因此在成员函数内部，它可以用来
 	标识调用对象。友元函数没有this指针，因为友元不是类的成员。只有非静态成员函数才有this指针。
 
 指向类的指针
-		一个指向C++类的指针与指向结构的指针类似，使用类的指针访问类的成员需要使用成员访问运算符->。
-		必须在使用指针之前，对指针进行初始化。
+    一个指向C++类的指针与指向结构的指针类似，使用类的指针访问类的成员需要使用成员访问运算符->。
+    必须在使用指针之前，对指针进行初始化。
 */
-
 
 /*
 静态成员变量
-		使用static关键字把类成员变量定义为静态的。当声明类的成员为静态时，这意味着无论创建多少个类的对象，静态成员都只是同一个。
+    使用static关键字把类成员变量定义为静态的。当声明类的成员为静态时，这意味着无论创建多少个类的对象，静态成员都只是同一个。
 	静态成员在类的所有对象中是共享的。不能把静态成员的初始化放置在类的定义中，可以在类的外部通过使用范围解析运算符::来重新声明
     静态变量从而对它进行初始化。
 
 静态成员函数
-		如果把函数成员声明为静态的，就可以把函数和类的任何特定对象独立开来。静态成员函数没有this指针形参, 因此不依赖与任何对象,
+    如果把函数成员声明为静态的，就可以把函数和类的任何特定对象独立开来。静态成员函数没有this指针形参, 因此不依赖与任何对象,
     在类对象不存在的情况下也能被调用，静态函数只要使用类名加范围解析运算符::就可以访问。
-        静态成员函数只能访问静态成员数据、其它静态成员函数和类外部的其它函数。
+    静态成员函数只能访问静态成员数据、其它静态成员函数和类外部的其它函数。
 
 静态成员函数和普通成员函数的区别：
 	*静态成员函数没有this指针，只能访问静态成员(包括静态成员变量和静态成员函数)
 	*普通成员函数有this指针，可以访问类中任意成员
 */
 
-
 #include <iostream>
 #include <utility>
 #include <cstring>
 
 using namespace std;
-
 namespace fundamental{
 
+/*
+ * 构造一个简单类：
+ *      普通成员变量/静态成员变量
+ *      构造函数/拷贝构造函数
+ *      析构函数
+ *      普通成员函数
+ *      虚函数
+ *      静态函数
+ */
+    class Basic{
+//成员变量/静态成员变量
+    protected:
+        string str_;
+    public:
+        static int global_;
+        int classFlag{1};
+
+//构造函数, 拷贝构造函数
+        Basic() = default;
+
+        Basic(string& str) : str_(str){
+            cout << "==>Basic constructor" << endl;
+        }
+
+        Basic(const Basic& other){
+            cout << "==>Basic copy constructor" << endl;
+            this->str_ = other.str_;
+            this->classFlag = other.classFlag;
+        }
+
+//析构函数
+        virtual ~Basic(){
+            cout << "==>Basic deconstructor" << endl;
+        }
+
+//普通成员函数，虚函数
+        void showMessage(){
+            cout << "Basic:: show message" << endl;
+        }
+
+        virtual void printValue(){
+            cout << "Basic::  str_: " << str_ << " global_: " << global_ << endl;
+        }
+
+//类函数
+        static void showGlobal(){
+            cout << "global: " << global_ << endl;
+        }
+    };
+    int Basic::global_ = 100;   //类外声明全局变量
+
+
+/*
+ * 简单的继承类
+ *      扩展成员变量
+ *      覆写虚函数
+ */
+    class Extend : public Basic{
+    private:
+        string str_;
+    public:
+        int classFlag{2};
+
+    public:
+        explicit Extend(string& str) : str_("world"), Basic(str){
+            cout << "==>Extend constructor" << endl;
+        }
+
+        ~Extend() override{
+            cout << "==>Extend deconstructor" << endl;
+        }
+
+        void printValue() override{
+            cout << "Extend::  Basic::str_: " << Basic::str_ << " Extend::str_: " << str_ << " global_: " << global_ << endl;
+        }
+    };
+
+
+/*
+ * 多态特性：
+ *      多态是针对虚函数的(由于虚函数表得以实现)
+ *
+ */
+    class Poly{
+    public:
+        static void interfaceoop(Basic& b){
+            b.printValue();     //扩展类函数
+            b.showMessage();    //基类函数
+            cout << "classFlag: " << b.classFlag << endl;   //基类元素
+        }
+    };
+
+
+//简单测试
+    namespace classTest{
+        void test1(){
+            string s = "hello";
+            Basic b(s);
+            Basic::showGlobal();
+
+            b.printValue();         // b.printValue() == b.Basic::printValue()
+            b.Basic::printValue();  // 类中的变量和函数都是被类名所修饰的
+        }
+
+        void test2(){
+            string s = "hello";
+            Extend e(s);
+            e.Basic::printValue();
+
+            e.printValue();     //  e.printValue() == e.Extend::printValue()
+            e.Extend::printValue(); //没有类名修饰时按照派生类到子类的顺序查找
+
+        }
+
+        void test3(){
+            string s = "hello";
+            Extend e(s);
+            Poly::interfaceoop(e);
+        }
+
+    }
+
+
+
+
+#if 0
     class comment{
     private:
         string str_;
@@ -340,13 +456,15 @@ namespace fundamental{
         }
     };
 
-
-
-
+#endif
 
 
 
 }
+
+
+
+
 
 
 

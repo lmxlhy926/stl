@@ -31,11 +31,8 @@ void func(int a){
 }
 
 int main(int argc, char *argv[]){
-//    callobj::functionobjtest();
 
-    callobj::callobjTest();
-
-
+    fundamental::PolyClassTest::test();
 
 
     return 0;

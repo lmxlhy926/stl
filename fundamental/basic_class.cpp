@@ -9,7 +9,7 @@
 using namespace std;
 
 namespace fundamental{
-
+#if 0
     void printMessage(){ cout << "object created ==> ";}    //普通函数
 
     int model::modelGlobal = 0;   //静态成员变量： 必须在类外声明
@@ -75,5 +75,7 @@ namespace fundamental{
         model m(1, 2, "hello");
         m.lamda();
     }
+#endif
+
 
 }

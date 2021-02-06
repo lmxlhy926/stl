@@ -7,6 +7,7 @@
 
 namespace fundamental{
 
+#if 0
    MyString::MyString(const char *str) {
        if(str == nullptr){
            str_ = new char[1];
@@ -62,6 +63,6 @@ namespace fundamental{
     char& MyString::operator[](int index){
         return str_[index];
     }
-
+#endif
 
 }

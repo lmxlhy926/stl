@@ -14,7 +14,7 @@ using namespace std;
 
 namespace fundamental{
 
-
+#if 0
     class Complex{
     private:
         int x_;
@@ -341,7 +341,7 @@ namespace fundamental{
     int Sta::value = 3; //非常量静态成员只能类外初始化
 
 
-
+#endif
 
 
 }
