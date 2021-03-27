@@ -17,6 +17,7 @@
 #include "stream.h"
 #include "overload.h"
 #include "mvector.h"
+#include "threadPool.hpp"
 
 #include <thread>
 #include <future>
@@ -32,7 +33,7 @@ void func(int a){
 
 int main(int argc, char *argv[]){
 
-    fundamental::PolyClassTest::test();
+    mthread::threadPoolTest1();
 
 
     return 0;

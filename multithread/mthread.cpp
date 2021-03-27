@@ -18,7 +18,7 @@ namespace mthread{
     private:
         string s = "xx";
     public:
-        void func(const string& str){
+        void func(const string str){
             for(int i = 0; i < 3; i++){
                 this_thread::sleep_for(chrono::milliseconds(500));
                 cout << s + str << endl;
@@ -31,13 +31,17 @@ namespace mthread{
     private:
         string s = "yy";
     public:
-        void operator() (const string& str){
+        void operator() (const string str){
             cout << s + str << endl;
+        }
+
+        void operator()(const string str1, const string str2){
+            cout << s + str1 + str2 << endl;
         }
     };
 
 
-    int func(const string& str){
+    int func(const string str){
         for(int i = 0; i < 3; i++){
             this_thread::sleep_for(chrono::milliseconds(1000));
             cout << str << endl;
@@ -50,11 +54,12 @@ namespace mthread{
 
 
 /*
- * callable object作为一个独立线程启动
- * 给函数传递参数
- * 获取函数运行结果(结果或者异常)
- * 线程运行状态的检查: 未启动, 启动尚未结束, 已结束
+ * 启动线程，传递参数，获取运行结果，检查线程运行状态
  *
+ *      callable object作为一个独立线程启动
+ *      给函数传递参数
+ *      获取函数运行结果(结果或者异常)
+ *      线程运行状态的检查: 未启动, 启动尚未结束, 已结束
  */
     void test(){
         X x;
@@ -63,13 +68,14 @@ namespace mthread{
         std::future<void> f1;
         std::future<void> f2;
         std::future<void> f3;
+        std::future<void> f4;
 
         try{
-           f = std::async(std::launch::async, func, "hhhh");                //普通函数
-           f1 = std::async(std::launch::async, []{func("llll");});    //lamda
-
-           f2 = std::async(std::launch::async, &X::func, x, "xx");          //成员函数
-           f3 = std::async(std::launch::async, y, "yy");                     //函数对象
+           f = std::async(std::launch::async, func, "普通函数");                 //普通函数
+           f1 = std::async(std::launch::async, []{func("lamda");});      //lamda
+           f2 = std::async(std::launch::async, &X::func, x, "成员函数");         //成员函数
+           f3 = std::async(std::launch::async, y, "函数对象单参数");              //函数对象
+           f4 = std::async(std::launch::async, y, "hello", "world");            //函数对象
 
         }catch(const exception& e){
             e.what();
@@ -123,8 +129,6 @@ namespace mthread{
                 }catch(const exception& e){
                     cout << e.what() << endl;
                 }
-
-
             });
 
             t.detach();
@@ -132,9 +136,38 @@ namespace mthread{
         }catch(const exception& e){
             cout << e.what() << endl;
         }
-
-
     }
+
+
+/*
+ * 想要等待线程结束则调用join(), 将它自母体卸离使它运行于后台而不受任何控制则调用detach(), 必须在thread object寿命结束前这么做,
+ * 否则程序会终止并调用std::terminate().
+ *
+ * 使用thread启动线程的几种方式
+ */
+    void test4(){
+        X x;
+        Y y;
+
+        try{
+            std::thread f(func, "普通函数");                //普通函数
+            std::thread f1([]{func("普通函数");});      //lamda
+            std::thread f2(&X::func, x, "成员函数");        //成员函数
+            std::thread f3(y, "函数对象单参数");            //函数对象
+            std::thread f4(y, "hello", "world");          //函数对象
+
+            f.join();
+            f1.join();
+            f2.join();
+            f3.join();
+            f4.detach();
+
+        }catch(const exception& e){
+            cout << e.what() << endl;
+        }
+    }
+
+
 
 
 }

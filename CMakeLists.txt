@@ -16,13 +16,6 @@ include_directories(exception)
 include_directories(container)
 
 
-#link_directories(stl_string)
-#link_directories(fundamental)
-#link_directories(callableObject)
-#link_directories(fileaccess)
-#link_directories(operatoroverload)
-#link_directories(multithread)
-
 add_subdirectory(stl_string)
 add_subdirectory(fundamental)
 add_subdirectory(callableObject)

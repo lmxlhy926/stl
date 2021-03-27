@@ -1,2 +1,2 @@
 
-add_library(mcontainer mvector.cpp)
+add_library(mcontainer mvector.cpp mmap.cpp)
