@@ -1,2 +1,2 @@
 
-add_library(mexception mexception.cpp)
+add_executable(exception main.cpp mexception.cpp)

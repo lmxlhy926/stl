@@ -1,2 +1,2 @@
 
-add_library(lstream fileaccess.cpp stream.cpp)
+add_executable(mstream main.cpp fileaccess.cpp stream.cpp)

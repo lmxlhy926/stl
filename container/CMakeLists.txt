@@ -1,2 +1,2 @@
 
-add_library(mcontainer mvector.cpp mmap.cpp)
+add_executable(container main.cpp mmap.cpp mvector.cpp)

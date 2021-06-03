@@ -1,2 +1,2 @@
 
-add_library(operatoroverload opoverload.cpp)
+add_executable(operatoroverload main.cpp opoverload.cpp)
