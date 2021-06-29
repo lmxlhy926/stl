@@ -13,16 +13,20 @@
  * 继承：从已有的类产生新类
  * 继承中类的称呼： 基类/父类   派生类/子类
  *
- * 派生类的初始化：
+ * 派生类构造函数的调用：
  *      **派生类中从基类继承而来的成员的初始化工作还是由基类的构造函数完成，派生类新增的成员在派生类的构造函数中初始化。
  *      派生类构造函数执行顺序：先执行基类构造函数-->再执行派生类构造函数
- *          1. 调用基类构造函数时，调用顺序按照它们被继承时的声明顺序（从左到右, 多继承情形下）
- *          2. 如果基类中没有默认构造参数(无参)，那么在派生类的构造函数中必须显示调用基类构造函数，以初始化基类成员。
- *          3. 调用内嵌成员对象的构造函数，调用顺序按照它们在类中的声明顺序。
+ *          基类构造函数：
+ *              1. 调用基类构造函数时，调用顺序按照它们被继承时的声明顺序（从左到右, 多继承情形下）
+ *              2. 如果基类中没有无参构造函数，那么在派生类的构造函数中必须显示调用基类构造函数，以初始化基类成员。
+ *          派生类构造函数：
+ *              3. 调用内嵌成员对象的构造函数，调用顺序按照它们在类中的声明顺序。
  *
  * 派生类对象的销毁：
  *      析构函数的作用并不是删除对象，而是在对象销毁前完成一些清理工作。
  *      派生类对象析构顺序： 先执行派生类析构--->再执行基类析构
+ *                           析构函数的调用顺序是构造函数的调用顺序的逆序
+ *
  *
  * 基类成员的引用：
  *      问题：
@@ -98,10 +102,11 @@ namespace fundamental{
         }
     };
 
+
 /*
  *
  * 构造函数调用顺序：
- *      按照声明的顺序调用构造函数
+ *      按照声明的顺序调用构造函数（基类，成员对象）
  *      先调用基类构造函数，再调用成员对象构造函数
  */
     class Inherit : public ParInt, ParIntAnother{
@@ -110,7 +115,7 @@ namespace fundamental{
         MemInt i;   //必须在构造函数里初始化成员对象
         MemStr s;
     public:
-        explicit Inherit(string& str): a_(0), s(str), i(3), ParIntAnother(2),  ParInt(1){
+        explicit Inherit(string& str): a_(100), s(str), i(3), ParIntAnother(2),  ParInt(1){
            cout << "==>Inherit constructor" << endl;
         }
 
@@ -118,23 +123,21 @@ namespace fundamental{
             cout << "==>Inherit deconstructor" << endl;
         }
 
-        void printValue(){
-            cout << "Inherit::a_: " << a_ << endl;
-            cout << "Inherit::a_: " << Inherit::a_ << endl;
+        void printValue(){  //通过类名唯一标识每一个成员
+            cout << "Inherit::a_: " << this->a_ << endl;
+            cout << "Inherit::a_: " << this->Inherit::a_ << endl;
 
-            cout << "ParInt::a_: " << ParInt::a_ << endl;
-            cout << "ParIntAnother::a_: " << ParIntAnother::a_ << endl;
-            cout << "MemInt::a_: " << i.getValue() << endl;
-            cout << "MemStr::str_: " << s.getValue() << endl;
+            cout << "ParInt::a_: " << this->ParInt::a_ << endl;     //多继承导致的同名基类成员
+            cout << "ParIntAnother::a_: " << this->ParIntAnother::a_ << endl;
+
+            cout << "MemInt::a_: " << this->Inherit::i.getValue() << endl;
+            cout << "MemStr::str_: " << this->Inherit::s.getValue() << endl;
         }
     };
 
-    namespace InheritClassTest{
-        void test(){
-            string s = "hello";
-            Inherit i(s);
-            i.printValue();
-        }
+
+    namespace inheritTest{
+        void test();
     }
 
 }

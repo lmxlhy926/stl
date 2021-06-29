@@ -4,8 +4,13 @@
 
 #include "inherit.h"
 
-namespace fundamental{
-
-
-
+void inheritTest::test(){
+    string s = "hello";
+    Inherit i(s);
+    i.printValue();
 }
+
+
+
+
+

@@ -72,13 +72,14 @@
 
 /*
 this指针
-	在c++中，this指针存放对象成员变量的地址。this指针是所有成员函数的隐含参数。因此在成员函数内部，它可以用来
+	在c++中，this指针存放对象的地址。this指针是所有成员函数的隐含参数。因此在成员函数内部，它可以用来
 	标识调用对象。友元函数没有this指针，因为友元不是类的成员。只有非静态成员函数才有this指针。
 
 指向类的指针
-    一个指向C++类的指针与指向结构的指针类似，使用类的指针访问类的成员需要使用成员访问运算符->。
+    一个指向C++类的指针与指向结构体的指针类似，使用类的指针访问类的成员需要使用成员访问运算符->。
     必须在使用指针之前，对指针进行初始化。
 */
+
 
 /*
 静态成员变量
@@ -97,115 +98,80 @@ this指针
 */
 
 #include <iostream>
-#include <utility>
 #include <cstring>
 
 using namespace std;
-namespace fundamental{
+namespace fundamental {
 
-/*
- * 构造一个简单类：
- *      普通成员变量/静态成员变量
- *      构造函数/拷贝构造函数
- *      析构函数
- *      普通成员函数
- *      虚函数
- *      静态函数
- */
-    class Basic{
-//成员变量/静态成员变量
-    protected:
-        string str_;
-    public:
-        static int global_;
-        int classFlag{1};
-
-//构造函数, 拷贝构造函数
-        Basic() = default;
-
-        Basic(string& str) : str_(str){
-            cout << "==>Basic constructor" << endl;
-        }
-
-        Basic(const Basic& other){
-            cout << "==>Basic copy constructor" << endl;
-            this->str_ = other.str_;
-            this->classFlag = other.classFlag;
-        }
-
-//析构函数
-        virtual ~Basic(){
-            cout << "==>Basic deconstructor" << endl;
-        }
-
-//普通成员函数，虚函数
-        void showMessage(){
-            cout << "Basic:: show message" << endl;
-        }
-
-        virtual void printValue(){
-            cout << "Basic::  str_: " << str_ << " global_: " << global_ << endl;
-        }
-
-//类函数
-        static void showGlobal(){
-            cout << "global: " << global_ << endl;
-        }
-    };
-    int Basic::global_ = 100;   //类外声明全局变量
-
-
-/*
- * 简单的继承类
- *      扩展成员变量
- *      覆写虚函数
- */
-    class Extend : public Basic{
+    class basic {
     private:
-        string str_;
-    public:
-        int classFlag{2};
+        string str;
+        static int intVar;  //本质上就是一个全局变量, 必须在类的外部通过范围解析运算符重新声明静态变量来对其进行初始化.
 
     public:
-        explicit Extend(string& str) : str_("world"), Basic(str){
-            cout << "==>Extend constructor" << endl;
+        basic(){
+            std::cout << "in basic constructor()..." << std::endl;
         }
 
-        ~Extend() override{
-            cout << "==>Extend deconstructor" << endl;
+        explicit basic(string &inputStr) : str(inputStr) {    //构造函数重载
+            std::cout << "basic constructor(string)..." << std::endl;
         }
 
-        void printValue() override{
-            cout << "Extend::  Basic::str_: " << Basic::str_ << " Extend::str_: " << str_ << " global_: " << global_ << endl;
+        basic(const basic &other) {  //拷贝构造函数(构造函数没有返回值)
+            str = other.str;
+            std::cout << "basic copy constructor ..." << std::endl;
+        }
+
+        virtual ~basic() {  //析构函数没有返回值，没有参数
+            std::cout << "basic destructor..." << std::endl;
+        }
+
+        void showMessage() {     //普通成员函数 (this指针是成员函数的隐含参数)
+            std::cout << "in memberFunction showMessage..." << std::endl;
+            std::cout << "str: " << this->str << std::endl;
+            std::cout << "str: " << this->basic::str << std::endl;
+        }
+
+        string stringContact(const basic& b){   //访问修饰符针对类对象的调用者和其它的类，不针对类自身
+            return this->basic::str + b.str;
+        }
+
+        static void printMessage();     //静态成员函数
+
+        friend void changeMember();     //类的友元函数在类中进行声明
+
+        basic& operator =(const basic& other){
+            std:cout << "in operator=...." << std::endl;
+            this->str = other.str;
+            return *this;
         }
     };
 
+        void changeMember();    //函数声明
 
-/*
- * 多态特性：
- *      多态是针对虚函数的(由于虚函数表得以实现)
- *
- */
-    class Poly{
-    public:
-        static void interfaceoop(Basic& b){
-            b.printValue();     //扩展类函数
-            b.showMessage();    //基类函数
-            cout << "classFlag: " << b.classFlag << endl;   //基类元素
-        }
-    };
 
+}// namespace fundamental
+
+
+
+using namespace fundamental;
+namespace basicTest{
+    void test();    //对象的使用
+
+    void test1();   //类指针变量
+
+    void copyConstructInParam(basic in);    //调用拷贝构造函数生成实参
+
+    void referenceInParam(basic& in);       //使用引用的方式，传参时不进行对象的创建，引用的本质是传指针
+
+    basic copyConstructInReturn();  //返回对象
+}
+
+
+#if 0
 
 //简单测试
     namespace classTest{
-        void test1(){
-            string s = "hello";
-            Basic b(s);
-            Basic::showGlobal();
-
-            b.printValue();         // b.printValue() == b.Basic::printValue()
-            b.Basic::printValue();  // 类中的变量和函数都是被类名所修饰的
-        }
 
         void test2(){
             string s = "hello";
@@ -213,105 +179,12 @@ namespace fundamental{
             e.Basic::printValue();
 
             e.printValue();     //  e.printValue() == e.Extend::printValue()
-            e.Extend::printValue(); //没有类名修饰时按照派生类到子类的顺序查找
+            e.Extend::printValue(); //没有类名修饰时按照派生类到父类的顺序查找
 
         }
 
-        void test3(){
-            string s = "hello";
-            Extend e(s);
-            Poly::interfaceoop(e);
-        }
 
     }
-
-
-
-
-#if 0
-    class comment{
-    private:
-        string str_;
-    public:
-        comment()= default;
-
-        explicit comment(string str) : str_(std::move(str)){
-            cout << "==>comment(string)" << endl;
-        }
-
-        comment(const comment& cm){
-            cout << "==>comment(const comment&)" << endl;
-            str_ = cm.str_;
-        }
-
-        virtual ~comment(){
-            cout << "==>~comment()" << endl;
-        }
-
-        comment& operator+(const comment& other){
-            str_ = str_ + other.str_;
-            return *this;
-        }
-
-        void showStr(){
-            cout << "str_ in_comment: " << str_ << endl;
-        }
-    };
-
-
-    class model{
-    protected:
-    //成员变量
-        int a_;
-        double *b_;
-        static int modelGlobal; //本质上就是一个全局变量, 必须在类的外部通过范围解析运算符重新声明静态变量来对其进行初始化.
-        comment cm;
-        struct {
-            int max = 2;
-            int min = 1;
-        }range;
-
-    public:
-    //构造函数
-        model(int a, float b, string commentstr);   //普通构造函数
-
-        model(const model& m);  //拷贝构造函数
-
-    //静态函数
-        void static showGlobal();   //static只能在类定义中声明
-
-    public:
-    //成员函数
-        void printValue();
-
-        model modelChange(model& m);
-
-        void lamda();
-
-    //虚函数
-        virtual void show(){
-            cout << "---in model show()" << endl;
-            cout << "model:a_: " << this->model::a_ << endl;
-            cout << "model:b_： " << *this->model::b_ << endl;
-        }
-
-        virtual void interfacefunc(){
-            cout << "in model interfacefunc" << endl;
-        }
-
-
-    //析构函数
-        virtual ~model(){
-            cout << "===>model deconstructor" << endl;
-            delete(b_); //释放堆资源
-        }
-
-    };
-
-    void basicClassTest();
-
-//引用，运算符重载， 返回栈上引用与对象
-
 
 
 
@@ -319,126 +192,13 @@ namespace fundamental{
  * 类的基本构成
  * new/delete的用法
  */
-    class Basic{
-    private:
-        int a_;
-        char* str_{nullptr};
-        comment cm;
-    public:
-        Basic() = default;
-
-        Basic(int a, char* str, char* cmstr) : a_(a), cm(cmstr){
-            cout << "==>Basic(int, char*, char*)" << endl;
-            if(str == nullptr){
-               str_ = new char[1];
-               str_[0] = '\0';
-           }else{
-               int len = strlen(str);
-               str_ = new char[len + 1];
-               strcpy(str_, str);
-           }
-        }
-
-        Basic(const Basic &other){
-            cout << "==>Basic(const Basic& other)" << endl;
-            a_ = other.a_;
-            cm = other.cm;
-            int len = strlen(other.str_);
-            str_ = new char[len];
-            strcpy(str_, other.str_);
-        }
-
-        virtual ~Basic(){
-            cout << "==>~Basic()" << endl;
-            delete(str_);
-        }
-
-        static void showGlobal(){
-            cout << "global function" << endl;
-        }
-
-        void showValue(){
-           cout << "a_: " << a_ << endl;
-           cout << "strAddress_: " << static_cast<void *>(str_) << " str_: " << str_ << endl;
-           cm.showStr();
-        }
-
-        virtual void printValue(){
-            cout << "Basic::a_: " << a_ << endl;
-        }
-
-        Basic& operator+(const Basic& other){
-            this->a_ = this->a_ + other.a_;
-            int len = strlen(str_) + strlen(other.str_);
-            char * temp = new char[len + 1];
-            strcpy(temp, str_);
-            strcpy(temp + strlen(str_), other.str_);
-            delete(str_);
-            str_ = temp;
-            cm = cm + other.cm;
-            return *this;
-        }
-
-        Basic& operator=(const Basic& other){
-            if(this == &other)
-                return *this;
-            this->a_ = other.a_;
-            delete(str_);
-            int len = strlen(other.str_);
-            str_ = new char[len + 1];
-            strcpy(str_, other.str_);
-            cm = other.cm;
-            return *this;
-        }
-
-    };
 
 
-/*
- * static变量的初始化
- */
-    class BasicStatic{
-    private:
-        const int a_{1};
-        const static int b_{1};
-        static int c_;
-    public:
-        void show(){
-            cout << "a_: " << a_ << " b_: " << b_ << " c_: " << c_ << endl;
-        }
-    };
-
-
-    class MinBasic{
-    public:
-        int a_;
-    public:
-        explicit MinBasic(int a): a_(a){}
-
-        virtual void dis(){
-            cout << "a_: " << a_ << endl;
-        }
-    };
-
-
-
-    class MinExtend :public MinBasic{
-    public:
-        int a_;
-        int b_{1000};
-    public:
-        explicit MinExtend(int a): a_(a), MinBasic(100){}
-
-        void dis() override {
-            cout << "a_: " << a_ << endl;
-            cout << "b_: " << b_ << endl;
-        }
 
         void disaddress(){
             cout << "basic: " << static_cast<void *>(&this->MinExtend::a_) << endl;
             cout << "extend: " << static_cast<void *>(&this->MinExtend::MinBasic::a_) << endl;
         }
-    };
 
     class Mintest{
     public:
@@ -462,22 +222,6 @@ namespace fundamental{
     };
 
 #endif
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

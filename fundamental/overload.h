@@ -14,7 +14,7 @@ using namespace std;
 
 namespace fundamental{
 
-#if 0
+#if 1
     class Complex{
     private:
         int x_;

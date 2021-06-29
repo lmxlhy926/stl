@@ -1,81 +1,56 @@
 //
 // Created by lhy on 2020/11/14.
 //
+
+
 #include "basic_class.h"
 
-#include <utility>
+int fundamental::basic::intVar = 100;    //static can only be specified inside the class definition
+
+void fundamental::basic::printMessage() {
+    std::cout << "in static function printMessage..." << std::endl;
+}
+
+void fundamental::changeMember() {      //一切函数都是相应namespace下的函数
+    string str = "hello";
+    basic b(str);
+    string private_member_str = b.str;      //类的访问修饰限定符对友元函数不起作用
+    std::cout << "private_member_str: " << private_member_str << std::endl;
+}
 
 
-using namespace std;
+using namespace fundamental;
 
-namespace fundamental{
-#if 0
-    void printMessage(){ cout << "object created ==> ";}    //普通函数
+void basicTest::test(){
+    basic::printMessage();  //通过类名直接调用静态成员函数，该静态成员函数的访问修饰符为public
 
-    int model::modelGlobal = 0;   //静态成员变量： 必须在类外声明
+    string str = "hello";
+    basic b(str);
+    b.showMessage();
+    b.basic::showMessage();
+}
 
-    int BasicStatic::c_ = 2;
-
-
-
-//构造函数
-    model::model(int a, float b, string commentstr) : a_(a), cm(std::move(commentstr)){
-        cout << "===>model constructor(int, float, commentstr)" << endl;
-        modelGlobal++;
-        b_ = new double();  //申请内存, 并赋值
-        *b_ = b;
-    }
-
-    model::model(const fundamental::model &m) : cm("hello"){
-        cout << "===>model copy constructor " << endl;
-        modelGlobal++;
-        a_ = m.a_;
-        b_ = new double();
-        *b_ = *(m.b_);
-    }
-
-//静态成员函数
-    void model::showGlobal() {
-        printMessage();
-        cout << modelGlobal << endl;
-    }
-
-//成员函数
-    void model::printValue() {
-        cout << "a_: " << a_ << endl;
-        cout << "*b_: " << *b_ << endl;
-        cout << "max: " << range.max << endl;
-        cout << "min: " << range.min << endl;
-        cm.showStr();
-    }
-
-    model model::modelChange(model &m) {
-        this->a_ = m.a_;
-        *(this->b_) = *(m.b_);
-    }
-
-    void model::lamda(){
-        int lamda_x = 222;
-        int lamda_y = 333;
-
-        auto l = [lamda_x, this, &lamda_y] () -> bool {     // 指定capture用来处理外部作用域内未被传递为实参的数据
-            cout << "a_: " << a_ << endl;
-            cout << "x: " << lamda_x << endl;
-            cout << "y: " << lamda_y << endl;
-            return true;
-        };
-        l();
-        lamda_x = 2222;     //传递普通数值
-        this->a_ = 1111;    //传递地址
-        lamda_y = 3333;     //传递地址
-        l();
-    }
-
-    void basicClassTest(){
-        model m(1, 2, "hello");
-        m.lamda();
-    }
-#endif
+void basicTest::test1(){
+    basic * bp = nullptr;   //类对象指针变量的定义和赋值
+    string str = "hello";
+    basic b(str);
+    bp = &b;    //类指针变量的赋值
+    bp->showMessage();  //通过类对象指针变量访问对象的成员函数
+}
 
 
+void basicTest::copyConstructInParam(basic in) {
+    std::cout << "in copyConstructInParam(basic in) funciton body...." << std::endl;
+}
+
+void basicTest::referenceInParam(basic& in) {
+    std::cout << "in copyConstructInParam(basic& in) funciton body...." << std::endl;
+}
+
+basic basicTest::copyConstructInReturn() {
+    std::cout << "in copyConstructInReturn funciton body...." << std::endl;
+    string str = "hello";
+    basic b(str);
+    b.printMessage();
+    return b;
 }
