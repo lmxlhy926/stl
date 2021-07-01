@@ -1,11 +1,11 @@
 
 #include <iostream>
-
+#include "mvector.h"
 using namespace std;
 
 int main(int argc, char* argv[]){
 
-    std::cout << "in container main" << std::endl;
+    container::vector_insert_delete();
 
     return 0;
 
