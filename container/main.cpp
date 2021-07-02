@@ -1,11 +1,12 @@
 
 #include <iostream>
 #include "mvector.h"
+#include "mset.h"
 using namespace std;
 
 int main(int argc, char* argv[]){
 
-    container::vector_insert_delete();
+    container::set_comp();
 
     return 0;
 

@@ -115,58 +115,10 @@ void container::vector_insert_delete(){
         cout << "left: " << elem << endl;
     }
 
-    v.resize(2);    //更改容器大小
+    v.resize(2);    //更改容器大小（可能会调用析构函数或default构造函数）
     for(auto &elem : v){
         cout << "resize: " << elem << endl;
     }
 
 }
 
-
-
-
-/*
- * 对象的构造
- * 元素的索引，插入、删除、赋值
- */
-void vector_test1(){
-    //构造器
-    vector<string> presen = {"hi", "marry."}; //初值列构造
-    vector<string> sentence(presen.begin(), presen.end());    //区间构造
-
-
-    sentence.reserve(50);   //预先保留空间，避免发生内存空间重新分配
-
-    //四种元素访问方式
-    cout << "idx0: " << presen[0] << endl;          //按下标索引
-    cout << "idx1: " << presen.at(1) << endl;    //安全索引
-    cout << "front: " << presen.front() << endl;    //第一个元素
-    cout << "back: " << presen.back() << endl;      //最后一个元素
-
-    //元素的插入
-    sentence.emplace_back("hello,");    //末尾插入
-    sentence.emplace(sentence.end(), "are");    //按位置插入
-    sentence.insert(sentence.end(), {"you", "?"});
-    copy(sentence.cbegin(), sentence.cend(),
-         ostream_iterator<string>(cout, " "));
-    cout << endl;
-
-
-    swap(sentence[3], sentence[5]); //交换元素
-    sentence.insert(find(sentence.begin(), sentence.end(), "?"), "always");
-    sentence.back() = "!";
-    copy(sentence.cbegin(), sentence.cend(),
-         ostream_iterator<string>(cout, " "));
-    cout << endl;
-
-    //元素的删除
-    sentence.pop_back();    //元素的2种删除方式
-    sentence.erase(sentence.end());
-    copy(sentence.cbegin(), sentence.cend(),
-         ostream_iterator<string>(cout, " "));
-    cout << endl;
-
-    cout << "size(): " << sentence.size() << endl;
-    cout << "capacity(): " << sentence.capacity() << endl;
-    cout << "max_size(): " << sentence.max_size() << endl;
-}
