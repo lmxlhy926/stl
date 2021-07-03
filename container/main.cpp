@@ -6,7 +6,7 @@ using namespace std;
 
 int main(int argc, char* argv[]){
 
-    container::set_comp();
+    container::set_assign();
 
     return 0;
 

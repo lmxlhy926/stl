@@ -22,7 +22,32 @@
 #include <iostream>
 
 namespace container {
-    void set_comp(void);
+
+    class runtimeCmp{
+    private:
+        int mode = 0;
+    public:
+        explicit runtimeCmp(int option = 0) : mode(option){}
+
+        template<typename T>
+        bool operator()(const T& t1, const T& t2){
+            return mode == 0 ? t1 < t2 : t2 < t1;
+        }
+
+        bool operator == (const runtimeCmp& t){
+            return mode == t.mode;
+        }
+    };
+
+    typedef std::set<int, runtimeCmp> IntSet;
+
+    void set_comp();
+
+    void set_insert_erase();
+
+    void set_comp_own();
+
+    void set_assign();
 
 }
 
