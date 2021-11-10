@@ -5,20 +5,6 @@
 #ifndef STL_MVECTOR_H
 #define STL_MVECTOR_H
 
-/*
- * 操作：
- *      构造（创建对象），复制（对象间赋值）， 析构（销毁对象）
- *
- *      empty, size(), max_size()
- *      大小比较（==, !=）
- *
- *      迭代器（指示元素位置）
- *
- *      索引元素
- *      元素的插入，删除，清空
- *
- */
-
 
 /*
 vector
@@ -29,12 +15,7 @@ vector
     Vector的容量：
         1. 一旦内存重新分配，vector元素相关的所有reference, pointer, iterator都会失效
         2. 内存重新分配很耗时间
-        3. **可以使用reserve()保留适当容量, 避免重新分配内存
-
-    元素访问：
-        对于non-const vector, 这些函数都返回元素的reference， 因此可以使用这些操作函数更改元素内容。
-
-    元素的插入、删除
+        3. 可以使用reserve()保留适当容量, 避免重新分配内存
 
  */
 
@@ -48,13 +29,13 @@ using namespace std;
 
 namespace container{
 
-    void vector_construct();
+    void vector_construct();        //构造函数
 
-    void vector_assign();
+    void vector_assign();           //容器赋值，容器交换
 
-    void vector_access();
+    void vector_access();           //容器元素的访问
 
-    void vector_insert_delete();
+    void vector_insert_delete();    //插入、删除、清空
 
 }
 
