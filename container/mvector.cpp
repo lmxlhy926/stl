@@ -161,3 +161,51 @@ void container::vector_insert_delete(){
 
 }
 
+
+void container::deque_operate(){
+
+    //创建类的对象并赋初值
+    string s1 = "s1";
+    std::vector<string> v = {"1", "2", "3"};
+    std::deque<string> coll;
+    coll = {"first", "second", "third"};
+
+    //插入方法
+    coll.insert(coll.begin(), "1");
+    coll.insert(coll.begin(), 2, "2");
+    coll.insert(coll.end(), {"end1", "end2"});
+    coll.insert(coll.end(), v.begin(), v.end());
+
+    //首端，尾端插入
+    coll.push_front("hello");
+    coll.emplace_back("world");
+
+    copy(coll.begin(), coll.end(), ostream_iterator<string>(cout, " "));
+    cout << endl;
+
+    //删除单个，删除一个区间
+    coll.erase(coll.end());
+    coll.erase(coll.begin(), std::next(coll.begin(), 2));
+    copy(coll.begin(), coll.end(), ostream_iterator<string>(cout, " "));
+    cout << endl;
+
+    //元素访问：首端，末尾，任意位置
+    cout << "coll.front(): " << coll.front() << endl;
+    cout << "coll.back(): " << coll.back() << endl;
+    coll.pop_front();
+    coll.pop_back();
+    cout << "firt element of coll: " << coll[0] << endl;
+    copy(coll.begin(), coll.end(), ostream_iterator<string>(cout, " "));
+    cout << endl;
+
+    //变更存储的元素的数量
+    coll.resize(2);
+    coll.clear();
+}
+
+
+
+
+
+
+

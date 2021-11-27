@@ -17,9 +17,12 @@ vector
         2. 内存重新分配很耗时间
         3. 可以使用reserve()保留适当容量, 避免重新分配内存
 
+    vector内部维护了一个数组，capacity()可以查询该数组的容量。数组容量不够时会发生重新分配，
+    此时会分配一个容量更大的数组，并将之前数组的元素复制到新的数组。
  */
 
 #include <vector>
+#include <deque>
 #include <string>
 #include <iostream>
 #include <iterator>
@@ -36,6 +39,8 @@ namespace container{
     void vector_access();           //容器元素的访问
 
     void vector_insert_delete();    //插入、删除、清空
+
+    void deque_operate();          //操作deque
 
 }
 

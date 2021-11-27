@@ -37,7 +37,7 @@ public:
         return a / b + value;
     }
 
-    static int sub(int a, int b){
+    static int sub(int a, int b){   //静态成员函数 == 普通函数
         return a - b;
     }
 
@@ -54,39 +54,14 @@ public:
 using namespace std;
 int main(int argc, char* argv[]){
 
-    using memfp = int(memberAddClass::*)(int, int);   //声明成员函数指针变量类型
-
-//成员函数map
-    std::map<string, memfp> fmap;
-    fmap.insert(pair<string, memfp>("add", &memberAddClass::add));
-    fmap.insert(pair<string, memfp>("mul", &memberAddClass::mul));
-    fmap.insert(pair<string, memfp>("div", &memberAddClass::div));
-
-//对象map
-    std::map<string, memberAddClass> memMap;
-    memberAddClass a;
-    memMap.insert(pair<string, memberAddClass>("mem", a));
-
-    string objectOption = "mem";
-    string methodOption = "add";
-    int input1 = 1;
-    int input2 = 2;
-
-    auto obj = memMap.find(objectOption);
-    if(obj != memMap.end()){
-        auto f = fmap.find(methodOption);
-        if(f != fmap.end()){
-            std::cout << "===>: " << (obj->second.*f->second)(input1, input2) << std::endl;
-        }
-    }
 
     return 0;
 }
 
-//普通函数指针
+//普通函数指针的定义和引用
 void normal_func_pointer(){
 
-    int(*fp)(int, int);     //定义一个函数指针变量
+    int(*fp)(int, int);            //定义一个函数指针变量
     fp = normalAddFunction;       //给函数指针变量赋值
     std::cout << "fp(1, 2): " << fp(1, 2) << std::endl;
 
@@ -99,30 +74,41 @@ void normal_func_pointer(){
     std::cout << "fp2(1, 2): " << fp2(1, 2) << std::endl;
 }
 
+
+//std::function和函数对象
 void normal_functionObject_cpp(){
 
     std::function<int(int,int)> f;
+    std::function<int(int, int, int)> f1;
 
     f = normalAddFunction;    //普通函数
     std::cout << "addFunction: " << f(1, 2) << std::endl;
 
     f = addFunctionObject();    //创建一个函数对象实体
-    std::cout << "addFunctionObject: " << f(1, 2) << std::endl;
+    std::cout << "addFunctionObject(int, int): " << f(1, 2) << std::endl;
+    std::cout << "addFunctionObject(int, int): " << addFunctionObject()(1, 2) << std::endl;
+
+
+    f1 = addFunctionObject();   //创建一个函数对象实体
+    std::cout << "addFunctionObject(int, int, int): " << f1(1, 2, 3) << std::endl;
+    std::cout << "addFunctionObject(int, int, int): " << addFunctionObject()(1, 2, 3) << std::endl;
+
 
     f = [](int a, int b) ->int {return a + b;};     //lamda
     std::cout << "lambda: " << f(1, 2) << std::endl;
 }
 
 
+//成员函数指针
 void member_funciton_cpp(){
 
-//静态成员函数本质上就是普通函数
+    //静态成员函数本质上就是普通函数
     using staticMemberFunction = int(*)(int, int);
     staticMemberFunction smf = &memberAddClass::sub;    //静态成员函数
     std::cout << "smf(1, 2): " << smf(1, 2) << std::endl;
 
-//成员函数指针
-    int (memberAddClass::*mfp)(int, int);   //定义一个成员函数指针变量
+    //成员函数指针
+    int (memberAddClass::*mfp)(int, int);      //定义一个成员函数指针变量
     mfp = &memberAddClass::add;               //给成员函数指针变量赋值，对于成员函数c++标准强制要求加上'&'
 
     using mfpiii_fpType = int(memberAddClass::*)(int, int, int);   //定义成员函数指针类型
@@ -140,6 +126,36 @@ void member_funciton_cpp(){
     std::cout << "addClass::addWithNum(int, int, int): " << f(1, 2) << std::endl;
 }
 
+
+//对象、成员函数指针抽象调用成员方法
+void abstract_object_memberFunction(){
+    using memfp = int(memberAddClass::*)(int, int);   //声明成员函数指针变量类型
+
+    //成员函数map
+    std::map<string, memfp> fmap;
+    fmap.insert(pair<string, memfp>("add", &memberAddClass::add));
+    fmap.insert(pair<string, memfp>("mul", &memberAddClass::mul));
+    fmap.insert(pair<string, memfp>("div", &memberAddClass::div));
+
+    //对象map
+    std::map<string, memberAddClass> memMap;
+    memberAddClass a;
+    memMap.insert(pair<string, memberAddClass>("mem", a));
+
+    string objectOption = "mem";
+    string methodOption = "add";
+    int input1 = 1;
+    int input2 = 2;
+
+    //通过对象、成员函数指针来调用对象的成员方法
+    auto obj = memMap.find(objectOption);
+    if(obj != memMap.end()){
+        auto f = fmap.find(methodOption);
+        if(f != fmap.end()){
+            std::cout << "===>: " << ((obj->second).*(f->second))(input1, input2) << std::endl;
+        }
+    }
+}
 
 
 

@@ -33,12 +33,10 @@ namespace container {
         }
         cout << "-----------------------" << endl;
 
-
         for (auto &elem : mapConstainer) {
             cout << "key: " << elem.first << " value: " << elem.second << endl;
         }
         cout << "-----------------------" << endl;
-
 
         for_each(mapConstainer.begin(), mapConstainer.end(),
                  [](std::pair<const string, string> &elem) {  //明确声明元素类型
@@ -54,16 +52,16 @@ namespace container {
                  {"b", "second"},
                  {"c", "third"}};
 
-        ssmap.erase("a");
+        ssmap.erase("a");                //删除key等于特定值的元素
         auto ite = ssmap.find("b");
         if (ite != ssmap.end())
-            ssmap.erase(ite);
+            ssmap.erase(ite);               //删除特定位置的元素
 
         ssmap.insert(std::make_pair("aa", "aa--"));
         ssmap.insert(std::pair<string, string>("bb", "bb--"));
 
         auto itebb = ssmap.find("bb");
-        ssmap.erase(itebb, ssmap.end());
+        ssmap.erase(itebb, ssmap.end());    //删除一个区间的元素
 
         for (auto &elem : ssmap) {
             std::cout << "elem_first: " << elem.first << " elem_second: " << elem.second << endl;
@@ -72,27 +70,33 @@ namespace container {
     }
 
 
-    using addFunction = std::function<int(int, int)>;
+    using mathFunction = std::function<int(int, int)>;
+
+    int sub(int a, int b){
+        return a - b;
+    }
+
+    class mul{
+    public:
+        int operator() (int a, int b){
+            return a * b;
+        }
+    };
 
     void mmap_functor(int a, int b, string& option){
 
-        std::map<string, addFunction> funMap;
-        funMap.insert(std::pair<string, addFunction>("add", [](int a, int b) -> int{
+        std::map<string, mathFunction> funMap;
+        funMap.insert(std::pair<const string, mathFunction>("add", [](int a, int b) -> int{     //lamda对象
             return a + b;
         }));
 
-        funMap.insert(std::pair<string, addFunction>("sub", [](int a, int b) -> int{
-            return a - b;
-        }));
+        funMap.insert(std::pair<const string, mathFunction>("sub", sub));          //普通函数
 
-        funMap.insert(std::pair<string, addFunction>("mul", [](int a, int b) -> int{
-            return a * b;
-        }));
+        funMap.insert(std::pair<const string, mathFunction>("mul", mul()));     //函数对象
 
         auto pairRet = funMap.find(option);
         if(pairRet != funMap.end()){
-            int ret = (*pairRet).second(a, b);
-            cout << "ret: " << ret << endl;
+            cout << "ret: " << (*pairRet).second(a, b) << endl;    //dereference迭代器，pair对象元素的访问
         }
     }
 

@@ -5,12 +5,35 @@
 #include "mmap.h"
 #include <thread>
 #include "marray.h"
+#include "mlist.h"
 
 using namespace std;
 
+
+template<typename T1, typename T2>
+class test{
+
+public:
+    void copy(T1 s1, T2 s2){
+        s1.hello() = "helll";
+        s1.world() == s2.ttt();
+    }
+};
+
+
+
 int main(int argc, char* argv[]){
 
-    container::vector_insert_delete();
+//    string add = "add";
+//    string sub = "sub";
+//    string mul = "mul";
+//
+//    container::mmap_functor(1, 2, add);
+//    container::mmap_functor(1, 2, sub);
+//    container::mmap_functor(1, 2, mul);
+
+    container::set_comp_own();
+
 
     while(true)
         std::this_thread::sleep_for(std::chrono::seconds(10));

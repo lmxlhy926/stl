@@ -5,6 +5,14 @@
 #ifndef STL_MARRAY_H
 #define STL_MARRAY_H
 
+
+/*
+ * array的大小是固定的，在创建对象时就已经指定，不会再发生变化
+ * 越界访问会导致未定义错误
+ */
+
+
+
 namespace container{
     //创建容器
     void arrayCreate();
