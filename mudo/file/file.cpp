@@ -22,7 +22,7 @@ size_t cfile::read(void *ptr, size_t size) {
  */
 bool cfile::read(char &c) {
 //以无符号char强制转换为int的形式返回读取的字符，如果达到文件末尾或发生错误，则返回EOF
-    c = fgetc(stream);
+    c = static_cast<char>(fgetc(stream));
     if(c == EOF)  return false;
     return true;
 }
