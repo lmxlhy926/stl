@@ -24,29 +24,39 @@ void readNumBytes(){
 }
 
 void readChar(){
-
-
+    string path = R"(D:\project\stl\mudo\file\log.txt)";
+    cfile file(path);
+    char c;
+    while(file.read(c)) {
+        std::cout << "read the char: " << c << std::endl;
+    }
 }
 
 void readLine(){
+    string path = R"(D:\project\stl\mudo\file\log.txt)";
+    cfile file(path);
+    std::array<char, 1024> lineArray{};
 
+    while(file.getLine(lineArray.data())){
+        std::cout << "line: " << lineArray.data();
+    }
 }
 
+void write(){
+    string path = R"(D:\project\stl\mudo\file\log.txt)";
+    cfile file(path, "w");
 
+    string s = "hello\n";
+    file.write('a');
+    file.write(s);
+    file.write("%s--%s\n", "ni", "hao");
+    file.write("good morning\n");
+}
 
 
 int main(int argc, char* argv[]){
 
-    readNumBytes();
-
-
-
-
-//    file.write("this is %s\n", "hello world");
-
-
-
-
+    write();
 
 
     while(true){

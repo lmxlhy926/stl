@@ -108,10 +108,10 @@ public:
     size_t write(void *ptr, size_t size);
 
     //向文件写入一个字符
-    bool write(char& c);
+    bool write(char c);
 
-    //向文件写入一个字符串
-    bool write(const char *str);
+    //向文件写入一个string
+    bool write(string& str);
 
     //向文件写入格式化字符串
     int write(const char* format, ...);

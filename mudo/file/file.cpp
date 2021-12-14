@@ -12,6 +12,8 @@
  * 返回: 返回实际读取到的字节数
  */
 size_t cfile::read(void *ptr, size_t size) {
+    //fread返回实际从文件中读取到的元素数，元素数大于等于0.
+    //如果返回0，则可能遇到文件结尾或者读取错误，需要使用feof,ferror单独来判断
     return fread(ptr, 1, size, stream);
 }
 
@@ -21,7 +23,8 @@ size_t cfile::read(void *ptr, size_t size) {
  * 返回: 读取是否成功
  */
 bool cfile::read(char &c) {
-//以无符号char强制转换为int的形式返回读取的字符，如果达到文件末尾或发生错误，则返回EOF
+    //读取成功：无符号char强制转换为int的形式返回读取的字符
+    //读取失败；如果达到文件末尾或发生错误，则返回EOF
     c = static_cast<char>(fgetc(stream));
     if(c == EOF)  return false;
     return true;
@@ -29,16 +32,19 @@ bool cfile::read(char &c) {
 
 
 /*
- * 功能：读取一行字符串(未必是一行，如果超过最大字节数或者遇到文件末尾)
- * 返回：读取一行是否成功
+ * 功能：试图读取一行字符串(读取停止条件：1. 到max-1个字符;  2. 读取到一个newline;  3. 读取到文件末尾)
+ * 返回：没有读取到任何字符，或者读取错误则返回 false.
  */
 bool cfile::getLine(char *str) {
 /*
-    当读取(n-1)个字符时，或者读取到换行符时，或者达到文件末尾时，它会停止，视具体情况而定
+    最多读取(n-1)个字符
+    读取到一个newline，或者达到文件末尾时，它会停止，视具体情况而定.
+    读取到的newline会被存储到buffer，buffer的最后一个字符后会自动存储一个null byte(\0)
+
     如果成功，该函数返回相同的str参数
-    如果到达文件末尾或者没有读取到任何字符，str的内容保持不变，并返回一个空指针。读取错误时，也返回一个空指针。
+    读取错误或者读取到文件末尾（即没有读取到一个字符），返回nullptr
  */
-    if(fgets(const_cast<char *>(str), LINEMAX, stream) == nullptr)  return false;
+    if(fgets(str, LINEMAX, stream) == nullptr)  return false;
     return true;
 }
 
@@ -48,6 +54,7 @@ bool cfile::getLine(char *str) {
  * 返回：实际写入的字节数
  */
 size_t cfile::write(void *ptr, size_t size) {
+    //返回实际写入的元素数，如果发生错误则实际写入的元素数和期望写入的元素数不相等
     return fwrite(ptr, 1, size, stream);
 }
 
@@ -56,7 +63,8 @@ size_t cfile::write(void *ptr, size_t size) {
  * 功能：向文件写入一个字符
  * 返回：是否成功写入
  */
-bool cfile::write(char &c) {
+bool cfile::write(char c) {
+    //将char c转换为一个unsigned c写入文件流
     //如果没有发生错误，则返回被写入的字符。如果发生错误，则返回EOF，并设置错误标识符。
     if(fputc(c, stream) == EOF)  return false;
     return true;
@@ -67,9 +75,10 @@ bool cfile::write(char &c) {
  * 功能：写入一个字符串
  * 返回：是否写入成功
  */
-bool cfile::write(const char *str) {
-    //该函数返回一个非负值，如果发生错误则返回EOF
-    if(fputs(str, stream) == EOF) return false;
+bool cfile::write(string& str) {
+    //将字符串（不包含字符串的null byte）写入文件流，
+    //成功：该函数返回一个非负值; 失败：返回EOF
+    if(fputs(str.c_str(), stream) == EOF) return false;
     return true;
 }
 
