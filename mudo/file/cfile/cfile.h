@@ -2,8 +2,8 @@
 // Created by 78472 on 2021/12/11.
 //
 
-#ifndef STL_FILE_H
-#define STL_FILE_H
+#ifndef STL_CFILE_H
+#define STL_CFILE_H
 
 /*
 #打开、关闭文件
@@ -68,13 +68,27 @@
 #include <string>
 #include <cstdio>
 #include <exception>
+#include <array>
 
 using namespace std;
 
+
+/*
+ * r： 读取，  文件必须存在，  读取位置在文件开头
+ * r+：读和写， 文件必须存在， 读写位置在文件开头
+ *
+ * w： 清空而后涂写，有必要时创建， 读写位置在开头
+ * w+：先清空再读写，有必要才创建， 读写位置在开头
+ *
+ * a： 追加，有必要才创建，写位置在尾端
+ * a+：有必要才创建. 尾端更新，即刚开始读写位置都在尾端
+ */
 class cfile{
 private:
     const string _fileName;
     FILE *stream = nullptr;
+
+public:
     enum position{
         start = SEEK_SET,
         current = SEEK_CUR,
@@ -95,26 +109,40 @@ public:
     }
 
 public:
-    //从文件读取指定的字节数
-    size_t read(void *ptr, size_t size);
+    /*
+     * 从文件读取size个字节的数据到指定的buffer中，返回实际读取到的字节数
+     * 读取错误或者读取一开始就遇到end-of-file，则返回0
+     */
+    size_t readBytes(void *ptr, size_t size);
 
-    //从文件读取一个字符
-    bool read(char &c);
+    /*
+     * 从文件读取一个字符，如果读取成功则返回true, c中为读取到的字符，
+     * 如果读取失败则返回false，c中的内容不改变
+     *
+     * 读取失败：读取操作失败或者读取一开始就遇到了end-of-file
+     */
+    bool readChar(char &c);
 
-    //从文件读取一行字符串
-    bool getLine(char *str);
+    /*
+     * 从文件读取一行字符串, 读取但是不存储newline, 最多读取readMaxCount - 1个字符，自动添加'\0'结束符
+     * 如果没有读取到字符（读取错误或遇到EOF）则返回false。
+     */
+    bool readLine(char *str, int readMaxCount);
 
-    //向文件写入指定的字节数
-    size_t write(void *ptr, size_t size);
+    /*
+     * 向文件写入指定的字节数
+     * 返回值为实际写入的字节数，如果写入操作失败，则返回的值和实际写入的值不相等
+     */
+    size_t writeBytes(void *ptr, size_t size);
 
     //向文件写入一个字符
-    bool write(char c);
+    bool writeChar(char c);
 
     //向文件写入一个string
     bool write(string& str);
 
     //向文件写入格式化字符串
-    int write(const char* format, ...);
+    bool write(const char* format, ...);
 
     //获取文件当前位置标识符
     long int getPos();
@@ -135,9 +163,4 @@ public:
     bool flush();
 };
 
-
-
-
-
-
-#endif //STL_FILE_H
+#endif //STL_CFILE_H
