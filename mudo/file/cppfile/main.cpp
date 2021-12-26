@@ -3,7 +3,33 @@
 #include <thread>
 #include <array>
 #include <sstream>
+#include <fstream>
+#include <cstdlib>
 using namespace std;
+
+
+/*
+ * 读取：
+ *      1. 读取一个字符;
+ *         **遇到eof，设置eofbit和failbit.
+ *
+ *      2. 读取字符串直到delimiter（包含或者不包含该字符)，但是都不存储该字符, 最多读取count - 1个字符
+ *         **遇到eof,但是读取到字符，只设置eofbit
+ *         **没有遇到eof，没有读取到数据，设置failbit
+ *
+ *      3. 读取固定数量的字符
+ *          **read, 遇到eof导致没有读满字符，同时设置eofbit和failbit
+ *          **readsome, 返回实际读取到的字符数，不设置标志
+ *
+ *      4. 提取并抛弃字符直到某个指定字符（该指定字符会被抛弃），最多提取count个字符
+ *          **遇到文件末尾只设置eofbit
+ *          **遇到文件末尾还继续提取，设置failbit
+ *
+ *      5. 放回上次读取的一个字符
+ * 输出：
+ *      1. 输出一个字符
+ *      2. 输出一个字符串
+ */
 
 
 /*
@@ -163,6 +189,7 @@ void cplusfiletest5(){
     std::cout << "array: " << array << std::endl;
 }
 
+
 void cplusfiletest6(){
     stringstream str;
     str.put('h');
@@ -172,11 +199,129 @@ void cplusfiletest6(){
 
 
 
+/*
+ * 文件操作
+ */
+void cplusfiletest7(){
+    string path = R"(D:\project\stl\mudo\file\cppfile\log.txt)";
+    fstream file(path);  //构造函数自动按照指定模式打开文件
+    if(!file){  //判断打开文件操作是否失败
+        std::cerr << "cant open the file" << std::endl;
+        exit(-1);
+    }
+
+    file << "first\n";
+    file.flush();   //将缓存区内容写入文件
+    file.close();   //关闭文件
+
+    file.open(path);  //显示打开文件
+    char array[100]{};
+    while(file.getline(array, 100)){  //从文件中按行读取数据，直到遇到文件结尾导致eofbit和failbit被设置
+        std::cout << "readline: " << array << std::endl;
+    }
+    file.clear();   //清空标志，因为后面还要使用该对象，标志只能显示清空
+    file.close();   //显示关闭文件
+}
+
+
+void cplusfiletest8(){
+    string path = R"(D:\project\stl\mudo\file\cppfile\log.txt)";
+    ofstream file;
+
+    file.open(path, std::ios::app);
+    file.seekp(0, std::ios::beg);
+    file.write("hello\n", 6);
+    file.seekp(0, std::ios::beg);
+    file.write("world\n", 6);
+}
+
+/*
+ *  定位到开头，覆写一个字符
+ *  定位到结尾，添加一个字符
+ */
+void cplusfiletest9(){
+
+    ostringstream os("abcdefg");
+    std::cout << "os1: " << os.str() << std::endl;
+    os.seekp(0, std::ios::beg);     //定位到开头
+    os << "1";
+    os.seekp(0, std::ios::end);     //定位到结尾
+    os << "2";
+    std::cout << "os2: " << os.str() << std::endl;
+    std::cout << std::endl;
+
+    ostringstream oss("hello", std::ios::out | std::ios::ate);  //从末尾插入
+    oss << "1";
+    std::cout << "oss1: " << oss.str() << std::endl;
+    oss.seekp(0, std::ios::beg);
+    oss << "2";
+    std::cout << "oss2: " << oss.str() << std::endl;
+}
+
+
+/*
+ * 读取一行
+ * 定位到开头，读取剩余的数据
+ */
+void cplusfiletest10(){
+    istringstream is("first\nsecond\nthrid\n");
+    char array[100]{};
+
+    is.getline(array, 100);
+    std::cout << "line1: " << array << std::endl;
+
+    is.seekg(0, std::ios::beg);
+    is.getline(array, 100);
+    std::cout << "line1 again: " << array << std::endl;
+
+    is.getline(array, 100);
+    std::cout << "line2: " << array << std::endl;
+
+    is.getline(array, 100);
+    std::cout << "line3: " << array << std::endl;
+}
+
+
+/*
+ * 读取，写入，读取
+ */
+void cplusfiletest11(){
+    stringstream ss("hello");
+    ss.seekp(0, std::ios::end);
+    ss << " world";
+    ss.seekg(0, std::ios::beg);
+
+    char array[100]{};
+    ss.getline(array, 100);
+    std::cout << "array: " << array << std::endl;
+    ss.clear();  //必须清除eofbit, 否则后续的操作全部无法成功
+
+    ss.seekp(0, std::ios::beg);
+    ss << "world";
+    ss.seekp(0, std::ios::end);
+    ss << " 123";
+
+    std::cout << "ss: " << ss.str() << std::endl;
+}
+
+class outbuf : public streambuf{
+public:
+    explicit outbuf(){};
+};
+
+void cplusfiletest12(){
+   outbuf ob;
+   ob.sputc('a');
+   ob.sputn("hello", 5);
+}
+
+
+#include <streambuf>
 
 
 int main(int argc, char* argv[]){
 
-    cplusfiletest4();
+    cplusfiletest11();
 
     while(true){
         std::this_thread::sleep_for(std::chrono::seconds(10));
