@@ -3,8 +3,11 @@
 #include <thread>
 #include <array>
 #include <sstream>
+#include <streambuf>
 #include <fstream>
 #include <cstdlib>
+#include <unistd.h>
+#include <fcntl.h>
 using namespace std;
 
 
@@ -235,6 +238,7 @@ void cplusfiletest8(){
     file.write("world\n", 6);
 }
 
+
 /*
  *  定位到开头，覆写一个字符
  *  定位到结尾，添加一个字符
@@ -304,24 +308,106 @@ void cplusfiletest11(){
     std::cout << "ss: " << ss.str() << std::endl;
 }
 
-class outbuf : public streambuf{
+
+
+class fdbuf : public std::streambuf{
+protected:
+    static const int bufferSize = 5;
+    char buffer[bufferSize]{};  //内部缓冲区
+    int _fd;
 public:
-    explicit outbuf(){};
+    explicit fdbuf(int fd) : _fd(fd){
+        std::cout << "==fdbuf constructor==" << std::endl;
+        setp(buffer, buffer + (bufferSize - 1));    //设置缓冲区
+    };
+
+    ~fdbuf() override{     //析构时清空缓冲区
+        sync();
+    }
+
+protected:
+    std::streamsize xsputn(const char* s, std::streamsize num) override{
+        std::cout << "==xsputn==" << std::endl;
+        return write(_fd, s, num);
+    }
+
+    int flushBuffer(){
+        std::cout << "==flushBuffer==" << std::endl;
+        int num = pptr() - pbase();  //计算刷新输出的字符个数
+        std::cout << "==>num: " << num << std::endl;
+        if(write(1, buffer, num) != num){
+            std::cout << "write to fd failed" << std::endl;
+            return EOF;     //刷新失败
+        }
+        pbump(-num);    //移动当前指针位置到缓冲区开头
+        return num;
+    }
+
+    //写入的字符为EOF，或者刷新错误，返回EOF
+    int_type overflow(int_type c) override{     //write缓冲区，只要还剩一个字符空间，就调用overflow()
+        std::cout << "==overflow==" << std::endl;
+        if(c != EOF){
+            *pptr() = c;    //写入最后一个字符
+            pbump(1);    //涂写位置向后移动一位
+        }
+        if(flushBuffer() == EOF)   //刷新缓冲区
+            return EOF;
+        return c;
+    }
+
+    int sync() override{    //刷新缓冲区，当输入回车后，会自动调用此函数
+        std::cout << "==sync==" << std::endl;
+        if(flushBuffer() == EOF)
+            return -1;
+        return 0;
+    }
 };
 
-void cplusfiletest12(){
-   outbuf ob;
-   ob.sputc('a');
-   ob.sputn("hello", 5);
-}
+
+class fdostream : public std::ostream{
+protected:
+    fdbuf buf;
+public:
+    explicit fdostream(int fd) : buf(fd), std::ostream(&buf){
+        std::cout << "==fdostream constructor==" << std::endl;
+    }
+
+};
 
 
-#include <streambuf>
+class outbuf : public std::streambuf{
+protected:
+    int_type overflow(int_type c) override{
+        if(c != EOF){
+           c = std::toupper(c);
+           if(std::putchar(c) == EOF)
+               return EOF;
+        }
+        return c;
+    }
+};
+
 
 
 int main(int argc, char* argv[]){
 
-    cplusfiletest11();
+//    outbuf ob;
+//    std::ostream out(&ob);
+//    out << "hello" << std::endl;
+
+
+//        int fd = open(R"(D:\project\stl\mudo\file\cppfile\log.txt)", O_WRONLY | O_TRUNC | O_CREAT);
+//        fdbuf fdb(fd);
+//        std::ostream out(&fdb);
+//        out << "he";
+//        std::cout << "---1" << std::endl;
+//        out << "llo";
+//        std::cout << "---2" << std::endl;
+
+    fdostream fdo(1);
+    fdo << std::endl;
+
+
 
     while(true){
         std::this_thread::sleep_for(std::chrono::seconds(10));
