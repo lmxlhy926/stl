@@ -23,6 +23,7 @@ void readNumBytes(){
     if(file.error())    std::cout << "file.error() is true" << std::endl;
 }
 
+
 void readChar(){
     string path = R"(D:\project\stl\mudo\file\log.txt)";
     cfile file(path);
@@ -31,6 +32,7 @@ void readChar(){
         std::cout << "read the char: " << c << std::endl;
     }
 }
+
 
 void readLine(){
     string path = R"(D:\project\stl\mudo\file\log.txt)";
@@ -41,6 +43,7 @@ void readLine(){
         std::cout << "line: " << lineArray.data();
     }
 }
+
 
 void write(){
     string path = R"(D:\project\stl\mudo\file\log.txt)";
@@ -95,24 +98,27 @@ void file2(){
 /*
  * a+: 文件可以不存在，在尾端更新
  * 首先在尾端写入，然后位置回到开头，从头到尾读取字符直到遇到EOF
+ * 以a+打开文件总是写入到文件末尾
  */
 void file3(){
-    string path = R"(D:\project\stl\mudo\file\log.txt)";
+    string path = R"(D:\project\stl\mudo\file\cfile\log.txt)";
     cfile file(path, "a+");
 
-    file.write(" goodgood");
     file.setPos(0, cfile::start);
+    printf("position: %ld\n", file.getPos());
     char c;
+    file.write("bb");
     while(file.readChar(c)){
         putchar(c);
     }
     putchar('\n');
 }
 
+
 int main(int argc, char* argv[]){
 
     try{
-        file1();
+        file3();
     }catch(std::exception& e){
         std::cout << e.what() << std::endl;
     }
