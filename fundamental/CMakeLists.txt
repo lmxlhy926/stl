@@ -1,2 +1,5 @@
 
-add_executable(fundamental main.cpp basic_class.cpp inherit.cpp poly.cpp overload.cpp)
+
+add_subdirectory(basic)
+add_subdirectory(inherit)
+add_subdirectory(poly)

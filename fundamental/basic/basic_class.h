@@ -106,40 +106,51 @@ namespace fundamental {
     class basic {
     private:
         string str;
-        static int intVar;  //本质上就是一个全局变量, 必须在类的外部通过范围解析运算符重新声明静态变量来对其进行初始化.
+        //本质上就是一个全局变量, 此处为声明
+        //必须在类的外部通过范围解析运算符重新声明静态变量来对其进行初始化.
+        static int intVar;
 
     public:
+        //构造器本质上就是函数，在对象被创建时调用
         basic(){
             std::cout << "in basic constructor()..." << std::endl;
         }
 
-        explicit basic(string &inputStr) : str(inputStr) {    //构造函数重载
+        //构造函数重载
+        explicit basic(string &inputStr) : str(inputStr) {
             std::cout << "basic constructor(string)..." << std::endl;
         }
 
-        basic(const basic &other) {  //拷贝构造函数(构造函数没有返回值)
+        //拷贝构造函数(构造函数没有返回值)：用已有对象创建新的对象
+        basic(const basic &other) {
             str = other.str;
             std::cout << "basic copy constructor ..." << std::endl;
         }
 
-        virtual ~basic() {  //析构函数没有返回值，没有参数
+        //析构函数没有返回值，没有参数：在对象被销毁时创建
+        virtual ~basic() {
             std::cout << "basic destructor..." << std::endl;
         }
 
-        void showMessage() {     //普通成员函数 (this指针是成员函数的隐含参数)
+        //普通成员函数 (this指针是成员函数的隐含传入参数)
+        void showMessage() {
             std::cout << "in memberFunction showMessage..." << std::endl;
             std::cout << "str: " << this->str << std::endl;
             std::cout << "str: " << this->basic::str << std::endl;
         }
 
-        string stringContact(const basic& b){   //访问修饰符针对类对象的调用者和其它的类，不针对类自身
+        //访问修饰符针对类对象的调用者，不针对类自身
+        string stringContact(const basic& b){
             return this->basic::str + b.str;
         }
 
-        static void printMessage();     //静态成员函数
+        //静态成员函数：没有创建的对象即可使用，本质上就是普通函数
+        static void printMessage();
 
-        friend void changeMember();     //类的友元函数在类中进行声明
+        //类的友元函数在类中进行声明
+        friend void changeMember(const basic& a);
 
+        //运算符重载：操作符的一边必须有该对象
         basic& operator =(const basic& other){
             std:cout << "in operator=...." << std::endl;
             this->str = other.str;
@@ -147,7 +158,7 @@ namespace fundamental {
         }
     };
 
-        void changeMember();    //函数声明
+        void changeMember(const basic& a);    //函数声明
 
 
 }// namespace fundamental
@@ -156,15 +167,16 @@ namespace fundamental {
 
 using namespace fundamental;
 namespace basicTest{
-    void test();    //对象的使用
 
-    void test1();   //类指针变量
+    void test();    //成员函数的调用
+
+    void test1();   //通过指针调用成员
 
     void copyConstructInParam(basic in);    //调用拷贝构造函数生成实参
 
     void referenceInParam(basic& in);       //使用引用的方式，传参时不进行对象的创建，引用的本质是传指针
 
-    basic copyConstructInReturn();  //返回对象
+    basic copyConstructInReturn();          //返回对象
 }
 
 

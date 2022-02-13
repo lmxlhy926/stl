@@ -7,7 +7,7 @@
 
 #include <utility>
 
-#include "basic_class.h"
+#include "../basic/basic_class.h"
 
 /*
  * 继承：从已有的类产生新类
