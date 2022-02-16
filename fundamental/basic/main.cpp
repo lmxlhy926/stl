@@ -9,8 +9,7 @@ using namespace basicTest;
 
 int main(int argc, char *argv[]){
 
-    basic b;
-    referenceInParam(b);
+    basic b = copyConstructInReturn();
 
 
     while(true)

@@ -1,2 +1,2 @@
 
-add_executable(inherit inherit.cpp)
+add_executable(inherit inherit.cpp main.cpp)

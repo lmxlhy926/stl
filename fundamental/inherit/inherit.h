@@ -54,7 +54,7 @@ namespace fundamental{
             cout << "==>MemInt deconstructor" << endl;
         }
 
-        int getValue(){
+        int getValue() const{
             return a_;
         }
     };
@@ -72,7 +72,7 @@ namespace fundamental{
             cout << "==>MemStr deconstructor" << endl;
         }
 
-        string getValue(){
+        string getValue() const{
             return str_;
         }
     };
@@ -85,6 +85,7 @@ namespace fundamental{
         explicit ParInt(int a) :a_(a){
             cout << "==>ParInt constructor" << endl;
         }
+
         ~ParInt(){
             cout << "==>ParInt deconstructor" << endl;
         }
@@ -104,10 +105,9 @@ namespace fundamental{
 
 
 /*
- *
  * 构造函数调用顺序：
- *      按照声明的顺序调用构造函数（基类，成员对象）
- *      先调用基类构造函数，再调用成员对象构造函数
+ *      按照声明的顺序调用构造函数
+ *      先调用基类构造函数，再调用成员对象构造函数，再调用自身构造函数
  */
     class Inherit : public ParInt, ParIntAnother{
     private:
@@ -136,11 +136,32 @@ namespace fundamental{
     };
 
 
-    namespace inheritTest{
-        void test();
-    }
+   class base{
+   public:
+       void f1(){
+           std::cout << "in base f1()" << endl;
+       }
+
+       int f1(int i){
+           std::cout << "in base f1(int i)" << endl;
+       }
+   };
+
+   class inherit2Base : public base{
+   public:
+       using base::f1;  //引入基类名称，使得编译器可以看到，避免名称遮掩
+       void f1(){       //名称遮掩是符号遮掩，和符号对应的成员的类型无关
+           std::cout << "===> in inherit2Base f1()" << endl;
+       }
+   };
 
 }
+
+
+namespace inheritTest{
+    void nameCoverageTest();    //派生类作用域遮掩基类作用域
+}
+
 
 
 #endif //STL_INHERIT_H

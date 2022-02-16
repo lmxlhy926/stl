@@ -36,7 +36,7 @@
 
 	拷贝构造函数：
         特殊的构造函数，在创建对象时，使用同一类中之前创建的对象来初始化新创建的对象
-        拷贝构造函数的几种常见用法：
+        **拷贝构造函数的几种常见用法：
             1.通过使用一个同类型的已存在的对象来初始化新创建的对象
             2.复制对象把它作为参数传递给函数
             3.复制对象，并从函数返回这个对象
@@ -106,8 +106,10 @@ namespace fundamental {
     class basic {
     private:
         string str;
-        //本质上就是一个全局变量, 此处为声明
-        //必须在类的外部通过范围解析运算符重新声明静态变量来对其进行初始化.
+        /*
+         * 本质上就是一个全局变量, 此处为声明
+         * 必须在类的外部通过范围解析运算符完成对静态变量的定义
+         */
         static int intVar;
 
     public:
@@ -135,22 +137,24 @@ namespace fundamental {
         //普通成员函数 (this指针是成员函数的隐含传入参数)
         void showMessage() {
             std::cout << "in memberFunction showMessage..." << std::endl;
-            std::cout << "str: " << this->str << std::endl;
-            std::cout << "str: " << this->basic::str << std::endl;
+            std::cout << "str: " << this->str << std::endl;         //隐含作用域
+            std::cout << "str: " << this->basic::str << std::endl;  //显式作用域
         }
 
-        //访问修饰符针对类对象的调用者，不针对类自身
+        //访问修饰符对类的调用者提供封装性。在类中可以访问本类的所有成员
         string stringContact(const basic& b){
-            return this->basic::str + b.str;
+            return this->basic::str += b.str;
         }
 
         //静态成员函数：没有创建的对象即可使用，本质上就是普通函数
         static void printMessage();
 
-        //类的友元函数在类中进行声明
+        //类的友元函数在类中进行声明，类取消对友元函数的封装性。
+        //还需要在类外进行声明以及定义
         friend void changeMember(const basic& a);
 
-        //运算符重载：操作符的一边必须有该对象
+        //运算符重载：操作符的操作数中必须有该类对象。
+        //操作符的意义是由操作数决定的
         basic& operator =(const basic& other){
             std:cout << "in operator=...." << std::endl;
             this->str = other.str;
@@ -158,7 +162,7 @@ namespace fundamental {
         }
     };
 
-        void changeMember(const basic& a);    //函数声明
+    void changeMember(const basic& a);    //函数声明
 
 
 }// namespace fundamental
@@ -168,9 +172,9 @@ namespace fundamental {
 using namespace fundamental;
 namespace basicTest{
 
-    void test();    //成员函数的调用
+    void basicUsage();    //成员函数的调用
 
-    void test1();   //通过指针调用成员
+    void pointerUsage();   //通过指针调用成员
 
     void copyConstructInParam(basic in);    //调用拷贝构造函数生成实参
 

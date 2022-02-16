@@ -4,13 +4,14 @@
 
 #include "inherit.h"
 
-void inheritTest::test(){
-    string s = "hello";
-    Inherit i(s);
-    i.printValue();
+namespace  inheritTest{
+    void nameCoverageTest(){
+        inherit2Base b;
+        b.f1();
+        b.f1(1);
+        b.base::f1(2);
+    }
 }
-
-
 
 
 
