@@ -75,30 +75,32 @@
 
 namespace fundamental{
 
-//接口
-    class deviceOperation{
+//接口类
+    class memoryDevice{
     protected:
-        string str = "deviceOperation";
+        string classDescription = "deviceOperation";
     public:
+        virtual void open() = 0;
         virtual void read() = 0;    //纯虚函数
         virtual void write() = 0;
         virtual void close() = 0;
 
         virtual void printMessage(){    //虚函数
-            cout << "printMessage function in deviceOperation..." << endl;
-        }
-
-        virtual void printName(){
-            cout << "className: " << this->deviceOperation::str << endl;
+            cout << "printMessage function in deviceOperation" << endl;
         }
     };
 
+
 //接口实现类
-    class usbDeviceOperation : public deviceOperation{
+    class usbDevice : public memoryDevice{
     protected:
-        string str = "usbDeviceOperation";
-        string flag = "usbDevice";
+        string str = "usbDevice";
     public:
+        void open() override{
+            cout << "call memoryDevice::open()" << endl;
+            memoryDevice::open();
+        }
+
         void read() override{
             cout << "usb device read()" << endl;
         }
@@ -111,105 +113,104 @@ namespace fundamental{
             cout << "usb device close()" << endl;
         }
 
-        void printMessage(){
-            cout << "printMessage function in usbDeviceOperation..." << endl;
-        }
-
-        void printName() override{  //覆写函数
-            cout << "printName function in usbDeviceOperation..." << endl;
-            cout << "className: " << str << endl;
-            cout << "flg: " << this->usbDeviceOperation::flag <<endl;
-            this->printMessage();   //不指定函数所在的类时，默认调用覆写函数
-            this->usbDeviceOperation::printMessage();
+        void printMessage() override{
+            cout << "printMessage function in usbDevice..." << endl;
         }
     };
 
-//接口实现类
-    class diskDeviceOperation : public deviceOperation{
+
+    class diskDevice : public memoryDevice{
     protected:
-        string str = "diskDeviceOperation";
-        string flag = "diskDevice";
+        string str = "diskDevice";
     public:
+        void open() override{
+            std::cout << "diskDevice open" << endl;
+        }
+
         void read() override{
-            cout << "diskDeviceOperation read()" << endl;
+            cout << "diskDevice read()" << endl;
         }
 
         void write() override{
-            cout << "diskDeviceOperation write()" << endl;
+            cout << "diskDevice write()" << endl;
         }
 
         void close() override{
-            cout << "diskDeviceOperation close()" << endl;
+            cout << "diskDevice close()" << endl;
         }
 
-        void printMessage(){
-            cout << "printMessage function in diskDeviceOperation..." << endl;
-        }
-
-        void printName() override{
-            cout << "printName function in diskDeviceOperation..." << endl;
-            cout << "className: " << str << endl;
-            cout << "flg: " << this->diskDeviceOperation::flag <<endl;
-            this->deviceOperation::printMessage();  //明确指定调用基类的函数
+        void printMessage() override{
+            cout << "printMessage function in diskDevice..." << endl;
         }
     };
 
 
-//面向接口编程
+/*
+ * 面向接口编程
+ * 逻辑针对接口类进行，但是实际传递的是接口实现类的对象
+ * 基类引用指向派生类的对象
+ * 基类指针指向派生类的对象
+ */
     class File{
     public:
-        static void fileReference(deviceOperation& file){
+        static void memmoryOperationRef(memoryDevice& file){
+            file.open();
             file.read();
             file.write();
             file.close();
-            file.printName();
+            file.printMessage();
         }
 
-        static void filePointer(deviceOperation* file){
+        static void memmoryOperationPtr(memoryDevice* file){
+            file->open();
             file->read();
             file->write();
             file->close();
-            file->printName();      //如果对象是派生类，优先调用派生类的函数
+            file->printMessage();      //如果对象是派生类，优先调用派生类的函数
             cout << "************" << endl;
-            file->deviceOperation::printName();     //明确指定调用基类的函数，多态失效
+            file->memoryDevice::printMessage();     //明确指定调用基类的函数，多态失效
         }
     };
 
 
-
-    class virtualDestructor{
+/*
+ * 继承时，基类的析构函数须为虚析构函数
+ * 基类指针指向派生类对象，如果析构函数不为virtual函数，则通过基类指针删除对象时，只会调用基类的析构函数。
+ *
+ */
+    class polyBase{
     public:
         int * intptr;
     public:
 
-        virtualDestructor(){
-            cout << "virtualDestructor constructor...." << endl;
+        explicit polyBase(int num){
+            cout << "polyBase constructor...." << endl;
             intptr = new int;
-            *intptr = 1;
+            *intptr = num;
         }
 
-         virtual ~virtualDestructor(){  //基类的析构函数要声明为virtual函数
-            cout << "virtualDestructor destructor...." << endl;
+        virtual ~polyBase(){  //基类的析构函数要声明为virtual函数
+            cout << "polyBase destructor...." << endl;
             delete intptr;
         }
     };
 
-    class inheritFromVirtualDestructor : public virtualDestructor{
+    class polyInherit : public polyBase{
     public:
         int * intptr;
     public:
-        inheritFromVirtualDestructor(){
-            cout << "inheritFromVirtualDestructor constructor...." << endl;
+        polyInherit() : polyBase(1){
+            cout << "polyInherit constructor...." << endl;
             intptr = new int;
             *intptr = 2;
         }
 
-        ~inheritFromVirtualDestructor() override{
-            cout << "inheritFromVirtualDestructor destructor...." << endl;
+        ~polyInherit() override{
+            cout << "polyInherit destructor...." << endl;
             delete intptr;
         };
     };
-
+}
 
 
 /*
@@ -217,15 +218,11 @@ namespace fundamental{
  *  派生类对象初始化基类对象的引用
  *  派生类对象的地址赋值给指向基类对象的指针
  */
-    namespace PolyClassTest{
+namespace PolyClassTest{
 
-        void test();    //多态
+    void polytest();        //多态
 
-        void test1();   //虚析构函数
-    }
-
-
+    void destructorPtr();   //虚析构函数
 }
-
 
 #endif //STL_POLY_H

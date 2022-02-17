@@ -1,2 +1,2 @@
 
-add_executable(poly poly.cpp)
+add_executable(poly poly.cpp main.cpp)
