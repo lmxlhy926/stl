@@ -1,0 +1,8 @@
+add_subdirectory(callableObject)
+add_subdirectory(container)
+add_subdirectory(exception)
+add_subdirectory(functionObject)
+add_subdirectory(multithread)
+add_subdirectory(reqexp)
+add_subdirectory(smartPointer)
+add_subdirectory(stl_string)
