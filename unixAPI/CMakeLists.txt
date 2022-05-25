@@ -1,0 +1,6 @@
+add_subdirectory(fpt_environment)
+add_subdirectory(fpt_exec)
+add_subdirectory(fpt_fork)
+add_subdirectory(fpt_pipe)
+add_subdirectory(fpt_socket)
+add_subdirectory(fpt_waitpid)
