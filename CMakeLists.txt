@@ -4,7 +4,7 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(srcDirectory base mudo stl unixAPI)
+set(srcDirectory base mudo stl unixAPI update)
 foreach(elem ${srcDirectory})
     add_subdirectory(${elem})
 endforeach()
