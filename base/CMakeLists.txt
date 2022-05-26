@@ -1,2 +1,0 @@
-add_subdirectory(fundamental)
-add_subdirectory(operatoroverload)
