@@ -1,4 +1,4 @@
-add_subdirectory(example)
-add_subdirectory(lib)
-add_subdirectory(test)
-add_subdirectory(update)
+add_subdirectory(getlocalip)
+add_subdirectory(httplib)
+add_subdirectory(socklib)
+add_subdirectory(tiny_web_server)

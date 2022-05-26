@@ -9,7 +9,8 @@ set(srcDirectory
         mudo
         stl
         unix
-        update)
+        update
+        socket)
 
 foreach(elem ${srcDirectory})
     add_subdirectory(${elem})

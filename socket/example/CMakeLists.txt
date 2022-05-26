@@ -1,2 +1,0 @@
-add_subdirectory(tiny_web_server)
-add_subdirectory(getlocalip)

@@ -1,3 +1,2 @@
 
-message("in time")
-add_executable(time lhytime.cpp main.cpp)
+add_library(time lhytime.cpp)

@@ -1,1 +1,0 @@
-add_executable(cfile main.cpp cfile.cpp)
