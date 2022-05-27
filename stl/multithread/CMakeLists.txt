@@ -1,2 +1,2 @@
 
-add_executable(multithread main.cpp condition.cpp matomic.cpp mmutex.cpp mthread.cpp threadPoll.cpp)
+add_executable(multithread main.cpp condition.cpp matomic.cpp mmutex.cpp mthread.cpp)
