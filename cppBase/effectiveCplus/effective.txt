@@ -1,0 +1,29 @@
+条款1：视c++为一个语言联邦
+    一开始c++只是c加上一些面向对象特性，最初名称为c with classes. 后加入exception, template, STL。
+Exception对函数的结构化带来不同做法， template带来新的设计思考方式， STL定义了一个前所未见的伸展性做法
+目前的c++是个多重范型编程语言，一个同时支持过程形式、面向对象形式、函数形式、泛型形式、元编程形式的语言。
+
+c++的几大组成部分：
+    1. c
+        c++仍是以c为基础。blocks, statements, preprocessor, built-in data types, arrays, pointers
+        等统统来自c.
+
+    2. object-oriented c++
+        这部分也是c with classes所诉求的：构造函数、析构函数、封装、继承、多态、virtual函数、运算符重载等等
+
+    3. Template c++
+        这是c++泛型编程的部分。由于templates威力强大，带来了崭新的编程泛型，即模板元编程。
+
+    4. STL
+        它对容器、迭代器、算法以及函数对象的规约有极佳的紧密配合与协调。
+
+c++不是一个带有一组守则的一体语言，它由四个次语言组成，每个次语言都有自己的规约。切换次语言时，高效编程守则会发生变化。
+例如，在c中对内置类型而言pass-by-value比较高效，在object-oriented c++中对用户自定义类型而言pass-by-reference
+比较高效，而在STL中迭代器和函数对象都是在c指针之上塑造出来的，因此pass-by-value比较高效。
+
+
+
+条款2：尽量以const, enum, inline替换#define
+      #define不被视为语言的一部分，当用#define标识一个常量时，这个记号名称也许从未被编译器看见，因为在编译器开始处理源码之前，
+      这个标识名称就被预处理器移走了，因此它没有进入symbol table。当你运用此常量但却获得一个编译错误时，可能会带来困惑。
+
