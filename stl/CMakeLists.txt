@@ -1,4 +1,3 @@
-add_subdirectory(callableObject)
 add_subdirectory(container)
 add_subdirectory(exception)
 add_subdirectory(functionObject)
