@@ -14,6 +14,9 @@ using namespace std;
  *      2.一个指向成员函数的指针,当通过对象调用它, 该对象被传递为第一实参(必须是个reference或pointer),  其它实参则一一对应成员函数的参数
  *      3.一个函数对象, 附带的args被传递作为实参
  *      4.一个lamda, 严格的说它是一种函数对象
+ *
+ * std::function:
+ *      赋值为函数对象会调用拷贝构造函数
  */
 
 
@@ -27,13 +30,16 @@ class AddFuncObject{
 private:
     string printStr;
 public:
-    explicit AddFuncObject(string str): printStr(std::move(str)){}
-
-    AddFuncObject(const AddFuncObject& af){
-        std::cout << "copy ctr AddFuncObject" << std::endl;
+    explicit AddFuncObject(string str): printStr(std::move(str)){
+        std::cout << "===>AddFuncObject constructor--" << printStr << std::endl;
     }
 
-    ~AddFuncObject(){ std::cout << "~AddFuncObject：" << printStr << std::endl; }
+    AddFuncObject(const AddFuncObject& af){
+        this->printStr = af.printStr;
+        std::cout << "===>copyConstructor AddFuncObject" << std::endl;
+    }
+
+    ~AddFuncObject(){ std::cout << "===>~AddFuncObject：" << printStr << std::endl; }
 
     int operator()(int a, int b){
         std::cout << "operator()(int a, int b): " << printStr << std::endl;
@@ -51,9 +57,16 @@ class Arithmetic{
 private:
     string printStr;
 public:
-    explicit Arithmetic(string str) : printStr(std::move(str)){}
+    explicit Arithmetic(string str) : printStr(std::move(str)){
+        std::cout << "===>Arithmetic constructor--" << printStr << std::endl;
+    }
 
-    ~Arithmetic(){ std::cout << "~Arithmetic：" << printStr << std::endl; }
+    Arithmetic(const Arithmetic& another){
+        this->printStr = another.printStr;
+        std::cout << "===>copyConstructor Arithmetic" << std::endl;
+    }
+
+    ~Arithmetic(){ std::cout << "===>~Arithmetic：" << printStr << std::endl; }
 
     int add(int a, int b){
         std::cout << "add(int a, int b): " << printStr << std::endl;
@@ -174,12 +187,14 @@ void callMemberFunc(){
     std::cout << "-----------" << std::endl;
 
     using ArithmeticFunc = std::function<int(int, int)> ;
-    ArithmeticFunc add_mem_bind = std::bind(add, a, std::placeholders::_1, std::placeholders::_2);
     ArithmeticFunc add_mem_lamda = [&](int first, int second){
-        return b.add(first, second);
+        return a.add(first, second);
     };
-    add_mem_bind(1, 2);
     add_mem_lamda(1, 2);
+    std::cout << "-----------" << std::endl;
+
+    ArithmeticFunc add_mem_bind = std::bind(add, b, std::placeholders::_1, std::placeholders::_2);
+    add_mem_bind(1, 2);
     std::cout << "-----------" << std::endl;
 
     //函数覆盖器
@@ -228,7 +243,7 @@ void functionWrapper(){
 
 
 
-void map_func_call(string& key){
+void map_func_call(){
     using ArithmeticFunc = std::function<int(int, int)>;
     Arithmetic a("Arithmetic_a");
 
@@ -236,8 +251,6 @@ void map_func_call(string& key){
     std::map<string, ArithmeticFunc> arithmeticFuncMap;
     arithmeticFuncMap.insert(std::make_pair("addNormal", addNormal));
     arithmeticFuncMap.insert(std::make_pair("addFuncObject",AddFuncObject("AddFuncObject")));
-    std::cout << "-------------" << std::endl;
-
     arithmeticFuncMap.insert(std::make_pair("lamda", [](int a, int b){
         return a + b;
     }));
@@ -246,10 +259,14 @@ void map_func_call(string& key){
     }));
 
     a.setPrintStr("Arithmetic_aaa");
+    std::cout << "-------------" << std::endl;
 
-    auto obj = arithmeticFuncMap.find(key);
-    if(obj != arithmeticFuncMap.end()){
-        std::cout << obj->second(1, 2) << std::endl;
+    std::vector<string> keyVec{"addNormal", "addFuncObject", "lamda", "member"};
+    for(auto& elem : keyVec){
+        auto obj = arithmeticFuncMap.find(elem);
+        if(obj != arithmeticFuncMap.end()){
+            std::cout << obj->second(1, 2) << std::endl;
+        }
     }
 }
 
@@ -270,20 +287,9 @@ void map_memberFunc_call(Arithmetic& arithmetic, string& key){
 }
 
 
-void funcAssign(){
-    using ArithmeticFunc = std::function<int(int, int)>;
-
-    ArithmeticFunc add = AddFuncObject("AddFuncObject");
-}
-
 int main(int argc, char* argv[]){
-//    Arithmetic a("Arithmetic_a");
-//    string key = "add";
 
-
-//    map_memberFunc_call(a, key);
-
-    callFunctionObject();
+    map_func_call();
 
     return 0;
 }
