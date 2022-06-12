@@ -1,2 +1,2 @@
 
-add_library(time lhytime.cpp)
+add_executable(time lhytime.cpp main.cpp)
