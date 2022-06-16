@@ -42,6 +42,9 @@
 
 namespace muduo{
 
+    /*
+     * 提供对整型数据的原子操作，多线程环境下使用
+     */
     template<typename T>
     class AtomicIntegerT : noncopyable{
     private:
@@ -91,7 +94,7 @@ namespace muduo{
 
         //先获取，后设置
         T getAndSet(T newValue){
-            reurn __sync_lock_test_and_set(&value_, newValue);
+            return __sync_lock_test_and_set(&value_, newValue);
         }
     };
 

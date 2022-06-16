@@ -10,6 +10,9 @@
 
 using namespace std;
 
+/*
+ * 阻塞等待，知道count_减为0
+ */
 class CountDownLatch {
 private:
    mutex mutex_;
@@ -18,6 +21,7 @@ private:
 public:
     explicit CountDownLatch(int count);
 
+    //count_为0时，解除等待
     void wait();
 
     void countDown();

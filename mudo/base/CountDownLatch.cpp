@@ -8,8 +8,7 @@ CountDownLatch::CountDownLatch(int count) : count_(count) {}
 
 void CountDownLatch::wait() {
     std::unique_lock<std::mutex> ul(mutex_);
-    while(count_ > 0)
-        condition_.wait(ul);
+    condition_.wait(ul, [this]{ return count_ > 0; });
 }
 
 void CountDownLatch::countDown() {
