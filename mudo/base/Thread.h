@@ -20,7 +20,7 @@ namespace muduo{
         bool                started_;       //线程启动标识
         bool                joined_;        //线程回收标识
         pthread_t           pthreadId_;     //线程ID
-        pid_t               tid_;           //进程ID
+        pid_t               pid_;           //进程ID
         ThreadFunc          func_;          //执行函数
         string              name_;          //线程名字
         CountDownLatch      latch_;
@@ -40,7 +40,7 @@ namespace muduo{
         bool started() const { return started_; }
 
         //进程ID
-        pid_t tid() const { return tid_; }
+        pid_t tid() const { return pid_; }
 
         //线程名字
         const string& name() const { return name_; }

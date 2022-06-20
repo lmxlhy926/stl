@@ -14,16 +14,16 @@ struct ThreadData{
     typedef muduo::Thread::ThreadFunc ThreadFunc;
     ThreadFunc          func_;      //执行函数
     string              name_;      //线程名
-    pid_t*              tid_;       //进程名
+    pid_t*              pid_;       //进程号
     CountDownLatch*     latch_;
 
     ThreadData(ThreadFunc func,
                string  name,
-               pid_t* tid,
+               pid_t* pid,
                CountDownLatch* latch)
         :   func_(std::move(func)),
             name_(std::move(name)),
-            tid_(tid),
+            pid_(pid),
             latch_(latch){}
 
     //执行函数
@@ -43,6 +43,7 @@ struct ThreadData{
     }
 };
 
+//线程执行函数
 void* startThread(void *obj){
     auto* data = static_cast<ThreadData*>(obj);
     data->runInThread();
@@ -52,12 +53,11 @@ void* startThread(void *obj){
 
 AtomicInt32  Thread::numCreated_;
 
-
 muduo::Thread::Thread(muduo::Thread::ThreadFunc func, string name)
     :   started_(false),
         joined_(false),
         pthreadId_(nullptr),
-        tid_(0),
+        pid_(0),
         func_(std::move(func)),
         name_(std::move(name)),
         latch_(1)
@@ -73,7 +73,7 @@ muduo::Thread::~Thread() {
 void muduo::Thread::start() {
     if(started_)    return;
     started_ = true;
-    auto* data = new ThreadData(func_, name_, &tid_, &latch_);
+    auto* data = new ThreadData(func_,name_, &pid_, &latch_);
     if(pthread_create(&pthreadId_, nullptr, startThread, data)){
         started_ = false;
         delete data;
