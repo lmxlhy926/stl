@@ -20,7 +20,7 @@ namespace muduo{
     public:
         typedef std::function<void ()> Task;
     private:
-        mutex mutx_;
+        mutex mutex_;
         condition_variable taskQueueNotEmpty_;
         condition_variable taskQueueNotFull_;
         string threadPoolName_;
@@ -50,7 +50,7 @@ namespace muduo{
         size_t taskQueueSize() const;
 
     private:
-        bool isFull() const;
+        bool isFull();
 
         void runInThread();
 
