@@ -8,18 +8,21 @@
 
 using namespace muduo;
 
+//空参函数
 void func1(){
     for(int i = 0; i < 10; i++){
         printf("%d-------------func1\n", i);
     }
 }
 
+//带参函数
 void func2(int a){
     for(int i = 0; i < 10; i++){
         printf("%d-------------func2\n", i);
     }
 }
 
+//成员函数
 class Foo{
 private:
     int x_;
