@@ -11,7 +11,7 @@
 
 muduo::ThreadPool::ThreadPool(string threadName)
     :   threadPoolName_(std::move(threadName)),
-        maxQueueSize_(0),
+        maxTaskQueueSize_(0),
         running_(false){}
 
 muduo::ThreadPool::~ThreadPool() {
@@ -37,13 +37,9 @@ void muduo::ThreadPool::stop() {
     }
 }
 
-size_t muduo::ThreadPool::taskQueueSize() const {
-    return 0;
-}
-
 bool muduo::ThreadPool::isFull() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return maxQueueSize_ > 0 && taskQueue_.size() >= maxQueueSize_;
+    return maxTaskQueueSize_ > 0 && taskQueue_.size() >= maxTaskQueueSize_;
 }
 
 void muduo::ThreadPool::runInThread() {
@@ -82,7 +78,7 @@ muduo::ThreadPool::Task muduo::ThreadPool::take() {
     if(!taskQueue_.empty()){                    //任务列表非空
         task = taskQueue_.front();              //取出执行函数
         taskQueue_.pop_front();                 //弹出占用内存
-        if(maxQueueSize_ > 0){
+        if(maxTaskQueueSize_ > 0){
             taskQueueNotFull_.notify_one();     //任务列表非空
         }
     }
