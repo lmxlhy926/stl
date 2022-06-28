@@ -27,6 +27,15 @@ void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
 
 }
 
+/**
+ * taskQueueNotEmpty_:
+ *      notify_one(): 任务列表中加入一个任务函数时触发：run()
+ *      wait()：取任务函数时，任务列表里没有函数，则等待: run()
+ * taskQueueNotFull_:
+ *      notify_one(): 从任务列表中取走一个函数时触发：take()
+ *      wait(): 任务列表满，无法将函数放入列表，则等待：run()
+ *
+ */
 void muduo::ThreadPool::stop() {
     std::lock_guard<std::mutex> lg(mutex_);
     running_ = false;
@@ -37,19 +46,30 @@ void muduo::ThreadPool::stop() {
     }
 }
 
+size_t muduo::ThreadPool::taskQueueSize() {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return taskQueue_.size();
+}
+
 bool muduo::ThreadPool::isFull() {
     std::lock_guard<std::mutex> lg(mutex_);
     return maxTaskQueueSize_ > 0 && taskQueue_.size() >= maxTaskQueueSize_;
 }
 
+/**
+ * 线程例程：
+ * 1. 执行初始化函数
+ * 2. 循环：获取任务函数，执行函数。   如果running_为false，则线程例程执行完毕
+ */
 void muduo::ThreadPool::runInThread() {
     try{
+        //执行一次初始化函数
         if(threadInitCallback_){
             threadInitCallback_();
         }
-        while(running_){
+        while(running_){    //running_为false，则线程例程执行完毕
             Task task(take());
-            if(task){
+            if(task){   //获取到任务，则执行
                 task();
             }
         }
@@ -67,20 +87,23 @@ void muduo::ThreadPool::runInThread() {
 
 /*
  * 从任务列表中取出执行机能，如果任务列表为空，则wait()
+ * 如果是stop()导致的唤醒，则返回的task没有任何执行机能
  */
 muduo::ThreadPool::Task muduo::ThreadPool::take() {
     std::unique_lock<std::mutex> ul(mutex_);
+    //条件：任务列表非空，或者running_为false则退出等待
     taskQueueNotEmpty_.wait(ul, [this]() -> bool{
-        return !taskQueue_.empty() && !running_;
+        return !taskQueue_.empty() || !running_;
     });
-
     Task task;
-    if(!taskQueue_.empty()){                    //任务列表非空
+    if(!taskQueue_.empty()){                    //任务列表非空导致的唤醒
         task = taskQueue_.front();              //取出执行函数
         taskQueue_.pop_front();                 //弹出占用内存
         if(maxTaskQueueSize_ > 0){
-            taskQueueNotFull_.notify_one();     //任务列表非空
+            taskQueueNotFull_.notify_one();     //任务列表非满
         }
     }
     return task;    //task有可能没有任何执行机能
 }
+
+

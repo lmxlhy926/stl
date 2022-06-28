@@ -41,20 +41,21 @@ namespace muduo{
 
         void stop();
 
+        //设置任务列表最大容量：即可容纳的线程例程函数的最大数量
         void setMaxQueueSize(int maxSize) { maxTaskQueueSize_ = maxSize; }
 
         void setThreadInitCallback(Task callback) { threadInitCallback_ = std::move(callback); }
 
         string name() const { return threadPoolName_; }
 
-        size_t taskQueueSize(){
-            std::lock_guard<std::mutex> lg(mutex_);
-            return taskQueue_.size();
-        }
+        //返回任务列表当前容量
+        size_t taskQueueSize();
 
     private:
+        //任务列表是否满
         bool isFull();
 
+        //线程执行例程
         void runInThread();
 
         //取任务函数，如果任务列表为空，则阻塞等待
