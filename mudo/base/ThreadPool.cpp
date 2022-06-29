@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <utility>
 #include <cstdlib>
+#include <cassert>
 
 
 muduo::ThreadPool::ThreadPool(string threadName)
@@ -20,7 +21,20 @@ muduo::ThreadPool::~ThreadPool() {
 }
 
 void muduo::ThreadPool::start(int numThreads) {
-
+    assert(threads_.empty());       //重复调用start会结束进程
+    running_ = true;                //运行标志
+    threads_.reserve(numThreads);
+    for(int i = 0; i < numThreads; i++){
+        char id[32];
+        snprintf(id, sizeof id, "%d", i + 1);
+        threads_.emplace_back(new muduo::Thread([this](){
+            runInThread();
+        }, threadPoolName_ + id));
+        threads_[i]->start();       //启动线程
+    }
+    if(numThreads == 0 && threadInitCallback_){
+        threadInitCallback_();
+    }
 }
 
 void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
@@ -28,13 +42,15 @@ void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
 }
 
 /**
+ * 唤醒所有等待线程，等待线程例程执行完毕，退出。
+ * 未结束线程例程继续执行，直到执行完毕。
+ *
  * taskQueueNotEmpty_:
  *      notify_one(): 任务列表中加入一个任务函数时触发：run()
- *      wait()：取任务函数时，任务列表里没有函数，则等待: run()
+ *      wait()：取任务函数时，任务列表里没有函数，则等待: take()
  * taskQueueNotFull_:
  *      notify_one(): 从任务列表中取走一个函数时触发：take()
  *      wait(): 任务列表满，无法将函数放入列表，则等待：run()
- *
  */
 void muduo::ThreadPool::stop() {
     std::lock_guard<std::mutex> lg(mutex_);
