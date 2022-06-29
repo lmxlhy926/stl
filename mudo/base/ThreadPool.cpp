@@ -12,12 +12,12 @@
 
 muduo::ThreadPool::ThreadPool(string threadName)
     :   threadPoolName_(std::move(threadName)),
-        maxTaskQueueSize_(0),
         running_(false){}
 
 muduo::ThreadPool::~ThreadPool() {
-
-
+    if(running_){
+        stop();
+    }
 }
 
 void muduo::ThreadPool::start(int numThreads) {
@@ -38,7 +38,13 @@ void muduo::ThreadPool::start(int numThreads) {
 }
 
 void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
-
+    if(threads_.empty()){
+        func();
+    }else{
+        std::unique_lock<std::mutex> ul(mutex_);
+        taskQueue_.push_back(std::move(func));
+        taskQueueNotEmpty_.notify_one();
+    }
 }
 
 /**
@@ -54,9 +60,8 @@ void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
  */
 void muduo::ThreadPool::stop() {
     std::lock_guard<std::mutex> lg(mutex_);
-    running_ = false;
-    taskQueueNotEmpty_.notify_one();
-    taskQueueNotFull_.notify_one();
+    running_ = false;                   //空闲线程被唤醒后，因为running_为false会结束执行。
+    taskQueueNotEmpty_.notify_one();    //唤醒所有空闲线程
     for(auto& thread : threads_){
         thread->join();
     }
@@ -67,10 +72,6 @@ size_t muduo::ThreadPool::taskQueueSize() {
     return taskQueue_.size();
 }
 
-bool muduo::ThreadPool::isFull() {
-    std::lock_guard<std::mutex> lg(mutex_);
-    return maxTaskQueueSize_ > 0 && taskQueue_.size() >= maxTaskQueueSize_;
-}
 
 /**
  * 线程例程：
@@ -115,9 +116,6 @@ muduo::ThreadPool::Task muduo::ThreadPool::take() {
     if(!taskQueue_.empty()){                    //任务列表非空导致的唤醒
         task = taskQueue_.front();              //取出执行函数
         taskQueue_.pop_front();                 //弹出占用内存
-        if(maxTaskQueueSize_ > 0){
-            taskQueueNotFull_.notify_one();     //任务列表非满
-        }
     }
     return task;    //task有可能没有任何执行机能
 }
