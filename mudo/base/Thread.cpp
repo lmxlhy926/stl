@@ -43,11 +43,11 @@ struct ThreadData{
     }
 };
 
-//线程执行函数
+//线程执行函数例程
 void* startThread(void *obj){
     auto* data = static_cast<ThreadData*>(obj);
     data->runInThread();
-    delete data;
+    delete data;    //释放资源
     return nullptr;
 }
 
@@ -65,25 +65,32 @@ muduo::Thread::Thread(muduo::Thread::ThreadFunc func, string name)
     setDefaultName();
 }
 
+//如果线程启动，但是未回收，则将线程脱离，在后台继续执行
 muduo::Thread::~Thread() {
     if(started_ && !joined_)
         pthread_detach(pthreadId_);
 }
 
+//创建线程，执行函数，线程标识存储在pthreadId_中。
 void muduo::Thread::start() {
-    if(started_)    return;
+    assert(!started_);
     started_ = true;
+    //此处创建的ThreadData，在创建线程失败以及线程函数执行完毕后，释放
     auto* data = new ThreadData(func_,name_, &pid_, &latch_);
     if(pthread_create(&pthreadId_, nullptr, startThread, data)){
         started_ = false;
         delete data;
         std::cout << "Failed in pthread_create" << std::endl;
     }else{
-        //开始执行函数后返回
+        //确保函数在线程开始执行后，再赶回
         latch_.wait();
     }
 }
 
+/*
+ * 回收的条件：线程已启动但未回收
+ * 阻塞回收
+ */
 int muduo::Thread::join() {
     assert(started_);
     assert(!joined_);

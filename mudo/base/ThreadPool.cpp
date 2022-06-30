@@ -59,9 +59,11 @@ void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
  *      wait(): 任务列表满，无法将函数放入列表，则等待：run()
  */
 void muduo::ThreadPool::stop() {
-    std::lock_guard<std::mutex> lg(mutex_);
-    running_ = false;                   //空闲线程被唤醒后，因为running_为false会结束执行。
-    taskQueueNotEmptyCond_.notify_one();    //唤醒所有空闲线程
+    {
+        std::lock_guard<std::mutex> lg(mutex_);
+        running_ = false;                   //空闲线程被唤醒后，因为running_为false会结束执行。
+        taskQueueNotEmptyCond_.notify_one();    //唤醒所有空闲线程
+    }
     for(auto& thread : threads_){
         thread->join();
     }
