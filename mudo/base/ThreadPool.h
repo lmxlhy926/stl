@@ -29,12 +29,12 @@ namespace muduo{
         typedef std::function<void ()> Task;
     private:
         std::mutex mutex_;
-        condition_variable taskQueueNotEmpty_;      //任务列表非空
-        std::deque<Task> taskQueue_;                //任务函数列表
+        condition_variable taskQueueNotEmptyCond_;      //任务列表非空
+        std::deque<Task> taskQueue_;                    //任务函数列表
 
-        string threadPoolName_;                     //线程名称
-        Task threadInitCallback_;                   //线程初始回调
-        bool running_;                              //运行标志
+        string threadPoolName_;                         //线程名称
+        Task threadInitCallback_;                       //线程初始回调
+        bool running_;                                  //运行标志
         std::vector<std::unique_ptr<muduo::Thread>> threads_;   //线程池列表
 
     public:

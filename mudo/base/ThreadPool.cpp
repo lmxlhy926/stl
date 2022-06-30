@@ -43,7 +43,7 @@ void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
     }else{
         std::unique_lock<std::mutex> ul(mutex_);
         taskQueue_.push_back(std::move(func));
-        taskQueueNotEmpty_.notify_one();
+        taskQueueNotEmptyCond_.notify_one();
     }
 }
 
@@ -61,7 +61,7 @@ void muduo::ThreadPool::run(muduo::ThreadPool::Task func) {
 void muduo::ThreadPool::stop() {
     std::lock_guard<std::mutex> lg(mutex_);
     running_ = false;                   //空闲线程被唤醒后，因为running_为false会结束执行。
-    taskQueueNotEmpty_.notify_one();    //唤醒所有空闲线程
+    taskQueueNotEmptyCond_.notify_one();    //唤醒所有空闲线程
     for(auto& thread : threads_){
         thread->join();
     }
@@ -109,7 +109,7 @@ void muduo::ThreadPool::runInThread() {
 muduo::ThreadPool::Task muduo::ThreadPool::take() {
     std::unique_lock<std::mutex> ul(mutex_);
     //条件：任务列表非空，或者running_为false则退出等待
-    taskQueueNotEmpty_.wait(ul, [this]() -> bool{
+    taskQueueNotEmptyCond_.wait(ul, [this]() -> bool{
         return !taskQueue_.empty() || !running_;
     });
     Task task;
