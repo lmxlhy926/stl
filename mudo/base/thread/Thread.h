@@ -6,7 +6,7 @@
 #define STL_THREAD_H
 
 #include "CountDownLatch.h"
-#include "Atomic.h"
+#include "common/Atomic.h"
 
 #include <memory>
 #include <pthread.h>

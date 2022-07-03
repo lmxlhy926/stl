@@ -20,7 +20,6 @@ namespace muduo{
         noncopyable() = default;
         ~noncopyable() = default;
     };
-
 }
 
 
