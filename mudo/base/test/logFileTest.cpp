@@ -67,6 +67,9 @@ void allTypeTest(){
     LOG_HLIGHT << str;
 }
 
+
+//测试'\0'的影响，通过字符或者string插入。
+//输出时没有使用length参数，会导致输出截断
 void setOutputTest(){
 
     LogFile lf(R"(D:\project\stl\mudo\base\test\output)", 1000* 30);
@@ -76,16 +79,51 @@ void setOutputTest(){
 
     LOG_INFO << "hello" << static_cast<char>('\0') << "hello";
     LOG_INFO << "hello";
+
+    LOG_INFO << "hello" << static_cast<int>('\0') << "hello";
 }
 
 
+void threadLogTest(){
+    ThreadPool threadPool;
+    threadPool.start(10);
+
+//    LogFile lf(R"(D:\project\stl\mudo\base\test\output)", 1000* 30);
+//
+//    muduo::Logger::setOutput([&](const char* msg, size_t len, muduo::Logger::LogLevel level){
+//        lf.append(msg, len);
+//    });
+
+    threadPool.run([](){
+        for(int i = 0; i < 1000; i++){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            LOG_INFO << 123123456789;
+        }
+    });
+
+    threadPool.run([](){
+        for(int i = 0; i < 1000; i++){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            LOG_INFO << 123123456789;
+        }
+    });
+
+    threadPool.run([](){
+        for(int i = 0; i < 1000; i++){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            LOG_HLIGHT << 123123456789;
+        }
+    });
+}
+
+
+
 int main(int argc, char* argv[]){
-    allTypeTest();
 
+    threadLogTest();
 
-//    while(true){
-//        std::this_thread::sleep_for(std::chrono::seconds(10));
-//    }
+    LOG_INFO << "------main end----------";
+
     return 0;
 }
 

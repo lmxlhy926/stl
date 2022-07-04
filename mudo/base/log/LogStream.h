@@ -55,9 +55,9 @@ namespace muduo{
             return cur_ - data_;
         }
 
-        //数组可用空间
+        //数组可用空间，保证最后一位一定为'\0'
         int avail() const{
-            return end() - cur_;
+            return end() - cur_ - 1;
         }
 
         //如果空间足够，写入数据，移动当前位置
@@ -73,8 +73,9 @@ namespace muduo{
             cur_ += len;
         }
 
-        //复位当前位置到buffer首地址
+        //数组清零，复位当前位置到buffer首地址
         void reset(){
+            memset(data_, 0, SIZE);
             cur_ = data_;
         }
 

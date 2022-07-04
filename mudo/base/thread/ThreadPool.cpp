@@ -62,8 +62,8 @@ void muduo::ThreadPool::stop() {
     {
         std::lock_guard<std::mutex> lg(mutex_);
         running_ = false;                   //空闲线程被唤醒后，因为running_为false会结束执行。
-        taskQueueNotEmptyCond_.notify_one();    //唤醒所有空闲线程
     }
+    taskQueueNotEmptyCond_.notify_one();    //唤醒所有空闲线程
     for(auto& thread : threads_){
         thread->join();
     }

@@ -59,6 +59,7 @@ namespace muduo{
 
         explicit Logger(const char* file, int line, LogLevel level);
 
+        //析构时调用真正的输出函数，将日志内容输出
         ~Logger();
 
         LogStream& stream() { return impl_.stream_; }
@@ -98,7 +99,7 @@ namespace muduo{
         public:
             explicit Impl(const char* fileName, int line, Logger::LogLevel level)
                 : fileName_(fileName), line_(line), level_(level), timeStamp(TimeStamp::now()){
-                stream_ << timeStamp.toFormattedString() << "-" << fileName_.data()
+                stream_ << timeStamp.toFormattedString() << "-<" << fileName_.data()
                 << "-" << line_ << "> ";
             }
 

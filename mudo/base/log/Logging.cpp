@@ -12,6 +12,7 @@ namespace muduo{
 
     static std::recursive_mutex logging_output_mutex_;
 
+    //这里没有使用length, 但是FixedBuffer的结构，保证msg一定是以'\0'结尾的
     static void defaultOutput(const char* msg, size_t length, Logger::LogLevel level){
         std::lock_guard<std::recursive_mutex> lg(logging_output_mutex_);
         switch(level){
@@ -33,7 +34,6 @@ namespace muduo{
     Logger::~Logger() {
         impl_.finish();
         const LogStream::Buffer& buf(stream().buffer());
-
         defaultOutput(buf.data(), buf.length(), impl_.level_);
         if(g_output != nullptr){
             g_output(buf.data(), buf.length(), impl_.level_);
