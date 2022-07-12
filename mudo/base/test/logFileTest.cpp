@@ -20,11 +20,30 @@ void timeStampTest(){
 }
 
 void appendFileTest(){
-    AppendFile af(R"(D:\project\stl\mudo\base\test\output)");
+    AppendFile af(R"(D:\project\stl\mudo\base\test\output.txt)");
     string outstr = "hello\n";
-    for(int i = 0; i < 10000; i++){
-        af.append(outstr.c_str(), outstr.size());
-    }
+    ThreadPool threadPool;
+    threadPool.start(10);
+
+    threadPool.run([&](){
+        for(int i = 0; i < 2000; i++){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            af.append(outstr.c_str(), outstr.size());
+        }
+
+    });
+
+    threadPool.run([&](){
+        for(int i = 0; i < 2000; i++)
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            af.append("world", 5);
+    });
+
+    threadPool.run([&](){
+        for(int i = 0; i < 10000; i++)
+            af.append(outstr.c_str(), outstr.size());
+    });
+
 }
 
 void logFileTest(){
@@ -120,9 +139,9 @@ void threadLogTest(){
 
 int main(int argc, char* argv[]){
 
-    threadLogTest();
+    appendFileTest();
 
-    LOG_INFO << "------main end----------";
+//    LOG_INFO << "------main end----------";
 
     return 0;
 }
