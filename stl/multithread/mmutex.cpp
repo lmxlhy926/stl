@@ -15,10 +15,14 @@ std::mutex printMutex;
 
 namespace mthread{
 
+   /*
+    * recursive_mutex的经典应用：
+    *       每个成员函数都使用了锁，成员函数之间会互相调用，导致锁的重复调用
+    *       支持同一线程内锁的多次锁定
+    */
     class Access{
     private:
         std::recursive_mutex rmutex;
-
     public:
         void func1(){
             std::lock_guard<recursive_mutex> l(rmutex);
@@ -29,7 +33,7 @@ namespace mthread{
             std::lock_guard<recursive_mutex> l(rmutex);
             cout << "-----in func2-----" << endl;
             func1();
-            this_thread::sleep_for(chrono::milliseconds(4000));
+            this_thread::sleep_for(chrono::seconds (1));
             cout << "**********" << endl;
 
         }
@@ -38,10 +42,9 @@ namespace mthread{
             std::lock_guard<recursive_mutex> l(rmutex);
             cout << "------in func3-------" << endl;
         }
-
     };
 
-
+    //线程安全函数，打印时不会出现乱序
     void stringPrint(const string& s){
         std::lock_guard<mutex> l(printMutex);
         for(char c : s){
@@ -52,44 +55,74 @@ namespace mthread{
     }
 
 
-/*
- * 锁的应用：多线程时, 保证一段时间内的独占式访问
- * 本例：
- *      顺序打印字符串,不会出现字符顺序混乱
- */
-    void mutextest(){
 
-        cout << "-----" << endl;
-        future<void> f = async(stringPrint, "this is the first thread");
-        future<void> f1 = async(stringPrint, "this is the second thread");
-
-        cout << "the main thread" << endl;
+    /*
+     * lock()后调用try_lock()
+     */
+    void mutex_lock_try_lock(){
+        std::mutex mutex_;
+        mutex_.lock();
+        if(mutex_.try_lock()){
+            std::cout << "lock()后调用try_lock()" << std::endl;
+        }
     }
 
 
-/*
- * 循环锁： 循环锁允许同一线程多次锁定, 并在最后一次unlock()时释放lock.
- * 本例：
- *      在func2的线程中锁被多次锁定, 只有func2中完全将锁释放出来, func3的线程才能获得到锁.
- */
-    void recursive_mutextest(){
+    /*
+     * try_lock()后再次调用try_lock();
+     */
+    void mutex_2tryLock(){
+        std::mutex mutex_;
+        if(mutex_.try_lock()){
+            std::cout << "mutex.try_lock()" << std::endl;
+        }
+        if(mutex_.try_lock()){
+            std::cout << "mutex.try_lock()" << std::endl;
+        }
+    };
 
+
+    /*
+     * 锁的应用：多线程时, 保证一段时间内的独占式访问
+     * 本例：
+     *      顺序打印字符串,不会出现字符顺序混乱
+     */
+        void lockGuard_test(){
+            cout << "-----" << endl;
+            future<void> f  =  async(stringPrint, "this is the first thread");
+            future<void> f1 =  async(stringPrint, "this is the second thread");
+            cout << "the main thread" << endl;
+        }
+
+
+
+    /*
+     * 循环锁： 循环锁允许同一线程多次锁定, 并在最后一次unlock()时释放lock.
+     * 本例：
+     *      在func2的线程中锁被多次锁定, 只有func2中完全将锁释放出来, func3的线程才能获得到锁.
+     */
+    void recursive_mutex_test(){
        Access ac;
-
-       auto f = std::async(std::launch::async, &Access::func2, &ac);
-       auto f1 = std::async(std::launch::async, &Access::func3, &ac);
+       auto f1 =  std::async(std::launch::async, &Access::func2, &ac);
+       auto f2 = std::async(std::launch::async, &Access::func3, &ac);
+       f1.get();
+       f2.get();
     }
 
 
-/*
- * 同一把锁可以传递给多个std::lock_guard对象, 自己也可以执行lock, unlock操作
- *
- * lock_guard lg(m, std::adopt_lock) : 为已经被锁定的mutex m建立一个lock guard.
- * lock_guard对象生命周期结束时, 即使它拥有的锁已经被提前unlock(), 也不会产生异常。
- *
- * 本例中：
- *      f线程里首先获得锁, 然后lock的锁被过寄给l, l生命周期结束后释放锁, 回到f线程中s锁再次锁定, g生命周期结束时将s锁释放掉
- */
+
+
+
+
+    /*
+     * 同一把锁可以传递给多个std::lock_guard对象, 自己也可以执行lock, unlock操作
+     *
+     * lock_guard lg(m, std::adopt_lock) : 为已经被锁定的mutex m建立一个lock guard.
+     * lock_guard对象生命周期结束时, 即使它拥有的锁已经被提前unlock(), 也不会产生异常。
+     *
+     * 本例中：
+     *      f线程里首先获得锁, 然后lock的锁被过寄给l, l生命周期结束后释放锁, 回到f线程中s锁再次锁定, g生命周期结束时将s锁释放掉
+     */
     void lockGuard(){
 
         std::mutex s;
@@ -99,7 +132,7 @@ namespace mthread{
             auto f = std::async(std::launch::async, [&]{
                std::lock_guard<mutex> g(s);
                cout << "in lamda" << endl;
-               this_thread::sleep_for(chrono::milliseconds(1000));
+               this_thread::sleep_for(chrono::seconds (1));
 
                if(s.try_lock()){
                    cout << "lock again" << endl;
@@ -178,6 +211,8 @@ namespace mthread{
     }
 
 
+
+
 /*
  * 同时锁定多个锁
  * std::lock():
@@ -246,7 +281,6 @@ namespace mthread{
  * unique_lock对象调用unlock()可能抛出异常, 如果这个unique lock并未被锁住
  *
  * mutex传递给class unique_lock后, 统一使用unique_lock对象来调用相应的函数
- *
  */
 
     void uniqueLock(){
@@ -305,12 +339,6 @@ namespace mthread{
         }
 
     }
-
-
-
-
-
-
 
 }
 
