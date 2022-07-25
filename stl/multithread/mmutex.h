@@ -52,13 +52,9 @@ namespace mthread{
 
     void lockGuard_test();
 
+    void lockGuard_test1();
+
     void recursive_mutex_test();
-
-    void lockGuard_test();
-
-    void lockGuard();
-
-    void lockGuaed1();
 
     void lockGuard2();
 

@@ -3,9 +3,11 @@
 //
 
 #include "mthread.h"
+#include "mmutex.h"
+
 int main(int argc, char* argv[]){
 
-    mthread::promise();
+    mthread::lockGuard_test1();
 
 
     return 0;

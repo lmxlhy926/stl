@@ -44,7 +44,11 @@ namespace mthread{
         }
     };
 
-    //线程安全函数，打印时不会出现乱序
+
+    /*
+     * 线程安全函数，打印时不会出现乱序
+     * std::lock_guard的典型应用
+     */
     void stringPrint(const string& s){
         std::lock_guard<mutex> l(printMutex);
         for(char c : s){
@@ -58,6 +62,7 @@ namespace mthread{
 
     /*
      * lock()后调用try_lock()
+     * lock()会锁定，锁定后再调用try_lock()返回false.
      */
     void mutex_lock_try_lock(){
         std::mutex mutex_;
@@ -70,14 +75,15 @@ namespace mthread{
 
     /*
      * try_lock()后再次调用try_lock();
+     * 第一次try_lock()锁定后，再次调用try_lock()会返回false.
      */
     void mutex_2tryLock(){
         std::mutex mutex_;
         if(mutex_.try_lock()){
-            std::cout << "mutex.try_lock()" << std::endl;
+            std::cout << "mutex.try_lock() successfully" << std::endl;
         }
         if(mutex_.try_lock()){
-            std::cout << "mutex.try_lock()" << std::endl;
+            std::cout << "mutex.try_lock() successfully" << std::endl;
         }
     };
 
@@ -87,13 +93,24 @@ namespace mthread{
      * 本例：
      *      顺序打印字符串,不会出现字符顺序混乱
      */
-        void lockGuard_test(){
-            cout << "-----" << endl;
-            future<void> f  =  async(stringPrint, "this is the first thread");
-            future<void> f1 =  async(stringPrint, "this is the second thread");
-            cout << "the main thread" << endl;
-        }
+    void lockGuard_test(){
+        cout << "-----" << endl;
+        future<void> f  =  async(stringPrint, "this is the first thread");
+        future<void> f1 =  async(stringPrint, "this is the second thread");
+        cout << "the main thread" << endl;
+    }
 
+
+    /*
+     * 同一把锁可以传递给多个std::lock_guard对象, 自己也可以执行lock, unlock操作
+     * 如果析构时mutex仍被锁住，其析构函数会自动调用unlock()。如果当时没有被锁住，则析构函数不做任何事情。
+     * lock_guard lg(m, std::adopt_lock) : 为已经被锁定的mutex m建立一个lock guard.
+     */
+    void lockGuard_test1(){
+        std::mutex mutex_;
+        std::lock_guard<mutex> lg(mutex_);
+        std::lock_guard<mutex> lgadopt(mutex_, std::adopt_lock);
+    }
 
 
     /*
@@ -104,60 +121,9 @@ namespace mthread{
     void recursive_mutex_test(){
        Access ac;
        auto f1 =  std::async(std::launch::async, &Access::func2, &ac);
-       auto f2 = std::async(std::launch::async, &Access::func3, &ac);
+       auto f2 =  std::async(std::launch::async, &Access::func3, &ac);
        f1.get();
        f2.get();
-    }
-
-
-
-
-
-
-    /*
-     * 同一把锁可以传递给多个std::lock_guard对象, 自己也可以执行lock, unlock操作
-     *
-     * lock_guard lg(m, std::adopt_lock) : 为已经被锁定的mutex m建立一个lock guard.
-     * lock_guard对象生命周期结束时, 即使它拥有的锁已经被提前unlock(), 也不会产生异常。
-     *
-     * 本例中：
-     *      f线程里首先获得锁, 然后lock的锁被过寄给l, l生命周期结束后释放锁, 回到f线程中s锁再次锁定, g生命周期结束时将s锁释放掉
-     */
-    void lockGuard(){
-
-        std::mutex s;
-        string str{"hello"};
-
-        try{
-            auto f = std::async(std::launch::async, [&]{
-               std::lock_guard<mutex> g(s);
-               cout << "in lamda" << endl;
-               this_thread::sleep_for(chrono::seconds (1));
-
-               if(s.try_lock()){
-                   cout << "lock again" << endl;
-               }
-               cout << "end lamda" << endl;
-
-            });
-
-           this_thread::sleep_for(chrono::milliseconds(100));
-           if(!s.try_lock()){
-               cout << "mutex has already locked" << endl;
-           }
-           {
-                std::lock_guard<mutex> l(s, std::adopt_lock);
-                cout << "----------" << endl;
-           }
-
-           this_thread::sleep_for(chrono::milliseconds(2000));
-           if(s.try_lock())
-               cout << "mutex has been unlocked" << endl;
-
-        }catch(const exception& e){
-            cout << e.what() << endl;
-        }
-
     }
 
 
