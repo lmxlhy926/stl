@@ -11,25 +11,19 @@
  *  condition variable 用来同步化线程之间的数据流逻辑依赖关系
  *
  * 擦作流程：
- *      数据提供者锁住mutex, 更新条件, 解锁mutex, 然后通知condition variable.
- *      等待者则是以一个unique_lock锁住mutex, 一面检查条件一面等待被通知, 然后释放锁.
+ *      数据提供者：锁住mutex, 更新条件, 解锁mutex, 然后使用condition variable进行通知。
+ *      数据等待者：则是以一个unique_lock锁住mutex, 一面检查条件一面等待被通知, 然后释放锁.
  *
  *      其中mutex确保读和写是atomic的, condition variable用来在"有新元素可用"时激发和唤醒另一个线程.
  *      借由notify函数, 唤醒某一个线程, 让其来进行处理. 如果有多个consumer必须处理相同数据, 也可以调用notify_all().
  *
- *  condition variable的消费者总是在"被锁住的mutex"基础上操作, 只有等待函数会执行以下3个atomic步骤暂时解除mutex:
- *      1. unlock mutex然后进入等待状态（waiting state）.
- *      2. 解除因等待而造成的阻塞(unblocking the wait)
- *      3. 再次锁住mutex
- *      4. 如果有predicate, 则判断predicate, 如果条件不满足则重复上述步骤
- *      5. 对数据进行处理
+ *  condition variable的消费者总是在"被锁住的mutex"基础上操作, 只有wait()函数会执行以下3个atomic步骤暂时解除mutex:
+ *      1. 将mutex传递给unique_lock(), 阻塞进行锁定。
+ *      2. 没有条件，或者条件不满足，则unlock mutex然后进入等待状态（waiting state），等待被唤醒。条件满足，则不进行wait()。
+ *      3. 被condition variable的notify_one()或者notify_all()唤醒，解除因等待而造成的阻塞(unblocking the wait)
+ *      4. 再次阻塞进行锁定
+ *      5. 如果有条件，则再次进行条件判断，不满足则从步骤1重复。满足则执行wait()后面的数据处理代码
  *
- *      1. lock
- *      wait函数执行过程：
- *          2. 如果有通知到来, 执行步骤5
- *          3. unlock并进入等待状态, 等待通知, 通知到来则执行步骤4
- *          4. 解除等待状态再次lock,
- *          5. 判断条件, 条件不满足执行步骤3
  */
 
 namespace mthread{

@@ -15,14 +15,14 @@ using namespace std;
 
 namespace mthread{
 
-   std::queue<int> queue;
-   std::mutex queueMutex;
-   std::condition_variable queueCondVar;
+   std::queue<int> queue;                   //共享变量
+   std::mutex queueMutex;                   //保护锁
+   std::condition_variable queueCondVar;    //同步机制
 
 /*
  * 一个notify_one通知, 随机唤醒一个wait.
  * 一个notify_all通知, 唤醒所有等待的wait.
- * 通知都是只起一次作用, 不会重复起作用.
+ * 唤醒的是挂在这个等待唤醒列表中的线程。
  */
    void provider(int val){
        for(int i = 0; i < 6; i++){
