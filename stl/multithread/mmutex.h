@@ -50,19 +50,20 @@ namespace mthread{
 
     void mutex_2tryLock();
 
+    void mutex_lockunlock();
+
     void lockGuard_test();
 
     void lockGuard_test1();
 
+    void lockGuard_test2();
+
     void recursive_mutex_test();
 
-    void lockGuard2();
-
+    //尝试同时锁定多个锁
     void multilock();
 
     void uniqueLock();
-
-
 }
 
 

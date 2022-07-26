@@ -112,6 +112,24 @@ namespace mthread{
         std::lock_guard<mutex> lgadopt(mutex_, std::adopt_lock);
     }
 
+    /*
+     * 抛出异常时，离开lock_guard()的作用域，会导致guard对象被析构，从而导致解锁
+     */
+    void lockGuard_test2(){
+        std::mutex s;
+
+        try{
+            std::lock_guard<mutex> l(s);
+            __throw_length_error("sss");
+
+        }catch(const exception& e){
+            cout << e.what() << endl;
+        }
+
+        if(s.try_lock())
+            cout << "lock again" << endl;
+    }
+
 
     /*
      * 循环锁： 循环锁允许同一线程多次锁定, 并在最后一次unlock()时释放lock.
@@ -127,57 +145,6 @@ namespace mthread{
     }
 
 
-/*
- * 保证即使发生异常, 相应的锁依然会被unlock()
- * std::lock_guard()
- *      即使以异常的方式结束生命周期, 依然会解锁所拥有的锁
- *      原因：{}作用域, std::lock_guard对象生命周期结束时会调用析构函数, 析构函数会对其所拥有的锁进行unlock.
- *
- * 本例：
- *      创建l对象时会对s进行lock, l的生命周期结束时其析构函数会对l所拥有的锁进行unlock, 因此s.try_lcok()又会将s锁住.
- */
-    void lockGuard1(){
-
-        std::mutex s;
-        int i = 0;
-
-        try{
-            std::lock_guard<mutex> l(s);
-            __throw_length_error("sss");
-
-        }catch(const exception& e){
-            cout << e.what() << endl;
-        }
-
-        if(s.try_lock())
-            cout << "****" << endl;
-    }
-
-/*
- * std::lock_guard中指定std::adopt_lock后就不会对传入其中的锁进行lock()操作, 主要应用是用来释放被锁定的锁。
- * 不指定std::adopt_lock则在自身构造时对传入的锁执行lock()操作, 在生命周期结束析构时对其执行unlock()操作.
- *
- */
-    void lockGuard2(){
-
-        std::mutex s;
-        try{
-//            std::lock_guard<mutex> g(s);
-//            cout << "-----" << endl;
-//            std::lock_guard<mutex> l(s, std::adopt_lock);
-//            cout << "*****" << endl;
-            s.unlock();
-            s.unlock();
-            cout << "ssss" << endl;
-
-        }catch(const exception& e){
-            cout << e.what() << endl;
-        }
-
-    }
-
-
-
 
 /*
  * 同时锁定多个锁
@@ -190,7 +157,7 @@ namespace mthread{
  *      在取得所有lock的情况下返回-1, 否则返回第一个失败的lock索引（从0开始）, 如果失败,所有成功的lock会又被解锁
  *
  * 本例中：
- *      f线程中将printMutex和writeMutex锁定后, 必须把这两个锁过寄给lock_guard对象, 否则即使线程结束这2个锁依旧是被锁定的。
+ *      f线程中将printMutex和writeMutex锁定后, 必须把这两个锁过寄给lock_guard对象, 否则即使线程结束这2个锁依旧是被锁定的,因为没有显示调用unlock()。
  *      本例中未将printMutex过寄给std::lock_guard对象, 因此printMutex是一直被锁定的
  *
  */
@@ -204,29 +171,31 @@ namespace mthread{
             auto f = async(std::launch::async, [&]{
                 try{
                     if(std::try_lock(printMutex, writeMutex) == -1){
-//                        std::lock_guard<mutex> l(printMutex, std::adopt_lock);
+                        /*
+                         * 锁定后，将锁过继给lock_guard对象，保证在离开guard对象作用域后解除锁定
+                         * 这里try_lock()锁定2个锁后，如果不过继给lock_guard对象，或者不显示调用unlock(), 则不过自动解锁
+                         */
+                        std::lock_guard<mutex> l(printMutex, std::adopt_lock);
                         std::lock_guard<mutex> g(writeMutex, std::adopt_lock);
 
                         str = "...inginging";
                         cout << "str: " << str << endl;
                     }
-
                 }catch (const exception& e){
                     cout << e.what() << endl;
                 }
             });
 
-            this_thread::sleep_for(chrono::milliseconds(1000));
+            this_thread::sleep_for(chrono::seconds (1));
 
             {
                 std::lock_guard<mutex> l(printMutex);
-                cout << "__str: " << str << endl;
+                cout << "str: " << str << endl;
             }
 
         }catch(const exception& e){
             cout << e.what() << endl;
         }
-
     }
 
 
@@ -248,15 +217,16 @@ namespace mthread{
  *
  * mutex传递给class unique_lock后, 统一使用unique_lock对象来调用相应的函数
  */
-
     void uniqueLock(){
 
-        std::timed_mutex mt;
+        std::timed_mutex mt;    //带时间属性的锁，额外支持try_lock_for(), try_lock_until()
         std::mutex m1;
         std::mutex m2;
 
         {
+            //尝试锁定
             std::unique_lock<timed_mutex> l(mt, std::try_to_lock);
+            //检查是否锁定
             if (l) {
                 cout << "--lock--" << endl;
             }
@@ -267,7 +237,9 @@ namespace mthread{
 
 
         {
+            //在指定的时间内尝试锁定
             std::unique_lock<timed_mutex> l1(mt, std::chrono::milliseconds(2000));
+            //监测是否锁定
             if(l1){
                 cout << "**lock**" << endl;
             }
@@ -275,6 +247,7 @@ namespace mthread{
 
 
         {
+            //明确指定为不锁定
             std::unique_lock<timed_mutex> l2(mt, std::defer_lock);
             l2.lock();
             if(l2)
@@ -284,26 +257,16 @@ namespace mthread{
                 cout << "@@@@" << endl;
         }
 
-        {
-            std::unique_lock<timed_mutex> l3(mt, std::defer_lock);
-            if(!l3)
-                cout << "$$$$" << endl;
-            l3.lock();
-            if(l3)
-                cout << "$$$$" << endl;
-            l3.unlock();
-            if(!l3)
-                cout << "$$$$" << endl;
-        }
-
 
         {
             std::unique_lock<mutex> lockm1(m1, std::defer_lock);
             std::unique_lock<mutex> lockm2(m2, std::defer_lock);
 
-            std::lock(m1, m2);
+            if(std::try_lock(m1, m2) == -1){
+                std::lock_guard<std::mutex> lg1(m1, adopt_lock);
+                std::lock_guard<std::mutex> lg2(m2, adopt_lock);
+            }
         }
-
     }
 
 }
