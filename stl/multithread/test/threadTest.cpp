@@ -5,10 +5,11 @@
 #include <iostream>
 #include "mthread.h"
 #include "mmutex.h"
+#include "condition.h"
 
 int main(int argc, char* argv[]){
 
-    mthread::mutex_lockunlock();
+    mthread::conVarTest();
 
     std::cout << "----main end-----" << std::endl;
     return 0;

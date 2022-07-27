@@ -22,69 +22,50 @@ namespace mthread{
 /*
  * 一个notify_one通知, 随机唤醒一个wait.
  * 一个notify_all通知, 唤醒所有等待的wait.
- * 唤醒的是挂在这个等待唤醒列表中的线程。
+ * 唤醒的是挂在这个等待唤醒列表中的线程, 所以要想被唤醒，当通知来临时，此线程必须已经挂在该等待列表中。
  */
-   void provider(int val){
-       for(int i = 0; i < 6; i++){
-           {
-               std::lock_guard<std::mutex> lg(queueMutex);
-               queue.push(val + i);
-               if(i < 4)
-                   queueCondVar.notify_all();   //在保护区间内最好只做必要的操作, notify通知在外围操作
-               cout << "****" << endl;
-           }
-           this_thread::sleep_for(chrono::milliseconds(val));
-       }
-
+   void provider(){
        {
-           this_thread::sleep_for(chrono::milliseconds(30000));
            std::lock_guard<std::mutex> lg(queueMutex);
-           queue.push(1000);
-           queueCondVar.notify_one();   //在保护区间内最好只做必要的操作, notify通知在外围操作
-           cout << "****" << endl;
+           std::cout << "----first notify----" << std::endl;
        }
+       queueCondVar.notify_one();   //在保护区间内最好只做必要的操作, notify通知在外围操作
+       this_thread::sleep_for(chrono::seconds (5));
 
+        {
+            std::lock_guard<std::mutex> lg(queueMutex);
+            std::cout << "----second notify----" << std::endl;
+        }
+        queueCondVar.notify_one();   //在保护区间内最好只做必要的操作, notify通知在外围操作
    }
 
 
 /*
- * 1. 即使在wait函数之前, 其它线程已经发送notify通知, 该通知也不会丢失, 当执行到wait函数时依然会接收到该通知.
- * 2. wait函数之后的操作在unique_lock的限定的保护区间内进行
+ * . wait函数之后的操作在unique_lock的限定的保护区间内进行
  */
-    void consumer(int num){
-       while(true){
-           int val;
-           {
-               this_thread::sleep_for(chrono::milliseconds(5000));
-               std::unique_lock<std::mutex> ul(queueMutex);
-               queueCondVar.wait(ul, []{ return !queue.empty();});  //被唤醒且满足判断条件则跳出该函数, 否则程序被阻塞在这里.
-               cout << "$$$$" << endl;
-               val = queue.front();
-               queue.pop();
-               std::cout << "consumer " << num << ": " << val << std::endl;
-           }
-
-       }
+    void consumer(){
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::unique_lock<std::mutex> ul(queueMutex);
+        std::cout << "----start to wait----" << std::endl;
+        queueCondVar.wait(ul);  //被唤醒且满足判断条件则跳出该函数, 否则程序被阻塞在这里.
+        std::cout << "----wake up----" << std::endl;
    }
 
    void conVarTest(){
-       auto p1 = std::async(std::launch::async, provider, 100);
-       auto p2 = std::async(std::launch::async, provider, 200);
-       auto p3 = std::async(std::launch::async, provider, 300);
-
-       auto c1 = std::async(std::launch::async, consumer, 1);
-       auto c2 = std::async(std::launch::async, consumer, 2);
-
+       auto p1 = std::async(std::launch::async, provider);
+       auto c1 = std::async(std::launch::async, consumer);
+       p1.get();
+       c1.get();
    }
 
 
-
-
-
-
-
-
-
-
+   //在进行wait之前首先会检查条件是否满足，如果满足则不会进行wait。
+    void conVarTest1(){
+        std::mutex mutex_;
+        std::condition_variable cv;
+        std::unique_lock<std::mutex> ul(mutex_);
+        cv.wait(ul, [](){ return true;});
+        std::cout << "---no wait---" << std::endl;
+    }
 
 }

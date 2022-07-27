@@ -30,7 +30,7 @@ namespace mthread{
 
     void conVarTest();
 
-
+    void conVarTest1();
 }
 
 
