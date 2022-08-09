@@ -1,0 +1,53 @@
+组播提供了在网络中进行一对多的发送的机制，组播可以是在一个网段内，也可以是跨网段的，不过跨网段需要交换机、路由器等网络设备支持组播。
+Hosts可以在任何时间加入或者离开组播组，对于组播组的成员没有所处位置的限制，也没有数量的限制，D类互联网地址是用于组播的：224.0.0.0 - 239.255.255.255。
+通过无连接Socket编程可以实现组播数据的发送和接收。组播数据只能通过一个网络接口发送，即使设备上有多个网络接口。
+
+组播是一对多的传输机制，不能通过面向连接的Socket实现组播。
+
+创建了SOCK_DGRAM类型的socket以后，通过调用setsockopt()函数来控制该socket的组播，
+
+函数原型：getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen)，
+
+对于IPPROTO_IP level，optval有如下选择：
+IP_ADD_MEMBERSHIP，加入指定的组播组。
+IP_DROP_MEMBERSHIP，离开指定的组播组。
+IP_MULTICAST_IF，指定发送组播数据的网络接口。
+IP_MULTICAST_TTL，给出发送组播数据时的TTL，默认是1。
+IP_MULTICAST_LOOP，发送组播数据的主机是否作为接收组播数据的组播成员。
+
+下面的两个例子给出了发送和接收组播数据的实现，接收和发送组播数据的步骤是有区别的。
+
+1、组播server，发送组播数据的例子
+
+实现组播数据包发送的步骤如下：
+①创建AF_INET, SOCK_DGRAM的socket。
+②用组播IP地址和端口初始化sockaddr_in类型数据。
+③IP_MULTICAST_LOOP，设置本机是否作为组播组成员接收数据。
+④IP_MULTICAST_IF，设置发送组播数据的端口。
+⑤发送组播数据。
+————————————————
+版权声明：本文为CSDN博主「panamera12」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/wteruiycbqqvwt/article/details/107381266
+
+
+2、组播client，接收组播数据的例子
+
+①创建AF_INET, SOCK_DGRAM类型的socket。
+②设定 SO_REUSEADDR，允许多个应用绑定同一个本地端口接收数据包。
+③用bind绑定本地端口，IP为INADDR_ANY，从而能接收组播数据包。
+④采用 IP_ADD_MEMBERSHIP加入组播组，需针对每个端口采用 IP_ADD_MEMBERSHIP。
+⑤接收组播数据包。
+
+PS：接收组播的网络端口需要设定一个IP地址，我调试的计算机有两个端口，我在第二个端口上接收组播，开始没有设定这个端口的IP地址，只是给出了组播路由到第二个端口，结果收不到数据，后来设了一个IP地址就ok了。
+
+//结构体的定义
+struct ip_mreq
+{
+struct in_addr imr_multiaddr; //多播组的IP地址
+struct in_addr imr_interface; //加入的客服端主机IP地址
+}
+
+
+————————————————
+版权声明：本文为CSDN博主「panamera12」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/wteruiycbqqvwt/article/details/107381266

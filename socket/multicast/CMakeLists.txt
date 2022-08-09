@@ -1,0 +1,3 @@
+add_executable(multicastServer multicastServer.cpp)
+
+add_executable(multicastClient multicastClient.cpp)
