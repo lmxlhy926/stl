@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include <sys/socket.h>
+#include <unistd.h>
 #include <netdb.h>
 
 
@@ -31,35 +32,32 @@
 
  */
 
-int main(int argc, char* argv[]){
-    if(argc != 2){
-        fprintf(stderr, "usage: %s <domain name>\n", argv[0]);
-        exit(0);
-    }
-
+void getaddrinfo_getnameinfo(const char* ip){
     //控制套接字地址列表的返回
     struct addrinfo hint{};
     memset(&hint, 0, sizeof(hint));
+
     hint.ai_family = AF_INET;           //只返回IPV4地址
     hint.ai_socktype = SOCK_STREAM;     //只返回连接类型
+    hint.ai_protocol = 0;
+    hint.ai_flags = AI_ADDRCONFIG;      //Only return address types available on this host
 
     struct addrinfo *p, *listp;
     int rc;
-    if((rc = getaddrinfo(argv[1], nullptr, &hint, &listp)) != 0){
+    if((rc = getaddrinfo(ip, nullptr, &hint, &listp)) != 0){
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(rc));
         exit(1);
     }
 
-    char buf[INET_ADDRSTRLEN];
+    //控制地址的转换
     int flags = NI_NUMERICHOST;     //将IP地址转换为点分十进制表示
     for(p = listp; p != nullptr; p = p->ai_next){
+        char buf[INET_ADDRSTRLEN];
         //提取网络字节序地址信息，转换为地址、端口字符串
         getnameinfo(p->ai_addr, p->ai_addrlen, buf, INET_ADDRSTRLEN, nullptr, 0, flags);
         printf("%s\n", buf);
-
     }
 
     freeaddrinfo(listp);
-
-    return 0;
 }
+
