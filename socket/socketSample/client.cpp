@@ -32,6 +32,7 @@ void normalClient(const char* message){
 
     //创建套接字描述符
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    std::cout << "sockfd: " << sockfd << std::endl;
 
     //阻塞，一直到连接成功建立或者发生错误
     int connectRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr));
@@ -60,8 +61,9 @@ void normalClient(const char* message){
 int open_clientfd(const char* hostname, const char* port){
     struct addrinfo hint{};
     memset(&hint, 0, sizeof hint);
+    hint.ai_family = AF_INET;           //IPV4
     hint.ai_socktype = SOCK_STREAM;     //端点用于连接
-    hint.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG;    //数字形式的ip和端口号
+    hint.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;    //数字形式的ip和端口号
 
     struct addrinfo *p, *listp;
     int retCode;
@@ -98,7 +100,7 @@ void client_addrinfo(string& hostname, string& port){
     if((clientfd = open_clientfd(hostname.c_str(), port.c_str())) == -1)
         return;
 
-    std::cout << "----" << std::endl;
+    std::cout << "clientfd: " << clientfd << std::endl;
 
     write(clientfd, message.c_str(), message.size());
 
@@ -111,6 +113,7 @@ void client_addrinfo(string& hostname, string& port){
 
     std::cout << "Response from server: " << std::endl;
     write(STDOUT_FILENO, receiveBuf, n);
+    close(clientfd);
 }
 
 int main(int argc, char* argv[]){
