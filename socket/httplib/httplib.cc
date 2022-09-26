@@ -504,8 +504,8 @@ public:
                time_t write_timeout_sec, time_t write_timeout_usec);
   ~SocketStream() override;
 
-  bool is_readable() const override;
-  bool is_writable() const override;
+  bool is_readable() const override;    //指定的时间内是否可读
+  bool is_writable() const override;    //指定的时间内是否可写
   ssize_t read(char *ptr, size_t size) override;            //返回实际读取的数据
   ssize_t write(const char *ptr, size_t size) override;     //返回实际写入的数据
   void get_remote_ip_and_port(std::string &ip, int &port) const override;

@@ -5,6 +5,7 @@ project(stl)
 set(CMAKE_CXX_STANDARD 14)
 
 set(srcDirectory
+        cBase
         cppBase
         mudo
         stl

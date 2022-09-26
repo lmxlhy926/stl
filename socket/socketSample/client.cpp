@@ -116,6 +116,11 @@ void client_addrinfo(string& hostname, string& port){
     close(clientfd);
 }
 
+
+
+
+
+
 int main(int argc, char* argv[]){
     std::string ip = "127.0.0.1";
     std::string port = "6666";
