@@ -29,10 +29,12 @@ using namespace std;
 
 int main(int argc, char* argv[]){
 
-    priorityQueueConstructor();
+    // priorityQueueConstructor();
 
-    while(true)
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+    // while(true)
+    //     std::this_thread::sleep_for(std::chrono::seconds(10));
+
+	std::cout << "hello world" << std::endl;
 
     return 0;
 
