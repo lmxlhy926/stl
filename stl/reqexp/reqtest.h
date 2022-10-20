@@ -6,31 +6,25 @@
 #define STL_REQTEST_H
 
 
-void match();
+//完整匹配
+void fullMatch();
 
-void test2();
+//用整体字符串作为参数搜索
+void regex_search();
 
-void test3();
+//用字符串迭代器标示的位置进行搜索
+void regex_search1();
 
-void test4();
+//匹配时，尝试匹配最长的匹配项
+void regex_search_maxlong();
 
-void test5();
+//用迭代器匹配
+void regex_iterator();
 
-void test6();
+//用正则表达式切分字符串
+void regex_token();
 
 void test7();
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

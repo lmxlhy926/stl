@@ -31,16 +31,23 @@ void out(bool b){
 void match(){
     string str1 = ":<tag>value</tag>:";
     smatch sm;
+    //整体匹配，只关心结果
     auto found = regex_match(str1,regex(R"(<(.*).*</\1>)"));
     out(found);     //not match
 
+    //整体匹配，分析匹配结果
     found = regex_match(str1, sm,regex(R"(.*<(.*)>(.*)</(\1)>.*)"));
     if(found){
         cout << "prefix: " << sm.prefix().str() << endl;
         cout << "suffix: " << sm.suffix().str() << endl;
+
+        //完整匹配
         cout << "match: " << sm.str() << endl;
         cout << "length: " << sm.length() << endl;
         cout << "position: " << sm.position() << endl;
+
+        //分组信息
+        cout << "str(0): " << sm.str(0) << " length: " << sm.length(0) << " position: " << sm.position(0) << endl;
         cout << "str(1): " << sm.str(1) << " length: " << sm.length(1) << " position: " << sm.position(1) << endl;
         cout << "str(2): " << sm.str(2) << " length: " << sm.length(2) << " position: " << sm.position(2) << endl;
         cout << "str(3): " << sm.str(3) << " length: " << sm.length(3) << " position: " << sm.position(3) << endl;
@@ -64,15 +71,17 @@ void match(){
  *      operator << 将字符写至某个stream
  *
  */
-void test2(){
+void regex_search(){
     string data = "****:-<tag>value</tag>.";
     cout << "data: " << data << std::endl;
 
     smatch m;
     bool found = regex_search(data, m, regex("<(.*)>(.*)</(\\1)>"));
 
+    //是否有匹配项，有几个匹配项
     cout << "m.empty(): " << boolalpha << m.empty() << endl;
     cout << "m.size(): " << m.size() << endl;
+
     if(found){
         cout << "m.prefix().str(): " << m.prefix().str() << endl;
         cout << "m.suffix().str(): " << m.suffix().str() << endl;
@@ -83,7 +92,7 @@ void test2(){
     }
     cout << endl << endl;
 
-
+    //下标遍历方式
     for(int i = 0; i < m.size(); i++){
         cout << "m.str(" << i << "): "          << m.str(i) << endl;        //第n个匹配合格之substring
         cout << "m[" << i << "].length(): "     << m.length(i) << endl;     //第n个匹配合格之substring的长度
@@ -91,18 +100,28 @@ void test2(){
     }
     cout << endl << endl;
 
-
-    cout << "matches: " << endl;
+    //迭代方式
     for(auto pos = m.begin(); pos != m.end(); ++pos){   //迭代sub_match对象，从m[0]到m[i]
-        cout << *pos << " ";
+        cout << *pos << std::endl;
         cout << "str: " << pos->str() << endl;
         cout << "length: " << pos->length() << endl;
+        cout << "first: " << *pos->first << " second: " << *(pos->second - 1) << std::endl;
+        cout << "-----------------------------" << std::endl;
     }
+    cout << std::endl;
 
+    //迭代方式
+    for(auto & elem : m){
+        cout << elem << std::endl;
+        cout << "str: " << elem.str() << endl;
+        cout << "length: " << elem.length() << endl;
+        cout << "first: " << *(elem.first) << " second: " << *(elem.second - 1) << std::endl;
+        cout << "*****************************" << std::endl;
+    }
 }
 
 
-void test3(){
+void regex_search1(){
     string data = "<person>\n"
                   "<first>Nico</first>\n"
                   "<last>Josuttis</last>\n"
@@ -112,8 +131,11 @@ void test3(){
     regex reg("<(.*)>(.*)</(\\1)>");
     smatch m;
 
+    //字符串迭代器
     string::const_iterator pos = data.cbegin();
     string::const_iterator end = data.cend();
+
+    //搜索时，变化起始位置，起始位置更新为后缀位置；
     for(; regex_search(pos, end, m, reg); pos = m.suffix().first){
         cout << "match: " << m.str() << endl;
         cout << "tag: " << m.str(1) << endl;
@@ -125,7 +147,7 @@ void test3(){
 /*
  *  regex函数试图在一种所谓greedy风格下操作，试图完成最长匹配
  */
-void test4(){
+void regex_search_maxlong(){
     string data = "<person>"
                   "<first>Nico</first>"
                   "<last>Josuttis</last>"
@@ -143,6 +165,15 @@ void test4(){
         cout << "tag: " << m.str(1) << endl;
         cout << "value: " << m.str(2) << endl;
     }
+
+
+    for(; regex_search(pos, end, m, reg); pos = m.suffix().first){
+        cout << "match: " << m.str() << endl;
+        cout << "tag: " << m.str(1) << endl;
+        cout << "value: " << m.str(2) << endl;
+    }
+
+
     if(end == m.suffix().first){
         cout << "true---true" << std::endl;
     }
@@ -155,8 +186,7 @@ void test4(){
  * 其default构造函数定义出一个指向“末尾之下一位置的iterator”
  * bidirectional iterator
  */
-void test5(){
-
+void regex_iterator(){
     string data = "<person>\n"
                   "<first>Nico</first>\n"
                   "<last>Josuttis</last>\n"
@@ -191,7 +221,7 @@ void test5(){
  *      0：  匹配之正则表达式
  *      n：  第n个匹配次表达式
  */
-void test6(){
+void regex_token(){
     string data = "<person>\n"
                   "<first>Nico</first>\n"
                   "<last>Josuttis</last>\n"
