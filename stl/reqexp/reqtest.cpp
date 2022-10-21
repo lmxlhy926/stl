@@ -13,8 +13,8 @@ using namespace std;
  * 正则表达式：正则表达式程序库regex，它允许你使用通配符（wildcard）和pattern来查找和替换string中的字符
  *      Match：将整个输入拿来比对某个正则表达式
  *      Search：查找“与正则表达式吻合”的pattern
- *      Replace：将与正则表达式吻合之第一个（或后续所有）子序列替换掉
  *      Tokenize：根据“被指定为正则表达式”的切分器（separator）取得语汇单元（token）
+ *      Replace：将与正则表达式吻合之第一个（或后续所有）子序列替换掉
  */
 
 void out(bool b){
@@ -25,98 +25,91 @@ void out(bool b){
 /*
  * Match：将整个输入拿来比对某个正则表达式
  * 如果匹配成功
- *      1. 没有前缀和后缀
+ *      1. 因为是完全匹配，前缀和后缀为空
  *      2. "匹配合格之整体string"或"第n个匹配合格之substring"的内容、位置、长度
- */
-void match(){
-    string str1 = ":<tag>value</tag>:";
-    smatch sm;
-    //整体匹配，只关心结果
-    auto found = regex_match(str1,regex(R"(<(.*).*</\1>)"));
-    out(found);     //not match
-
-    //整体匹配，分析匹配结果
-    found = regex_match(str1, sm,regex(R"(.*<(.*)>(.*)</(\1)>.*)"));
-    if(found){
-        cout << "prefix: " << sm.prefix().str() << endl;
-        cout << "suffix: " << sm.suffix().str() << endl;
-
-        //完整匹配
-        cout << "match: " << sm.str() << endl;
-        cout << "length: " << sm.length() << endl;
-        cout << "position: " << sm.position() << endl;
-
-        //分组信息
-        cout << "str(0): " << sm.str(0) << " length: " << sm.length(0) << " position: " << sm.position(0) << endl;
-        cout << "str(1): " << sm.str(1) << " length: " << sm.length(1) << " position: " << sm.position(1) << endl;
-        cout << "str(2): " << sm.str(2) << " length: " << sm.length(2) << " position: " << sm.position(2) << endl;
-        cout << "str(3): " << sm.str(3) << " length: " << sm.length(3) << " position: " << sm.position(3) << endl;
-    }
-}
-
-
-
-/*
- * typedef match_results<string::const_iterator>  smatch;
+ *      3. smatch的大小为 1 + 捕获分组的数量
+ *
+ *
+ *  Class std::match_results<>是个template，必须依据其所处理的字符的iterator类型而实例化。
+ *  typedef match_results<string::const_iterator>  smatch;   针对string类型
+ *  match_results对象内含：
+ *      prefix(): sub_match对象
+ *      suffix(): sub_match对象
+ *      一个sub_match对象m[0]，表现"匹配合格之所有字符"
+ *      对于任何capture group，你可以访问一个对应的sub_match对象m[n]
+ *      size()可取得sub_match对象的个数
+ *
+ *  sub_match对象：派生自pair<>
+ *      first成员是第一字符的位置，second成员是最末字符的下一个位置
+ *      str()：以string形式取得字符
+ *      length()：可取得字符数量
+ *      operator << 将字符写至某个stream
+ *
  * match_results对象作为一个整体来看，提供了
  *      成员函数str()：“匹配合格之整体string”或“第n个匹配合格之substring”
  *      成员函数length()：“匹配合格之整体string的长度”或“第n个匹配合格之substring的长度”
  *      成员函数position()：“匹配合格之整体string的位置”或“第n个匹配合格之substring的位置”
  *      成员函数begin()、cbegin()、end()和cend()可用来迭代sub_match对象，从m[0]到m[n]
  *
- * sub_match对象：派生自pair<>
- *      first成员是第一字符的位置，second成员是最末字符的下一个位置
- *      str()：以string形式取得字符
- *      length()：可取得字符数量
- *      operator << 将字符写至某个stream
- *
  */
+void fullMatch(){
+    string str1 = ":<tag>value</tag>:";
+    smatch sm;
+    //整体匹配，只关心结果
+    auto found = regex_match(str1,regex(R"(<(.*)>.*</\1>)"));
+    out(found);     //not match
+
+    //整体匹配，分析匹配结果
+    found = regex_match(str1, sm,regex(R"(.*<(.*)>(.*)</(\1)>.*)"));
+    if(found){
+        cout << "prefix: "      << sm.prefix().str()    << endl;    //sub_match对象
+        cout << "suffix: "      << sm.suffix().str()    << endl;    //sub_match对象
+        cout << "str: "         << sm.str()             << endl;    //当前匹配合格之字符串
+        cout << "length: "      << sm.length()          << endl;    //当前匹配合格之字符串的字符数量
+        cout << "position: "    << sm.position()        << endl;    //当前匹配合格之字符串起始字符的位置
+        cout << "size: "        << sm.size()            << endl;    //包含的sub_match对象的个数
+
+
+        for(int i = 0; i < sm.size(); ++i){     //sm作为一个整体来看待
+            std::cout << sm.str(i) << " " << sm.length(i) << " " << sm.position(i) << std::endl;
+        }
+        std::cout << "----------------------------" << std::endl;
+
+        for(int i = 0; i < sm.size(); ++i){     //遍历每个sub_match对象
+            std::cout << sm[i].str() << "--" << sm[i].length() << ": " << *sm[i].first << "," << *(sm[i].second - 1) << endl;
+        }
+        std::cout << "----------------------------" << std::endl;
+
+        for(auto& elem : sm){   //遍历每个sub_match对象
+            std::cout << elem.str() << "--" << elem.length() << ": " << *elem.first << "," << *(elem.second - 1) << endl;
+        }
+        std::cout << "----------------------------" << std::endl;
+
+        for(auto pos = sm.begin(); pos != sm.end(); pos++){     //遍历每个sub_match对象
+            std::cout << pos->str() << "--" << pos->length() << ": " << *pos->first << "," << *(pos->second - 1) << endl;
+        }
+    }
+}
+
+
+
 void regex_search(){
     string data = "****:-<tag>value</tag>.";
     cout << "data: " << data << std::endl;
 
     smatch m;
-    bool found = regex_search(data, m, regex("<(.*)>(.*)</(\\1)>"));
+    bool found = regex_search(data, m, regex(R"(<(.*)>(.*)</(\1)>)"));
 
     //是否有匹配项，有几个匹配项
     cout << "m.empty(): " << boolalpha << m.empty() << endl;
     cout << "m.size(): " << m.size() << endl;
 
     if(found){
-        cout << "m.prefix().str(): " << m.prefix().str() << endl;
-        cout << "m.suffix().str(): " << m.suffix().str() << endl;
-
-        cout << "m.str(): " << m.str() << endl;             //匹配合格之整体string
-        cout << "m.length(): " << m.length() << endl;       //匹配合格之整体string的长度
-        cout << "m.position(): " << m.position() << endl;   //匹配合格之整体string的位置
-    }
-    cout << endl << endl;
-
-    //下标遍历方式
-    for(int i = 0; i < m.size(); i++){
-        cout << "m.str(" << i << "): "          << m.str(i) << endl;        //第n个匹配合格之substring
-        cout << "m[" << i << "].length(): "     << m.length(i) << endl;     //第n个匹配合格之substring的长度
-        cout << "m.position(" << i << "): "     << m.position(i) << endl;   //第n个匹配合格之substring的位置
-    }
-    cout << endl << endl;
-
-    //迭代方式
-    for(auto pos = m.begin(); pos != m.end(); ++pos){   //迭代sub_match对象，从m[0]到m[i]
-        cout << *pos << std::endl;
-        cout << "str: " << pos->str() << endl;
-        cout << "length: " << pos->length() << endl;
-        cout << "first: " << *pos->first << " second: " << *(pos->second - 1) << std::endl;
-        cout << "-----------------------------" << std::endl;
-    }
-    cout << std::endl;
-
-    //迭代方式
-    for(auto & elem : m){
-        cout << elem << std::endl;
-        cout << "str: " << elem.str() << endl;
-        cout << "length: " << elem.length() << endl;
-        cout << "first: " << *(elem.first) << " second: " << *(elem.second - 1) << std::endl;
-        cout << "*****************************" << std::endl;
+        cout << "m.prefix().str(): "    << m.prefix().str()     << endl;
+        cout << "m.suffix().str(): "    << m.suffix().str()     << endl;
+        cout << "m.str(): "             << m.str()              << endl;   //匹配合格之整体string
+        cout << "m.length(): "          << m.length()           << endl;   //匹配合格之整体string的长度
+        cout << "m.position(): "        << m.position()         << endl;   //匹配合格之整体string的位置
     }
 }
 

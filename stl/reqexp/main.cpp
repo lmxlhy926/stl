@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]){
 
-    test6();
+    fullMatch();
 
     return 0;
 }
