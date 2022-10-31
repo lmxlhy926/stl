@@ -1,8 +1,9 @@
+add_subdirectory(collect)
 add_subdirectory(getlocalip)
 add_subdirectory(httplib)
-add_subdirectory(socklib)
-add_subdirectory(tiny_web_server)
-add_subdirectory(cpphttplib_learn)
 add_subdirectory(multicast)
 add_subdirectory(socketSample)
-add_subdirectory(collect)
+add_subdirectory(socklib)
+add_subdirectory(tiny_web_server)
+
+
