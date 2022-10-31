@@ -13,7 +13,7 @@ void fullMatch();
 void regex_search();
 
 //用字符串迭代器标示的位置进行搜索
-void regex_search1();
+void regex_search_iterator();
 
 //匹配时，尝试匹配最长的匹配项
 void regex_search_maxlong();
@@ -25,7 +25,5 @@ void regex_iterator();
 void regex_token();
 
 void test7();
-
-
 
 #endif //STL_REQTEST_H

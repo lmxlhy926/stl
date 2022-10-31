@@ -29,9 +29,9 @@ void out(bool b){
  *      2. "匹配合格之整体string"或"第n个匹配合格之substring"的内容、位置、长度
  *      3. smatch的大小为 1 + 捕获分组的数量
  *
- *
  *  Class std::match_results<>是个template，必须依据其所处理的字符的iterator类型而实例化。
  *  typedef match_results<string::const_iterator>  smatch;   针对string类型
+ *
  *  match_results对象内含：
  *      prefix(): sub_match对象
  *      suffix(): sub_match对象
@@ -39,17 +39,17 @@ void out(bool b){
  *      对于任何capture group，你可以访问一个对应的sub_match对象m[n]
  *      size()可取得sub_match对象的个数
  *
+ *  match_results对象作为一个整体来看，提供了
+ *      成员函数str()：“匹配合格之整体string”或“第n个匹配合格之substring”
+ *      成员函数length()：“匹配合格之整体string的长度”或“第n个匹配合格之substring的长度”
+ *      成员函数position()：“匹配合格之整体string的位置”或“第n个匹配合格之substring的位置”
+ *      成员函数begin()、cbegin()、end()和cend()可用来迭代sub_match对象，从m[0]到m[n]
+ *
  *  sub_match对象：派生自pair<>
  *      first成员是第一字符的位置，second成员是最末字符的下一个位置
  *      str()：以string形式取得字符
  *      length()：可取得字符数量
  *      operator << 将字符写至某个stream
- *
- * match_results对象作为一个整体来看，提供了
- *      成员函数str()：“匹配合格之整体string”或“第n个匹配合格之substring”
- *      成员函数length()：“匹配合格之整体string的长度”或“第n个匹配合格之substring的长度”
- *      成员函数position()：“匹配合格之整体string的位置”或“第n个匹配合格之substring的位置”
- *      成员函数begin()、cbegin()、end()和cend()可用来迭代sub_match对象，从m[0]到m[n]
  *
  */
 void fullMatch(){
@@ -114,14 +114,14 @@ void regex_search(){
 }
 
 
-void regex_search1(){
+void regex_search_iterator(){
     string data = "<person>\n"
                   "<first>Nico</first>\n"
                   "<last>Josuttis</last>\n"
                   "</person>\n";
     cout << "data: " << data << endl;
 
-    regex reg("<(.*)>(.*)</(\\1)>");
+    regex reg(R"(<(.*)>(.*)</(\1)>)");
     smatch m;
 
     //字符串迭代器
@@ -147,7 +147,7 @@ void regex_search_maxlong(){
                   "</person>";
     cout << "data: " << data << endl;
 
-    regex reg("<(.*)>(.*)</(\\1)>");
+    regex reg(R"(<(.*)>(.*)</(\1)>)");
     smatch m;
 
     string::const_iterator pos = data.cbegin();
@@ -158,14 +158,6 @@ void regex_search_maxlong(){
         cout << "tag: " << m.str(1) << endl;
         cout << "value: " << m.str(2) << endl;
     }
-
-
-    for(; regex_search(pos, end, m, reg); pos = m.suffix().first){
-        cout << "match: " << m.str() << endl;
-        cout << "tag: " << m.str(1) << endl;
-        cout << "value: " << m.str(2) << endl;
-    }
-
 
     if(end == m.suffix().first){
         cout << "true---true" << std::endl;
@@ -186,7 +178,7 @@ void regex_iterator(){
                   "</person>\n";
     cout << "data: " << data << endl;
 
-    regex reg("<(.*)>(.*)</(\\1)>");
+    regex reg(R"(<(.*)>(.*)</(\1)>)");
 
     sregex_iterator pos(data.cbegin(), data.cend(), reg);
     sregex_iterator end;
@@ -238,6 +230,7 @@ void regex_token(){
     }
 }
 
+
 /*
  * 将“匹配某个正则表达式的字符序列”替换为“另一个字符序列”
  */
@@ -252,31 +245,4 @@ void test7(){
     cout << regex_replace(data, reg, R"($1 == "$2")", regex_constants::format_first_only) << endl;
     cout << regex_replace(data, reg, R"($&)", regex_constants::format_first_only) << endl;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]){
 
-    fullMatch();
+    regex_search_maxlong();
 
     return 0;
 }
