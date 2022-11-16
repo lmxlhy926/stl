@@ -1,2 +1,2 @@
 
-add_executable(reqexp main.cpp reqtest.cpp)
+add_executable(reqexp main.cpp regex.cpp)
