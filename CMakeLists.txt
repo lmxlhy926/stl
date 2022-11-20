@@ -4,13 +4,7 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(srcDirectory
-        base
-        mudo
-        stl
-        unix
-        update
-        socket)
+set(srcDirectory ipc)
 
 foreach(elem ${srcDirectory})
     add_subdirectory(${elem})
