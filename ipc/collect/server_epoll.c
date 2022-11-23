@@ -5,7 +5,8 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <errno.h>
-#include "wrap.h"
+#include <unistd.h>
+#include <ctype.h>
 
 #define MAXLINE 80
 #define SERV_PORT 6666
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
 	struct epoll_event tep;				//设定事件和伴随数据
 	struct epoll_event ep[OPEN_MAX];	//存储返回的事件
 	
-	int listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+	int listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr));
@@ -62,9 +63,9 @@ int main(int argc, char *argv[])
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port = htons(SERV_PORT);
 	
-	Bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+	bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
 	
-	Listen(listenfd, 20);
+	listen(listenfd, 20);
 	
 	for (i = 0; i < OPEN_MAX; i++)
 		client[i] = -1;
@@ -72,30 +73,38 @@ int main(int argc, char *argv[])
 	
 	//创建一个epoll句柄，指定监听的文件描述符的最大个数
 	int efd = epoll_create(OPEN_MAX);
-	if (efd == -1)
-		perr_exit("epoll_create");
+	if (efd == -1){
+        printf("epoll_create\n");
+        exit(-1);
+    }
+
 	
 	//添加监控事件、与事件相伴随的描述数据
 	tep.events = EPOLLIN; 
 	tep.data.fd = listenfd;
 	
 	int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &tep);	//监听listenfd描述符
-	if (res == -1)
-		perr_exit("epoll_ctl");
+	if (res == -1){
+        printf("epoll_ctl\n");
+        exit(-1);
+    }
+
 	
 	while (1) {
 		int nready = epoll_wait(efd, ep, OPEN_MAX, -1); 	 //阻塞监听
-		if (nready == -1)
-			perr_exit("epoll_wait");
-		
+		if (nready == -1){
+            printf("epoll_wait\n");
+            exit(-1);
+        }
+
 		for (i = 0; i < nready; i++) {		//只需遍历返回的事件集合即可，无需遍历全部描述符集合
 			if (!(ep[i].events & EPOLLIN))
 				continue;
 			
 			if (ep[i].data.fd == listenfd) {	//连接请求
-				struct sockaddr_in cliaddr
+				struct sockaddr_in cliaddr;
 				socklen_t clilen = sizeof(cliaddr);
-				int connfd = Accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
+				int connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
 				printf("received from %s at PORT %d\n",
 				inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
 				ntohs(cliaddr.sin_port));
@@ -107,8 +116,10 @@ int main(int argc, char *argv[])
 					}
 				}
 				
-				if (j == OPEN_MAX)
-					perr_exit("too many clients");
+				if (j == OPEN_MAX){
+                    printf("too many clients\n");
+                    exit(-1);
+                }
 				
 				if (j > maxi)
 					maxi = j; 				/* max index in client[] array */
@@ -116,12 +127,15 @@ int main(int argc, char *argv[])
 				tep.events = EPOLLIN;		//将connfd加入监听
 				tep.data.fd = connfd;
 				res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &tep);
-				if (res == -1)
-					perr_exit("epoll_ctl");
+				if (res == -1){
+                    printf("epoll_ctl\n");
+                    exit(-1);
+                }
+
 				
 			} else {	//普通数据
 				int sockfd = ep[i].data.fd;
-				ssize_t n = Read(sockfd, buf, MAXLINE);
+				ssize_t n = read(sockfd, buf, MAXLINE);
 				
 				if (n == 0) {
 					for (j = 0; j <= maxi; j++) {
@@ -132,16 +146,18 @@ int main(int argc, char *argv[])
 					}
 					
 					res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, NULL);	//不再监听该连接
-					if (res == -1)
-						perr_exit("epoll_ctl");
-					
-					Close(sockfd);
+					if (res == -1){
+                        printf("epoll_ctl\n");
+                        exit(-1);
+                    }
+
+					close(sockfd);
 					printf("client[%d] closed connection\n", j);
 					
 				} else {
 					for (j = 0; j < n; j++)
 						buf[j] = toupper(buf[j]);
-					Writen(sockfd, buf, n);
+					write(sockfd, buf, n);
 				}
 			}
 		}

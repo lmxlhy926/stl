@@ -29,6 +29,7 @@ struct ifaddrs {
 void func1(){
     struct ifaddrs *addr = nullptr;
     struct ifaddrs *temp_addr = nullptr;
+
     if (getifaddrs(&addr) == 0) {
         temp_addr = addr;
         while(temp_addr != nullptr) {

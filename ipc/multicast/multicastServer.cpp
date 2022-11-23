@@ -33,6 +33,7 @@ int main(void)
     inet_pton(AF_INET, "0.0.0.0", &group.imr_address);      /* 本地任意IP 自动分配有效IP*/
     group.imr_ifindex = if_nametoindex("eth0");             /* 给出网卡名，转换为对应编号：eth0 --> 编号         ，，  命令:ip ad */
 
+
     setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_IF, &group, sizeof(group));  /*获取组播权限*/
 
     bzero(&clientaddr, sizeof(clientaddr));                 /* 构造client 地址 IP+端口号*/

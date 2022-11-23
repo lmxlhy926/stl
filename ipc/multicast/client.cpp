@@ -24,11 +24,13 @@ int main (int argc, char *argv[ ])
     } else
         printf("Opening the datagram socket...OK.\n");
 
+    //指定要发送的目的组，以及监听的端口号
     memset((char *) &groupSock, 0, sizeof(groupSock));
     groupSock.sin_family = AF_INET;
     groupSock.sin_addr.s_addr = inet_addr("226.1.1.1");
     groupSock.sin_port = htons(4321);
 
+    //指定发送组播消息的端口
     localInterface.s_addr = inet_addr("203.106.93.94");
     if(setsockopt(sd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&localInterface, sizeof(localInterface)) < 0) {
         perror("Setting local interface error");

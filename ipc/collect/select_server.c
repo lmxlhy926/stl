@@ -14,28 +14,28 @@
 
 
 /*
+int select(int nfds,
+           fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+           struct timeval *timeout);
 
-int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
-		   struct timeval *timeout);
-
-	int nfds：			监听集合中的最大描述符加1，指定内核轮询的最大范围，即只会检查这个范围内的文件描述符
-	fd_set *readfds：	指定读描述符监测集合
-	fd_set *writefds：	指定写描述符监测集合
-	struct timeval *timeout：指定阻塞时间：阻塞、立马返回、阻塞固定时间
+	int nfds：			       监听集合中的最大描述符加1，指定内核轮询的最大范围，即只会检查这个范围内的文件描述符
+	fd_set *readfds：	       指定读描述符监测集合
+	fd_set *writefds：	       指定写描述符监测集合
+	struct timeval *timeout：  指定阻塞时间：阻塞、立马返回(0)、阻塞固定时间(>0)
 	
-只要监测集合中有一个监测事件发生就会返回
-readfds，writefds都是传入传出参数，即返回值会更改变量的内容。因此每次传入值时需要重新赋值。
+只要监测集合中有一个监测事件发生就会返回，readfds，writefds都是传入传出参数，
+即返回值会更改变量的内容。因此每次传入值时需要重新赋值。
 
 
 单线程：同时监听多个端口数据，某个端口或某几个端口有数据到达时，进行处理
-
 	1. 刚开始只监测listenfd描述符
 	2. 每次轮询最多接受一个连接请求
-	
+
+    **连接请求/数据到达**
 	当select返回时，说明有描述符可读，也就是说可能收到了一个新的客户端连接请求，也可能是某个已有连接有数据到达。
 	如果是客户端连接请求，则接受请求并将建立的connfd也放入监测集合。
 	然后循环检查每个监听的connfd是否有数据到达，如果某个connfd有数据到达则进行处理
-	全部处理完毕后，在继续select()进行阻塞监听。
+	全部处理完毕后，再继续select()进行阻塞监听。
 */
 
 
