@@ -314,8 +314,8 @@ bool server_poll(string& port){
         if(connFdArray[0].revents & POLLRDNORM){
             std::cout << "connection request....." << std::endl;
             struct sockaddr_in cliAddr{};
-            int cliAddrSize = sizeof(sockaddr_in);
-            int connfd = accept(listenfd, reinterpret_cast<struct sockaddr *>(&cliAddr), &cliAddrSize);
+            socklen_t cliAddrSize = sizeof(sockaddr_in);
+            int connfd = accept(listenfd, reinterpret_cast<struct sockaddr *>(&cliAddr),&cliAddrSize);
             if(connfd >= 0){
                 char ipStringBuffer[INET_ADDRSTRLEN];
                 std::cout << "Request From: " << inet_ntop(AF_INET, &cliAddr.sin_addr, ipStringBuffer, INET_ADDRSTRLEN) << " "

@@ -4,7 +4,7 @@
 
 /*
  * 不带缓冲区的读
- * 阻塞读取，并且屏蔽信号中断的影响
+ * 阻塞读取，并且屏蔽信号中断的影响； 如果系统函数是自启动的则无此必要
  * 返回：读取出错返回-1；未读取到任何字符返回0；返回实际读取到的字节数>0
  * 如果连接端点提前关闭，可能会导致实际读取的字节数小于期望的字节数
  */
@@ -35,9 +35,12 @@ ssize_t rio_readn(int fd, void *usrbuf, size_t n){
 }
 
 
+/*
+ * 屏蔽信号导致低速系统调用失败的影响
+ */
 ssize_t rio_writen(int fd, char *usrbuf, size_t n){
-    size_t nleft = n;   //待写入字符数
-    ssize_t nwrite;     //write操作写入的字符数
+    size_t nleft = n;       //待写入字符数
+    ssize_t nwrite;         //write操作写入的字符数
     char *bufp = usrbuf;    //指向待写入的字符的地址
 
     while(nleft > 0){
@@ -71,7 +74,7 @@ ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n){
 
     size_t cnt;
 
-    //读取数据到缓冲区中
+    //缓冲区中无数据时，读取数据到缓冲区中
     while(rp->rio_cnt <= 0){    //buffer中无可读取数据，进行一次读取，期望一次读满缓冲区
         rp->rio_cnt = read(rp->rio_fd, rp->rio_buf, sizeof(rp->rio_buf));
 
@@ -99,10 +102,15 @@ ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n){
 }
 
 
+/*
+ *  最多读取maxlen - 1 个字节
+ *  返回实际读取到的字节数
+ *  保存读取到的换行符
+ */
 ssize_t rio_readlineb(rio_t *rp, char *usrbuf, size_t maxlen){
 
     size_t n, rc;   //n：标记第几次读取，rc：读取结果
-    char c;     //读取到的字符
+    char c;         //读取到的字符
     char *bufp = usrbuf;     //指向用户提供的缓冲区的待写入位置
 
     for(n = 1; n < maxlen; n++){   //读取maxlen -1个字节，最后一个字节为'\0'
@@ -114,7 +122,7 @@ ssize_t rio_readlineb(rio_t *rp, char *usrbuf, size_t maxlen){
             if(n == 1)      //第一次读取，没有读取到任何数据，对端socket节点关闭
                 return 0;
             else
-                break;   //之前已经读取到一些数据，对端socket节点关闭
+                break;      //之前已经读取到一些数据，对端socket节点关闭
         }else if(rc == 1){  //读取到一个字节后，判断是否为换行符
             *(bufp++) = c;
             if(c == '\n'){
@@ -124,11 +132,15 @@ ssize_t rio_readlineb(rio_t *rp, char *usrbuf, size_t maxlen){
         }
     }
 
-    *bufp = 0;  //字符串以'\0'结尾
+    *bufp = 0;      //字符串以'\0'结尾
     return n - 1;
 }
 
 
+/*
+ *  1.该函数为带缓冲区的读。
+ *  2. 克服rio_read在临界区读时返回不足值得缺点。
+ */
 ssize_t rio_readnb(rio_t *rp, char *usrbuf, size_t n){
 
     size_t nleft = n;       //待读取的字节数
