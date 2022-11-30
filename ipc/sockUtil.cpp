@@ -5,6 +5,8 @@
 #include "sockUtil.h"
 #include <vector>
 #include <algorithm>
+#include <sys/poll.h>
+#include <sys/epoll.h>
 using namespace std;
 
 /*
@@ -224,6 +226,13 @@ int open_listenfd(uint16_t port){
 }
 
 
+/*
+ *  要创建一个数组，存储已建立连接的描述符。
+ *  当select返回时：
+ *          1. 如果是到达listenfd的新连接请求，则调用accept函数在服务端创建连接描述符，监听该描述符并将其加入通信描述符集合中
+ *          2. 如果是已建立连接的客户端端点发送的数据请求，则找到对应的服务器通信端点，与之进行交互
+ *             如果读取到的数据长度为0，则表明客户端关闭了连接，服务器也应该关闭该连接，并从数组和监听集合中剔除该描述符。
+ */
 void server_select(uint16_t port){
     //1. 创建监听描述符，开始监听
     int listenfd = open_listenfd(port);
@@ -279,7 +288,7 @@ void server_select(uint16_t port){
                 ssize_t nRead = read(*pos, buf, 1024);
                 if(nRead <= 0){
                     std::cout << "read Error or Client closed...." << std::endl;
-                    close(*pos);
+                    close(*pos);                        //关闭服务器端的连接节点
                     FD_CLR(*pos, &initSet);                 //停止监听该连接节点
                     pos = connfdVec.erase(pos);     //删除会返回下一元素的位置
                     int maxElement = *max_element(connfdVec.begin(), connfdVec.end());
@@ -291,7 +300,6 @@ void server_select(uint16_t port){
                         buf[i] = static_cast<char>(toupper(buf[i]));
                     }
                     write(*pos, buf, nRead);
-
                     ++pos;
                 }
 
@@ -301,6 +309,201 @@ void server_select(uint16_t port){
         }
     }
 }
+
+
+
+
+/*
+ * struct pollfd:
+ *      1. fd：      指明要监听的端口， -1代表忽略该项，下次返回时把revents设置为0
+ *      2. events：  指明要监听的事件，可以是读、写、或其它事件
+ *      3. revents： poll函数返回的监听事件中已发生的事件
+ *
+ * select和poll对比:
+ *      select的缺点:
+ *          1. select中用三个形参来描述三种不同的事件，针对每种事件传入待监听的描述符集合，因此有三个描述符集合。
+ *          2. select中的参数为传入传出参数，函数每次返回都会覆盖监听集合，所以每次调用需要重新赋值。
+ *      poll的优点:
+ *          poll中用一个属性来指定，可以一次性指定一个描述符监听的所有事件。
+ *          poll中用events, revents将监听事件和返回事件分开，只需进行一次赋值
+ */
+void server_poll(uint16_t port){
+    int listenfd = open_listenfd(port);
+    if(listenfd == -1){
+        printf("Create Listenfd Error.....\n");
+        return;
+    }
+
+    //监听连接请求
+    struct pollfd connFdArray[1024];   //监听描述符数组
+    connFdArray[0].fd = listenfd;
+    connFdArray[0].events = POLLRDNORM;
+
+    //fd设置为-1，poll不再监控此pollfd, 下次返回时把revents设置为0.
+    for(int i = 1; i < 1024; ++i){
+        connFdArray[i].fd = -1;
+    }
+
+    int maxIndex = 0;
+
+    while(true){
+        int nReady = poll(connFdArray, maxIndex + 1, -1);
+        if(nReady == -1){
+            std::cout << "poll Error..." << std::endl;
+            return;
+        }
+
+        //如果是连接请求，则在服务器建立通信端点，并监听该端点是否有数据到达
+        if(connFdArray[0].revents & POLLRDNORM){
+            std::cout << "connection request....." << std::endl;
+            struct sockaddr_in cliAddr{};
+            socklen_t cliAddrSize = sizeof(sockaddr_in);
+            int connfd = accept(listenfd, reinterpret_cast<struct sockaddr *>(&cliAddr),&cliAddrSize);
+            if(connfd == -1){
+                printf("Accetp Error.....\n");
+            }else{
+                char ipStringBuffer[INET_ADDRSTRLEN];
+                std::cout << "Request From: " << inet_ntop(AF_INET, &cliAddr.sin_addr.s_addr, ipStringBuffer, INET_ADDRSTRLEN) << " "
+                          << ntohs(cliAddr.sin_port) << std::endl;
+
+                for(int i = 1; i < 1024; ++i){
+                    if(connFdArray[i].fd == -1){    //存储建立的连接描述符，并监听该描述符
+                        connFdArray[i].fd = connfd;
+                        connFdArray[i].events = POLLRDNORM;
+                        maxIndex = std::max(maxIndex, i);
+                        break;
+                    }
+                    if(i == 1024 - 1){
+                        printf("Too many clients, Refused connection.....\n");
+                        close(connfd);
+                    }
+                }
+            }
+
+            if(--nReady == 0)
+                continue;
+        }
+
+        //处理数据请求
+        for(int i = 1; i < 1024; ++i){
+            if(connFdArray[i].fd == -1)
+                continue;
+
+            if(connFdArray[i].revents & POLLRDNORM){    //相对应的客户端有数据到来
+                char buf[1024];
+                ssize_t nRead = read(connFdArray[i].fd, buf, 1024);
+                if(nRead <= 0){   //客户端主动关闭连接
+                    printf("the peer client close the connection....\n");
+                    close(connFdArray[i].fd);
+                    connFdArray[i].fd = -1;     //不再监听该端口
+                }else{  //正常读取到数据
+                    for(int j = 0; j < nRead; ++j){
+                        buf[j] = static_cast<char>(toupper(buf[j]));
+                    }
+                    write(connFdArray[i].fd, buf, nRead);
+                }
+
+                if(--nReady == 0)
+                    continue;
+            }
+        }
+    }
+}
+
+
+void server_epoll(uint16_t port){
+    int listenfd = open_listenfd(port);
+    if(listenfd == -1){
+        printf("Create Listenfd Error.....\n");
+        return;
+    }
+
+    std::vector<int> connfdVec{};		    //存储建立连接的connfd
+    struct epoll_event events{};		    //指定监听事件、用户标识数据
+    struct epoll_event backEvents[1024];	//存储返回的事件
+
+    //创建一个epoll句柄，指定监听的文件描述符的最大个数
+    int efd = epoll_create(1024 -1);
+    if (efd == -1){
+        printf("epoll_create\n");
+        return;
+    }
+
+    //监听listenfd是否有连接请求到达
+    events.events = EPOLLIN;
+    events.data.fd = listenfd;
+
+    int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &events);	//监听listenfd描述符
+    if (res == -1){
+        printf("epoll_ctl\n");
+        return;
+    }
+
+    while (true) {
+        int nready = epoll_wait(efd, backEvents, 1024, -1); 	 //阻塞监听
+        if (nready == -1){
+            printf("epoll_wait\n");
+            return;
+        }
+
+        for (int i = 0; i < nready; i++) {		//只需遍历返回的事件集合即可，无需遍历全部描述符集合
+            if (!(backEvents[i].events & EPOLLIN))
+                continue;
+
+            if (backEvents[i].data.fd == listenfd) {	//连接请求
+                struct sockaddr_in cliaddr{};
+                socklen_t clilen = sizeof(cliaddr);
+                char str[INET_ADDRSTRLEN];
+
+                int connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
+                printf("received from %s at PORT %d\n",
+                       inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
+                       ntohs(cliaddr.sin_port));
+
+                connfdVec.push_back(connfd);
+                if (connfdVec.size() > 1024 - 1){
+                    printf("too many clients\n");
+                    exit(-1);
+                }
+
+                events.events = EPOLLIN;		//将connfd加入监听
+                events.data.fd = connfd;
+                res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &events);
+                if (res == -1){
+                    printf("epoll_ctl\n");
+                    exit(-1);
+                }
+
+            } else {	//普通数据
+                int sockfd = backEvents[i].data.fd;
+                char buf[1024];
+                ssize_t n = read(sockfd, buf, 1024);
+
+                if (n == 0) {
+                    //todo 清除记录
+
+                    res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, nullptr);	//不再监听该连接
+                    if (res == -1){
+                        printf("epoll_ctl\n");
+                        exit(-1);
+                    }
+
+                    close(sockfd);
+                    printf("client[%d] closed connection\n", j);
+
+                } else {
+                    for (int j = 0; j < n; j++)
+                        buf[j] = toupper(buf[j]);
+                    write(sockfd, buf, n);
+                }
+            }
+        }
+    }
+
+    close(listenfd);
+    close(efd);
+}
+
 
 
 int main(int argc, char* argv[]){

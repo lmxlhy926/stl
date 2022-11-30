@@ -13,9 +13,12 @@
 #define OPEN_MAX 1024
 
 /*
+ *
+指定监听多少个描述符
 int epoll_create(int size) 
 	创建一个句柄，size指明该句柄可监听的最大的描述符数量
 
+指定监听哪些描述符的哪些事件
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 	epfd：epoll_create创建的句柄
 	op：
@@ -24,7 +27,8 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 		EPOLL_CTL_MOD：	修改指定的描述符要监测的事件
 	fd： 	描述符
 	event：	指向描述监测事件的结构体
-	
+
+监听描述符，接收返回事件集合
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	epfd：		创建的句柄
 	events：	存储返回事件数组的首地址

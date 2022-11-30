@@ -62,12 +62,27 @@ int open_listenfd(uint16_t port);
 
 /**
  * @param port      服务器监听的端口号
+ * 说明：
+ *      使用select函数实现的服务器，保存建立的连接，和客户端进行交互
  */
 void server_select(uint16_t port);
 
 
+/**
+ *
+ * @param port  服务器监听的端口号
+ * 说明：
+ *      使用poll函数实现的服务器，保存建立的连接，和客户端进行交互
+ */
+void server_poll(uint16_t port);
 
 
+/**
+ * @param port  服务器监听的端口号
+ * 说明：
+ *      使用epoll函数实现的服务器，保存建立的连接，和客户端进行交互
+ */
+void server_epoll(uint16_t port);
 
 
 
