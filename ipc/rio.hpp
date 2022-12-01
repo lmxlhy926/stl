@@ -3,11 +3,10 @@
 #define HTTPTEST_RIO_HPP
 
 
-#include <unistd.h>
-
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
+#include <unistd.h>
 
 #define MAXLINE 1024
 #define RIO_BUFSIZE 1024 * 8

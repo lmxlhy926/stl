@@ -46,7 +46,7 @@ void domain2decimal(string& host, string& service){
 /*
  *  连接服务器，发送消息，接收一次返回并输出到标准输出中
  */
-void simpleClient(string& ip, uint16_t port, string& writeMesage){
+void simpleTcpClient(string& ip, uint16_t port, string& writeMesage){
     //服务器地址
     struct sockaddr_in servaddr{};      //IPV4地址结构
     memset(&servaddr, 0, sizeof(servaddr));
@@ -78,7 +78,7 @@ void simpleClient(string& ip, uint16_t port, string& writeMesage){
 }
 
 
-void sampleServer(uint16_t port){
+void simpleTcpServer(uint16_t port){
     int listenfd, ret;
     int optval = 1;
 
@@ -233,7 +233,7 @@ int open_listenfd(uint16_t port){
  *          2. 如果是已建立连接的客户端端点发送的数据请求，则找到对应的服务器通信端点，与之进行交互
  *             如果读取到的数据长度为0，则表明客户端关闭了连接，服务器也应该关闭该连接，并从数组和监听集合中剔除该描述符。
  */
-void server_select(uint16_t port){
+void tcpServer_select(uint16_t port){
     //1. 创建监听描述符，开始监听
     int listenfd = open_listenfd(port);
     if(listenfd  == -1){
@@ -327,7 +327,7 @@ void server_select(uint16_t port){
  *          poll中用一个属性来指定，可以一次性指定一个描述符监听的所有事件。
  *          poll中用events, revents将监听事件和返回事件分开，只需进行一次赋值
  */
-void server_poll(uint16_t port){
+void tcpServer_poll(uint16_t port){
     int listenfd = open_listenfd(port);
     if(listenfd == -1){
         printf("Create Listenfd Error.....\n");
@@ -411,7 +411,41 @@ void server_poll(uint16_t port){
 }
 
 
-void server_epoll(uint16_t port){
+/*
+指定监听多少个描述符
+int epoll_create(int size)
+    创建一个句柄，size指明该句柄可监听的最大的描述符数量
+
+指定监听哪些描述符的哪些事件
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+    epfd：epoll_create创建的句柄
+    op：
+        EPOLL_CTL_ADD：	添加监测的描述符，以及该描述符要监测的事件
+        EPOLL_CTL_DEL： 不再监听指定的描述符
+        EPOLL_CTL_MOD：	修改指定的描述符要监测的事件
+    fd： 	描述符
+    event：	指向描述监测事件的结构体
+
+监听描述符，接收返回事件集合
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+    epfd：		创建的句柄
+    events：	存储返回事件数组的首地址
+    maxevents：	存储数组的可容纳数量
+    timeout：	等待时间：
+                    -1：	阻塞；
+                    0：		立马返回;
+                    >0：	阻塞特定的时间
+
+与poll以及select的区别：
+    1. 拆分为3个函数，逻辑更加清晰
+            创建句柄：	指定最大监测数
+            句柄控制：	注册、删除、修改描述符以及对应的事件
+            等待事件：	返回值指示发生的事件的数量，将发生的事件存储到提供的数组中
+
+    2. 	除了返回值指示发生的事件的数量外，内核还将发生的事件加入到提供的数组中，这样只需遍历返回数组集合即可。
+        无需遍历整个被监听的描述符集合，节省了时间。
+ */
+void tcpServer_epoll(uint16_t port){
     int listenfd = open_listenfd(port);
     if(listenfd == -1){
         printf("Create Listenfd Error.....\n");
@@ -423,7 +457,7 @@ void server_epoll(uint16_t port){
     struct epoll_event backEvents[1024];	//存储返回的事件
 
     //创建一个epoll句柄，指定监听的文件描述符的最大个数
-    int efd = epoll_create(1024 -1);
+    int efd = epoll_create(1024);
     if (efd == -1){
         printf("epoll_create\n");
         return;
@@ -460,11 +494,11 @@ void server_epoll(uint16_t port){
                        inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
                        ntohs(cliaddr.sin_port));
 
-                connfdVec.push_back(connfd);
-                if (connfdVec.size() > 1024 - 1){
+                if (connfdVec.size() >= 1024 - 1){
                     printf("too many clients\n");
-                    exit(-1);
+                    return;
                 }
+                connfdVec.push_back(connfd);
 
                 events.events = EPOLLIN;		//将connfd加入监听
                 events.data.fd = connfd;
@@ -480,7 +514,10 @@ void server_epoll(uint16_t port){
                 ssize_t n = read(sockfd, buf, 1024);
 
                 if (n == 0) {
-                    //todo 清除记录
+                    auto pos = find(connfdVec.begin(), connfdVec.end(), sockfd);
+                    if(pos != connfdVec.end()){
+                        connfdVec.erase(pos);
+                    }
 
                     res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, nullptr);	//不再监听该连接
                     if (res == -1){
@@ -489,7 +526,6 @@ void server_epoll(uint16_t port){
                     }
 
                     close(sockfd);
-                    printf("client[%d] closed connection\n", j);
 
                 } else {
                     for (int j = 0; j < n; j++)
@@ -505,13 +541,65 @@ void server_epoll(uint16_t port){
 }
 
 
+/*
+ *  客户端和服务器之间没有连接
+ *  所有的请求都是数据请求，不需要创建专门的连接描述符，直接向对方的地址发送数据即可
+ */
+void udpServer(uint16_t port){
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sockfd == -1){
+        std::cout << "create socket failed..." << std::endl;
+        return;
+    }
+
+    struct sockaddr_in servaddr{};
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(port);
+
+    if(bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1){
+        std::cout << "bind failed ..." <<std::endl;
+        return;
+    }
+
+    printf("Accepting connections ...\n");
+    while (true) {
+        struct sockaddr_in cliaddr{};
+        socklen_t cliaddr_len = sizeof(cliaddr);
+        //阻塞接收数据，存储客户端地址
+        char buf[1024];
+        char str[INET_ADDRSTRLEN];
+        ssize_t nRead = recvfrom(sockfd, buf, 1024, 0, (struct sockaddr *)&cliaddr, &cliaddr_len);
+        if (nRead == -1){
+            perror("recvfrom error");
+            continue;
+        }
+
+        printf("received from %s at PORT %d\n",
+               inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
+               ntohs(cliaddr.sin_port));
+
+        for (int i = 0; i < nRead; i++)
+            buf[i] = ::toupper(buf[i]);
+
+        //向客户端发送数据
+        ssize_t nWrite = sendto(sockfd, buf, nRead, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+        if (nWrite == -1)
+            perror("sendto error");
+    }
+
+    close(sockfd);
+}
+
+
 
 int main(int argc, char* argv[]){
     string ip = "172.25.240.1";
     uint16_t port = 9000;
     string message = "login";
 
-    server_select(port);
+    udpServer(port);
 
     return 0;
 }

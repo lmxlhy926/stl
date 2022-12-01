@@ -29,7 +29,7 @@ void domain2decimal(string& host, string& service);
 /*
  * 一个简单的客户端段，连接服务器，发送消息，接收一次返回并输出到标准输出中
  */
-void simpleClient(string& ip, uint16_t port, string& writeMesage);
+void simpleTcpClient(string& ip, uint16_t port, string& writeMesage);
 
 
 /**
@@ -37,7 +37,7 @@ void simpleClient(string& ip, uint16_t port, string& writeMesage);
  * 功能：
  *      一个简单的服务器，接收客户端的连接，建立连接后向客户端读取一次数据，然后转换后返回给客户端并关闭和客户端的连接。
  */
-void sampleServer(uint16_t port);
+void simpleTcpServer(uint16_t port);
 
 /**
  *
@@ -65,7 +65,7 @@ int open_listenfd(uint16_t port);
  * 说明：
  *      使用select函数实现的服务器，保存建立的连接，和客户端进行交互
  */
-void server_select(uint16_t port);
+void tcpServer_select(uint16_t port);
 
 
 /**
@@ -74,7 +74,7 @@ void server_select(uint16_t port);
  * 说明：
  *      使用poll函数实现的服务器，保存建立的连接，和客户端进行交互
  */
-void server_poll(uint16_t port);
+void tcpServer_poll(uint16_t port);
 
 
 /**
@@ -82,7 +82,18 @@ void server_poll(uint16_t port);
  * 说明：
  *      使用epoll函数实现的服务器，保存建立的连接，和客户端进行交互
  */
-void server_epoll(uint16_t port);
+void tcpServer_epoll(uint16_t port);
+
+
+//udp服务器
+void udpServer(uint16_t port);
+
+
+
+
+
+
+
 
 
 

@@ -21,7 +21,7 @@ int main(void)
 	char str[INET_ADDRSTRLEN];
 	int i, n;
 	
-	int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr));
