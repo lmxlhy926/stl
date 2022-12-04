@@ -39,6 +39,7 @@ void simpleTcpClient(string& ip, uint16_t port, string& writeMesage);
  */
 void simpleTcpServer(uint16_t port);
 
+
 /**
  *
  * @param ip        服务器IP
@@ -47,7 +48,7 @@ void simpleTcpServer(uint16_t port);
  * 功能：
  *      尝试和指定的服务器建立连接，返回建立连接的文件描述符
  */
-int open_clientfd(string& ip, uint16_t port);
+int open_clientfd_tcp(string& ip, uint16_t port);
 
 
 /**
@@ -57,7 +58,7 @@ int open_clientfd(string& ip, uint16_t port);
  * 功能：
  *     返回监听描述符，监听本机所有网卡接收到的发送到端口port的连接请求
  */
-int open_listenfd(uint16_t port);
+int open_listenfd_tcp(uint16_t port);
 
 
 /**
@@ -83,6 +84,9 @@ void tcpServer_poll(uint16_t port);
  *      使用epoll函数实现的服务器，保存建立的连接，和客户端进行交互
  */
 void tcpServer_epoll(uint16_t port);
+
+
+void udpClient(string& ip, uint16_t port);
 
 
 //udp服务器

@@ -592,7 +592,7 @@ open_client_sockets(int* sockets, int max_sockets, int port) {
 				has_ipv4 = 1;
 				if (num_sockets < max_sockets) {
 					saddr->sin_port = htons(port);
-					int sock = mdns_socket_open_ipv4(saddr);
+					int sock = mdns_socket_open_ipv4(saddr);    //打开一个udp客户端，指定了网卡IP地址，端口号为0
 					if (sock >= 0) {
 						sockets[num_sockets++] = sock;
 						log_addr = 1;

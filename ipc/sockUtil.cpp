@@ -142,7 +142,7 @@ void simpleTcpServer(uint16_t port){
 }
 
 
-int open_clientfd(string& ip, uint16_t port){
+int open_clientfd_tcp(string& ip, uint16_t port){
     struct addrinfo hints, *p, *listp;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;           //IPV4
@@ -179,7 +179,7 @@ int open_clientfd(string& ip, uint16_t port){
 }
 
 
-int open_listenfd(uint16_t port){
+int open_listenfd_tcp(uint16_t port){
     struct addrinfo hint{}, *p, *listp;
     memset(&hint, 0, sizeof hint);
     hint.ai_family = AF_INET;           //IPV4
@@ -235,7 +235,7 @@ int open_listenfd(uint16_t port){
  */
 void tcpServer_select(uint16_t port){
     //1. 创建监听描述符，开始监听
-    int listenfd = open_listenfd(port);
+    int listenfd = open_listenfd_tcp(port);
     if(listenfd  == -1){
         std::cout << "open_listenfd Error....";
         return;
@@ -328,7 +328,7 @@ void tcpServer_select(uint16_t port){
  *          poll中用events, revents将监听事件和返回事件分开，只需进行一次赋值
  */
 void tcpServer_poll(uint16_t port){
-    int listenfd = open_listenfd(port);
+    int listenfd = open_listenfd_tcp(port);
     if(listenfd == -1){
         printf("Create Listenfd Error.....\n");
         return;
@@ -446,7 +446,7 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
         无需遍历整个被监听的描述符集合，节省了时间。
  */
 void tcpServer_epoll(uint16_t port){
-    int listenfd = open_listenfd(port);
+    int listenfd = open_listenfd_tcp(port);
     if(listenfd == -1){
         printf("Create Listenfd Error.....\n");
         return;
@@ -542,8 +542,58 @@ void tcpServer_epoll(uint16_t port){
 
 
 /*
+ *  1. 创建socket客户端端点
+ *  2. 直接向服务器端点发送数据，发送数据时自动为客户端端点指定ip地址和端口号
+ *  3. 接收服务端数据返回
+ */
+void udpClient(string& ip, uint16_t port){
+    //创建UDP socket客户端
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sockfd == -1){
+        std::cout << "create socket failed....." << std::endl;
+        return;
+    }
+
+    //服务器地址
+    struct sockaddr_in serverAddr{};
+    socklen_t serverAddrLength = sizeof serverAddr;
+    memset(&serverAddr, 0, sizeof serverAddr);
+    serverAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr.s_addr);
+    serverAddr.sin_port = htons(port);
+
+    //向服务器发送数据
+    string str = "helloworld";
+    sendto(sockfd, str.c_str(), str.size(), 0, reinterpret_cast<sockaddr *>(&serverAddr), serverAddrLength);
+
+    //从服务器接收数据
+    char buf[1024];
+    struct sockaddr_in clientAddr{};
+    socklen_t clientAddrLength = sizeof clientAddr;
+    ssize_t nRead = recvfrom(sockfd, buf, 1024, 0, reinterpret_cast<sockaddr *>(&clientAddr), &clientAddrLength);
+    if(nRead <= 0){
+        std::cout << "receive error....." << std::endl;
+    }else{
+        char addrBuf[INET_ADDRSTRLEN];
+        std::cout << "Recevie from " << inet_ntop(AF_INET, &clientAddr.sin_addr, addrBuf, INET_ADDRSTRLEN)
+                 << ":" << ntohs(clientAddr.sin_port) << std::endl;
+
+        for (int i = 0; i < nRead; i++)
+            buf[i] = ::toupper(buf[i]);
+        sendto(sockfd, buf, nRead, 0, reinterpret_cast<sockaddr *>(&clientAddr), clientAddrLength);
+    }
+
+    close(sockfd);
+}
+
+
+/*
  *  客户端和服务器之间没有连接
  *  所有的请求都是数据请求，不需要创建专门的连接描述符，直接向对方的地址发送数据即可
+ *  updServer:
+ *      1. 创建服务端socket
+ *      2. 绑定地址、端口号
+ *      3. 阻塞读取数据，读取到数据后进行处理，向对端返回数据
  */
 void udpServer(uint16_t port){
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -595,11 +645,11 @@ void udpServer(uint16_t port){
 
 
 int main(int argc, char* argv[]){
-    string ip = "172.25.240.1";
-    uint16_t port = 9000;
+    string ip = "172.29.112.1";
+    uint16_t port = 60000;
     string message = "login";
 
-    udpServer(port);
+    udpClient(ip, port);
 
     return 0;
 }

@@ -409,11 +409,15 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (const char*)&ttl, sizeof(ttl));
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, (const char*)&loopback, sizeof(loopback));
 
+    /*
+     * 客户端：将发送端口加入组播监听组
+     * 服务器：将所有网卡加入组播监听组
+     */
 	memset(&req, 0, sizeof(req));
 	req.imr_multiaddr.s_addr = htonl((((uint32_t)224U) << 24U) | ((uint32_t)251U));
 	if (saddr)
 		req.imr_interface = saddr->sin_addr;
-	if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&req, sizeof(req)))
+	if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&req, sizeof(req)))    //将指定网卡加入组播监听组
 		return -1;
 
 	struct sockaddr_in sock_addr;
@@ -426,6 +430,7 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
 #endif
 	} else {
 		memcpy(&sock_addr, saddr, sizeof(struct sockaddr_in));
+        //指定发送组播报文的端口
 		setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&sock_addr.sin_addr,
 		           sizeof(sock_addr.sin_addr));
 #ifndef _WIN32
@@ -433,6 +438,8 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
 #endif
 	}
 
+    //客户端：地址为通配符，端口号为0
+    //服务器：地址为通配符，端口号为5353
 	if (bind(sock, (struct sockaddr*)&sock_addr, sizeof(struct sockaddr_in)))
 		return -1;
 
