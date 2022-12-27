@@ -4,8 +4,12 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(srcDirectory unix stl)
+set(srcDirectory unix)
 
 foreach(elem ${srcDirectory})
     add_subdirectory(${elem})
 endforeach()
+
+#INSTALL
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/out" CACHE STRING "the path to use for make install" FORCE)
+install(TARGETS unixfile DESTINATION bin)

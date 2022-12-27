@@ -1,10 +1,14 @@
 
+#include <cstdlib>
+#include <ctime>
+
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <thread>
+
 #include <unistd.h>
 #include <fcntl.h>
-#include <string>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
 using namespace std;
 
 /*
@@ -61,8 +65,64 @@ void file3(){
     close(fd);
 }
 
+/*
+ * 从标准输入读取数据，将数据写至标准输出
+ * 重定位标准输入、标准输出，达到复制文件的目的
+ * 将打印信息输出到标准错误
+ */
+void stdinout(){
+#define BUFFSIZE 1024
+    time_t before = time(nullptr);
+    stringstream beforess;
+    beforess << before << std::endl;
+    write(STDERR_FILENO, beforess.str().c_str(), beforess.str().size());
+
+    ssize_t n;
+    char buf[BUFFSIZE];
+    while((n = read(STDIN_FILENO, buf, BUFFSIZE)) > 0){
+        if(write(STDOUT_FILENO, buf, n) != n){
+            std::cout << "write error..." << std::endl;
+            exit(-1);
+        }
+    }
+    if(n < 0){
+        std::cout << "read error...." << std::endl;
+    }
+
+    time_t after = time(nullptr);
+    stringstream afterss;
+    afterss << after << std::endl;
+    write(STDERR_FILENO, afterss.str().c_str(), afterss.str().size());
+}
+
+
+/*
+ *  dup, dup2
+ */
+void dupTest(){
+    int fdFirst = dup(1);
+    int fdSecond = dup2(1, 4);
+    std::cout << "fdFirst: " << fdFirst << ", fdSecond: " << fdSecond << std::endl;
+
+    thread thread1([fdFirst]{
+        for(int i = 0; i < 100; ++i){
+            write(fdFirst, "hello\n", 6);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    thread thread2([fdSecond]{
+        for(int i = 0; i < 100; ++i){
+            write(fdSecond, "world\n", 6);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    thread1.join();
+    thread2.join();
+}
 
 int main(int argc, char* argv[]){
-    file3();
+    dupTest();
     return 0;
 }
