@@ -21,38 +21,6 @@ void out(bool b){
     cout << (b ? "found" : "not found") << endl;
 }
 
-
-/*
- * Match：将整个输入拿来比对某个正则表达式
- * 如果匹配成功
- *      1. 因为是完全匹配，前缀和后缀为空
- *      2. "匹配合格之整体string"或"第n个匹配合格之substring"的内容、长度、位置
- *      3. smatch的大小为 1 + 捕获分组的数量
- *
- *  Class std::match_results<>是个template，必须依据其所处理的字符的iterator类型而实例化。
- *  typedef match_results<string::const_iterator>  smatch;   针对string类型
- *
- *  match_results对象内含：
- *      prefix(): sub_match对象
- *      suffix(): sub_match对象
- *      一个sub_match对象m[0]，表现"匹配合格之所有字符"
- *      对于任何capture group，你可以访问一个对应的sub_match对象m[n]
- *      size()可取得sub_match对象的个数
- *
- *  match_results对象作为一个整体来看，提供了
- *      成员函数size(): sub_match对象的个数
- *      成员函数str()：“匹配合格之整体string”或“第n个匹配合格之substring”
- *      成员函数length()：“匹配合格之整体string的长度”或“第n个匹配合格之substring的长度”
- *      成员函数position()：“匹配合格之整体string的开始位置”或“第n个匹配合格之substring的开始位置”
- *      成员函数begin()、cbegin()、end()和cend()可用来迭代sub_match对象，从m[0]到m[n]
- *
- *  sub_match对象：派生自pair<>
- *      str()：以string形式取得字符
- *      length()：可取得字符数量
- *      first成员是第一字符的位置，second成员是最末字符的下一个位置
- *      operator << 将字符写至某个stream
- *
- */
 void fullMatch(){
     string str1 = ":<tag>value</tag>:";
     smatch sm;

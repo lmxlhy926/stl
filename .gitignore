@@ -35,3 +35,4 @@
 .idea/
 cmake-build-debug-wsl_ubuntu
 cmake-build-debug
+cmake-build-wsl
