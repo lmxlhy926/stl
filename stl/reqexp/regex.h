@@ -18,12 +18,12 @@ void regex_search_iterator();
 //匹配时，尝试匹配最长的匹配项
 void regex_search_maxlong();
 
-//用迭代器匹配
-void regex_iterator();
+//迭代器访问一个字符串中所有匹配的match_results
+void regex_iterator_test();
 
 //用正则表达式切分字符串
 void regex_token();
 
-void test7();
+void regex_replace_test();
 
 #endif //STL_REGEX_H

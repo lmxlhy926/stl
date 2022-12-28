@@ -1,15 +1,15 @@
 #include <regex>
 #include <iostream>
+#include "regex.h"
 
 
 using namespace std;
 
-int main(int argc, char *argv[]){
-
+void test(){
     /*
-     * 完整匹配：返回值标识是否匹配成功
-     * 查询匹配结果
-     */
+    * 完整匹配：返回值标识是否匹配成功
+    * 查询匹配结果
+    */
 
     smatch sm;
     string str = "prefix<tag>hello<tag>suffix";
@@ -35,7 +35,11 @@ int main(int argc, char *argv[]){
 //        std::cout << beg->str() << " " << beg->length() << " " << *(beg->first) << " " << *(beg->second -1) << std::endl;
         std::cout << *beg << std::endl;
     }
+}
 
+
+int main(int argc, char *argv[]){
+    regex_token();
 
     return 0;
 }
