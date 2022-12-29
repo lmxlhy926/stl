@@ -29,6 +29,13 @@ using namespace std;
  * size()指示match_result对象包含的sub_match对象，但是不包括prefix、suffix。
  * 遍历时从m[0]到m[n]，不包括prefix、suffix
  *
+ * match_results对象作为一个整体来看，提供了如下方法**
+ *		size()：sub_match对象的个数
+ *		str()：“匹配合格之整体string”或“第n个匹配合格之substring”
+ *		length()：“匹配合格之整体string的长度”或“第n个匹配合格之substring的长度”
+ *		position()：“匹配合格之整体string的开始位置”或“第n个匹配合格之substring的开始位置”
+ *		begin()、cbegin()、end()、cend()：可用来迭代sub_match对象，从m[0]到m[n]
+ *
  * sub_match对象：派生自pair<>
  *		str()：以string形式取得字符
  *		length()：可取得字符数量
@@ -204,7 +211,7 @@ void regex_iterator_test(){
  *      0：  匹配之正则表达式
  *      n：  第n个匹配次表达式
  */
-void regex_token(){
+void regex_token_iterator_test(){
     string data = "<person>\n"
                   "<first>Nico</first>\n"
                   "<last>Josuttis</last>\n"
@@ -233,6 +240,14 @@ void regex_token(){
 
 /*
  * 将“匹配某个正则表达式的字符序列”替换为“另一个字符序列”
+ * 必须指明一个替代动作，并在其中以字符$表示“匹配之次表达式”
+ *      $& ： 整个匹配表达式
+ *      $n ： 第n个matched capture group
+ *      $
+ *
+ *  替换执行原理：
+ *      1. 执行搜索匹配，找到所有的匹配项（match_results）
+ *      2. 按照replacement，替换指定的匹配项。replacement中可以指定前缀、后缀、整体匹配，捕获组
  */
 void regex_replace_test(){
     string data = "<person>\n"
@@ -242,7 +257,25 @@ void regex_replace_test(){
     cout << "data: " << data << endl;
 
     regex reg("<(.*)>(.*)</(\\1)>");
+    //
     cout << regex_replace(data, reg, R"($1 == "$2")", regex_constants::format_first_only) << endl;
+    cout << "------------------" << endl;
+    cout << regex_replace(data, reg, R"($1 == "$2")") << endl;
+    cout << "------------------" << endl;
     cout << regex_replace(data, reg, R"($&)", regex_constants::format_first_only) << endl;
 }
 
+void ecmaTest(){
+    string data = "<person>\n"
+                  "<first>Nico</first>\n"
+                  "<last>Josuttis</last>\n"
+                  "</person>\n";
+    cout << "data: " << data << endl;
+
+    regex rg(R"(<(.*)>(.*)</(\1)>)");
+    string outStr;
+    regex_replace(back_inserter(outStr), data.cbegin(), data.cend(),
+                          rg, R"($1 == "$2")",regex_constants::format_no_copy);
+
+    cout << outStr << std::endl;
+}

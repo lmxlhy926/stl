@@ -39,7 +39,7 @@ void test(){
 
 
 int main(int argc, char *argv[]){
-    regex_token();
+    ecmaTest();
 
     return 0;
 }

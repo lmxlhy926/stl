@@ -22,8 +22,10 @@ void regex_search_maxlong();
 void regex_iterator_test();
 
 //用正则表达式切分字符串
-void regex_token();
+void regex_token_iterator_test();
 
 void regex_replace_test();
+
+void ecmaTest();
 
 #endif //STL_REGEX_H
