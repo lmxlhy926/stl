@@ -26,9 +26,6 @@ ssize_t rio_readn(int fd, void *usrbuf, size_t n){
 
         nleft -= nread;   //更新待读字节数
         bufp += nread;    //更新写入地址
-
-        std::cout << "nread: " << nread << std::endl;
-        std::cout << "nleft: " << nleft << std::endl;
     }
 
     return n - nleft;   // 最终实际读取到的字节数（>=0）
@@ -61,7 +58,7 @@ ssize_t rio_writen(int fd, char *usrbuf, size_t n){
 
 void rio_readinitb(rio_t *rp, int fd){
     rp->rio_fd = fd;
-    rp->rio_cnt = 0;    //buffer中当前可被读取的字节数
+    rp->rio_cnt = 0;                //buffer中当前可被读取的字节数
     rp->rio_bufptr = rp->rio_buf;   //bufptr指针指向buffer开头
 }
 
