@@ -2,13 +2,20 @@
 // Created by 78472 on 2023/1/31.
 //
 
-#include <cstring>
 #include <cstdio>
 #include <string>
 #include <array>
 
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+
+#define SERVERADDR "127.0.0.1"
+#define SERVERPORT 6666
+using namespace std;
+
 
 /*
     1. 创建一个套接字s
@@ -18,13 +25,7 @@
     5. 处理服务器返回的数据
     6. 退出程序
  */
-
-#define SERVERADDR "127.0.0.1"
-#define SERVERPORT 6666
-
-using namespace std;
-int main(int argc, char* argv[]){
-
+void client(){
     array<char, 1024> sendContent = {"hello world"};
     char receiveBuf[1024];                  //接收服务器返回的数据
     char ipStrBuffer[INET_ADDRSTRLEN];      //存储数据来源主机的ip地址
@@ -49,6 +50,7 @@ int main(int argc, char* argv[]){
             break;
         }
 
+        printf("addrlength: %d\n", fromAddrLength);
         printf("recevie from %s at PORT %d: %s\n",
                inet_ntop(AF_INET, &fromAddr.sin_addr.s_addr, ipStrBuffer, INET_ADDRSTRLEN),
                ntohs(fromAddr.sin_port),
@@ -57,5 +59,39 @@ int main(int argc, char* argv[]){
     }
 
     close(clientFd);
+}
+
+/**
+ * UDP协议可以通过connect()设置对端地址，可以使用send()直接向特定的服务器发送数据，不再需要单独指定服务器地址
+ */
+void client2(){
+    array<char, 1024> sendContent = {"hello world"};
+    int clientFd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    //指定服务器地址
+    struct sockaddr_in serverAddr{};
+    serverAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, SERVERADDR, &serverAddr.sin_addr.s_addr);
+    serverAddr.sin_port = htons(SERVERPORT);
+
+    //设置默认对等地址
+    connect(clientFd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr));
+
+    for(int i = 0; i < 100; ++i){
+        //向服务器发送数据
+        send(clientFd, sendContent.data(), sendContent.size(), 0);
+    }
+    for(int i = 0; i < 1000000; ++i){
+        //向服务器发送数据
+        send(clientFd, "xxxxxxxxxxxx", 4, 0);
+    }
+
+    close(clientFd);
+}
+
+
+int main(int argc, char* argv[]){
+    client2();
+
     return 0;
 }
