@@ -1,33 +1,141 @@
 
 #include <cstdio>
-
+#include <cstring>
+#include <cstdlib>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <linux/if.h>       //网络接口相关函数
-#include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
 
-using namespace std;
-int main(int argc, char* argv[]){
-#define BUFSIZE 1024
-    char buf[BUFSIZE];
-    struct ifconf ifconf{};     //存储所有的网络接口信息
-    ifconf.ifc_buf = buf;
-    ifconf.ifc_len = BUFSIZE;
+void getip(){
+    int inet_sock;
+    struct ifreq ifr{};
+    inet_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    ioctl(sockfd, SIOCGIFCONF, &ifconf);
-    printf("ifc_len: %d\n", ifconf.ifc_len);
+    strcpy(ifr.ifr_name, "eth0");
+    if (ioctl(inet_sock, SIOCGIFADDR, &ifr) <  0){
+        perror("ioctl");
+    }
+    printf("%s\n", inet_ntoa(((struct sockaddr_in*)&(ifr.ifr_addr))->sin_addr));
+}
 
-    for(int i = 0; i < ifconf.ifc_len / sizeof(ifconf); ++i){
-        struct ifreq *ifreq = ifconf.ifc_req + i;   //存储单个网络接口信息
-        char sockbuf[INET_ADDRSTRLEN];
-        printf("name = [%s]\n", ifreq->ifr_name);
-        printf("local address = [%s]\n", inet_ntop(AF_INET, &ifreq->ifr_addr, sockbuf, INET_ADDRSTRLEN));
+
+#define MAX_INTERFACE	(16)
+void port_status(unsigned int flags)
+{
+    if(flags & IFF_UP)
+    {
+        printf("is up\n");
+    }
+    if(flags & IFF_BROADCAST)
+    {
+        printf("is broadcast\n");
+    }
+    if(flags & IFF_LOOPBACK)
+    {
+        printf("is loop back\n");
+    }
+    if(flags & IFF_POINTOPOINT)
+    {
+        printf("is point to point\n");
+    }
+    if(flags & IFF_RUNNING)
+    {
+        printf("is running\n");
+    }
+    if(flags & IFF_PROMISC)
+    {
+        printf("is promisc\n");
+    }
+}
+
+/* set == 0: do clean , set == 1: do set! */
+int set_if_flags(char *pif_name, int sock, int status, int set)
+{
+    struct ifreq ifr{};
+    strncpy(ifr.ifr_name, pif_name, strlen(pif_name) + 1);
+    int ret = ioctl(sock, SIOCGIFFLAGS, &ifr);
+    if(ret)
+        return -1;
+    /* set or clean */
+    if(set)
+        ifr.ifr_flags |= status;
+    else
+        ifr.ifr_flags &= ~status;
+    /* set flags */
+    ret = ioctl(sock, SIOCSIFFLAGS, &ifr);
+    if(ret)
+        return -1;
+
+    return 0;
+}
+
+int get_if_info(int fd)
+{
+    struct ifreq buf[MAX_INTERFACE];
+    struct ifconf ifc{};
+    int ret = 0;
+    int if_num = 0;
+
+    ifc.ifc_len = sizeof(buf);
+    ifc.ifc_buf = (caddr_t) buf;
+
+    ret = ioctl(fd, SIOCGIFCONF, (char*)&ifc);
+    if(ret)
+    {
+        printf("get if config info failed");
+        return -1;
     }
 
-    close(sockfd);
+    /* 网口总数 ifc.ifc_len 应该是一个出入参数 */
+    if_num = ifc.ifc_len/sizeof(struct ifreq);
+    printf("interface num is interface = %d\n", if_num);
+    while(if_num-- > 0)
+    {
+        printf("net device: %s\n", buf[if_num].ifr_name);
+        /* 获取第n个网口信息 */
+        ret = ioctl(fd, SIOCGIFFLAGS, (char*)&buf[if_num]);
+        if(ret)
+            continue;
+
+        /* 获取网口状态 */
+        port_status(buf[if_num].ifr_flags);
+
+        /* 获取当前网卡的ip地址 */
+        ret = ioctl(fd, SIOCGIFADDR, (char*)&buf[if_num]);
+        if(ret)
+            continue;
+        printf("IP address is: \n%s\n", inet_ntoa(((struct sockaddr_in *)(&buf[if_num].ifr_addr))->sin_addr));
+
+        /* 获取当前网卡的mac */
+        ret = ioctl(fd, SIOCGIFHWADDR, (char*)&buf[if_num]);
+        if(ret)
+            continue;
+
+        printf("%02x:%02x:%02x:%02x:%02x:%02x\n\n",
+               (unsigned char)buf[if_num].ifr_hwaddr.sa_data[0],
+               (unsigned char)buf[if_num].ifr_hwaddr.sa_data[1],
+               (unsigned char)buf[if_num].ifr_hwaddr.sa_data[2],
+               (unsigned char)buf[if_num].ifr_hwaddr.sa_data[3],
+               (unsigned char)buf[if_num].ifr_hwaddr.sa_data[4],
+               (unsigned char)buf[if_num].ifr_hwaddr.sa_data[5]
+        );
+    }
+}
+
+
+int main()
+{
+    int fd;
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(fd > 0)
+    {
+        get_if_info(fd);
+        close(fd);
+    }
 
     return 0;
 }
