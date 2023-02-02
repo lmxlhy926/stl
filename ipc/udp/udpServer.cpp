@@ -101,6 +101,9 @@ void server2(){
                ntohs(cliaddr.sin_port),
                string(buf, nReceive).c_str());
 
+        string ack = "find ack";
+        sendto(sockfd, ack.data(), ack.size(), 0,
+               reinterpret_cast<struct sockaddr*>(&cliaddr), cliaddr_len);
         sleep(2);
     }
 
