@@ -61,6 +61,7 @@ void client(){
     close(clientFd);
 }
 
+
 /**
  * UDP协议可以通过connect()设置对端地址，可以使用send()直接向特定的服务器发送数据，不再需要单独指定服务器地址
  */
@@ -89,6 +90,14 @@ void client2(){
     close(clientFd);
 }
 
+/*
+    发送主播数据时，只需要地址是组播地址就可以
+ */
+void client3(){
+
+
+
+}
 
 int main(int argc, char* argv[]){
     client2();
