@@ -6,14 +6,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <iostream>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/socket.h>
 
-#define MULTICAST_GROUP "224.0.0.88"
-#define PORT 30000
+#define MULTICAST_GROUP "224.0.0.251"
+#define PORT 5353
+using namespace std;
 
 
 /*
@@ -23,8 +25,8 @@
             多播地址是一个组标识，没有网络号和主机号，整体作为一个标识，标识一个逻辑组
     3. 通过setsockopt()指定特性协议层的一些属性
  */
-using namespace std;
-int main(int argc, char* argv[]){
+
+void server1(){
     int servFd = socket(AF_INET, SOCK_DGRAM, 0);
     if(servFd == -1){
         perror("creat socket");
@@ -80,10 +82,42 @@ int main(int argc, char* argv[]){
         printf("receive from [%s] at port[%d]\n",
                inet_ntop(AF_INET, &from.sin_addr, ipAddr, INET_ADDRSTRLEN),
                ntohs(from.sin_port)
-               );
+        );
+
+        std::cout << "nReceive: " << nReceive << std::endl;
         printf("    %s\n", string(buf, nReceive).data());
         sleep(3);
     }
+}
+
+
+void server2(){
+    int servFd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(servFd == -1){
+        perror("socket");
+        exit(-1);
+    }
+
+    //加入多播组
+    struct ip_mreq ipMreq{};
+    ipMreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    inet_pton(AF_INET, "224.0.0.251", &ipMreq.imr_multiaddr);
+    setsockopt(servFd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &ipMreq, sizeof(ipMreq));
+
+    while(true){
+        char buf[1024];
+        struct sockaddr_in from{};
+        socklen_t fromLength;
+        ssize_t nReceive = recvfrom(servFd, buf, 1024, 0,
+                                    reinterpret_cast<struct sockaddr*>(&from), &fromLength);
+        std::cout << "nReceive: " << nReceive << std::endl;
+    }
+}
+
+
+int main(int argc, char* argv[]){
+   server1();
+   return 0;
 }
 
 

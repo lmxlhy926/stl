@@ -14,15 +14,16 @@
 #include <net/if.h>
 #include <sys/socket.h>
 
-#define MULTICAST_GROUP "224.0.0.88"
-#define PORT 30000
+#define MULTICAST_GROUP "224.0.0.251"
+#define PORT 5353
 
 /*
     发送组播数据：
         向特定的组发送数据，和向特定主机发送数据是一样的，只要ip地址为多播地址即可。
  */
 using namespace std;
-int main(int argc, char* argv[]){
+
+void client1(){
     int clientFd = socket(AF_INET, SOCK_DGRAM, 0);
     if(clientFd == -1){
         perror("socket");
@@ -42,6 +43,11 @@ int main(int argc, char* argv[]){
         std::cout << "send....." << std::endl;
         sleep(3);
     }
+}
+
+
+int main(int argc, char* argv[]){
+    client1();
 
     return 0;
 }

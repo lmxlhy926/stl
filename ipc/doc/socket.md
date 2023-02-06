@@ -177,6 +177,21 @@ accept函数等待来自**客户端的连接请求到达帧听描述符listenfd*
 
 ### **getaddrinfo**
 
+addrinfo结构
+
+```c
+struct addrinfo{
+    int 				ai_flags;		// 指示参数标志
+    int 				ai_family;		// first arg to socket funciton
+    int 				ai_socktype;	// second arg to socket function
+    int 				ai_protocol;	// third arg to socket funciton
+    char 				*ai_canonname;	// 官方名字
+    size_t 				ai_addrlen;		// size of ai_addr struct
+    struct sockaddr		*ai_addr;		// ptr to socket address structure
+    struct addrinfo 	*ai_next;		// ptr to next item in linked list
+};
+```
+
 ```c
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -199,15 +214,12 @@ const char* gai_strerror(int errcode);
 
 host参数可以是域名，也可以是点分十进制IP地址。service参数可以是服务名（如http），也可以是十进制端口号。
 
-可选的参数hints是一个addrinfo结构，它提供对getaddrinfo返回的套接字地址列表的更好的控制。只能设置下列字段：`ai_family`, `ai_socktype`, `ai_protocol`, `ai_flags`字段。其它字段必须设置为0。实际中我们用`memset`将整个结构清零，然后有选择的设置一些字段。
+可选的参数hints是一个addrinfo结构，**它提供对getaddrinfo返回的套接字地址列表的更好的控制**。只能设置下列字段：`ai_family`, `ai_socktype`, `ai_protocol`, `ai_flags`字段。其它字段必须设置为0。实际中我们用`memset`将整个结构清零，然后有选择的设置一些字段。
 
-**`ai_family`**：默认返回IPv4和IPv6套接字地址。`AF_INET`可将列表限制为IPv4地址
-
-**`ai_socktype`**：默认对于host关联的每个地址返回3个addrinfo结构，每个的ai_socktype字段不同。设置此字段可将返回的地址限制为指定的类型。如`SOCK_STREAM`将类型限制为连接类型。
-
-**`ai_protocol`**：限制指定的协议。
-
-**`ai_flags`**：该字段是一个位掩码，可以进一步指导转换的行为。
+- **`ai_family`**：默认返回IPv4和IPv6套接字地址。`AF_INET`可将列表限制为IPv4地址
+- **`ai_socktype`**：默认对于host关联的每个地址返回3个addrinfo结构，每个的ai_socktype字段不同。设置此字段可将返回的地址限制为指定的类型。如`SOCK_STREAM`将类型限制为连接类型。
+- **`ai_protocol`**：限制指定的协议。
+- **`ai_flags`**：**该字段是一个位掩码，可以进一步指导转换的行为**。
 
 ​		`AI_NUMERICSERV`：service默认可以是服务名或者端口号。这个标志强制参数service为端口号。
 
@@ -225,13 +237,14 @@ int getnameinfo(const struct sockaddr* sa, socklen_t salen,
                char* service, size_t servlen,
                int flags);
 	返回：如果成功则为0，如果错误则为非零的错误代码。
-该函数将套接字地址结构sa转换为对应的主机和服务名字符串，并将它们赋值到host和service缓冲区。
-如果不想要主机名，可以把host设置为nullptr，hostlen设置为0。对服务字段来说一样。但是必须设置一个。
 ```
+
+**该函数将套接字地址结构sa转换为对应的主机和服务名字符串，并将它们赋值到host和service缓冲区。**
+**如果不想要主机名，可以把host设置为nullptr，hostlen设置为0。对服务字段来说一样。但是必须设置一个。**
 
 **flags**：这是一个位掩码，可以用于指导转换的默认行为。
 
-​		`NI_NUMERICHOST`：默认试图返回host对应的域名，设置该标志，会使函数返回一个数字地址字符串。
+​		`NI_NUMERICHOST`：默认试图返回host对应的域名，设置该标志，会使函数返回一个点分十进制地址字符串。
 
 ​		`NI_NUMERICSERV`：默认会检查  `/etc/services`，如果可能，会返回服务名而不是端口号。设置该标志会使函数跳过查找，简单地返回端口号。
 
