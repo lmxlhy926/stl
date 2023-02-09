@@ -4,9 +4,12 @@
 
 
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
-#include <unistd.h>
 #include <dirent.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
 
 int searchDir(int argc, char* argv[]){
     DIR *dirPtr;    //指向目录
@@ -42,8 +45,54 @@ int readFile(){
     exit(0);
 }
 
+int get(){
+    int c;
+    while((c = getc(stdin)) != EOF){    //从标准输入读取一个字符
+        if(putc(c, stdout) == EOF){     //向标准输出写入一个字符
+            printf("output error\n");
+        }
+    }
+    if(ferror(stdin)){  //判断退出是否是因为读取错误导致的
+        printf("input error\n");
+    }
+    exit(0);
+}
+
+int processid(){
+    printf("hello world from process ID %ld\n", static_cast<long>(getpid()));   //打印当前进程ID
+    exit(0);
+}
+
+
+int basicShell(){
+    char buf[1024];
+    pid_t pid;  //进程ID
+    printf("%% ");
+    while(fgets(buf, 1024, stdin) != nullptr){  //从标准输入读取命令
+        if(buf[strlen(buf) -1] == '\n'){
+            buf[strlen(buf) -1] = 0;
+        }
+
+        if((pid = fork()) < 0){     //fork()函数出错
+            printf("fork error\n");
+            exit(-1);
+        }else if(pid == 0){     //子进程
+            execlp(buf, buf, nullptr);  //加载新程序执行
+            printf("couldnt execute: %s\n", buf);
+            exit(-1);
+        }
+
+        int status;
+        if(waitpid(pid, &status, 0) < 0){   //回收子进程
+            printf("waitpid error\n");
+        }
+        printf("%% ");
+    }
+    exit(0);
+}
 
 int main(int argc, char* argv[]){
-    readFile();
+    basicShell();
+
     return 0;
 }
