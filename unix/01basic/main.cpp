@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <cerrno>
 
 
 int searchDir(int argc, char* argv[]){
@@ -91,8 +92,62 @@ int basicShell(){
     exit(0);
 }
 
-int main(int argc, char* argv[]){
-    basicShell();
+void error(int argc, char* argv[]){
+    //strerror()：返回出错码对应的出错字符串
+    fprintf(stderr, "EACCES: %s\n", strerror(EACCES));
+    errno = ENOENT;
+    //将标准错误上产生一条出错消息
+    perror(argv[0]);
+    exit(0);
+}
 
+void printId(){
+    //打印用户id,组id
+    printf("uid = %d, gid = %d\n", getuid(), getgid());
+    exit(0);
+}
+
+void sig_int(int signo){
+    printf("interrupt...\n%% ");
+}
+
+void signalFunc(){
+#define MAXLINE 1024
+    char buf[MAXLINE];  //存储输入字符串
+    pid_t pid;          //进程ID
+    int status;         //回收进程的退出状态
+
+    if(signal(SIGINT, sig_int) == SIG_ERR){     //注册信号处理函数
+        printf("signal error\n");
+        exit(-1);
+    }
+
+    printf("%% ");
+    while(fgets(buf, MAXLINE, stdin) != nullptr){   //从标准输入读取字符串
+        if(buf[strlen(buf) - 1] == '\n'){   //保证以null字符结尾
+            buf[strlen(buf) -1] = 0;
+        }
+        if((pid = fork()) < 0){     //创建新进程
+            perror("fork error");
+            exit(-1);
+        }else if(pid == 0){     //子进程
+            execlp(buf, buf, nullptr);  //加载新程序
+            printf("couldnt execute: %s\n", buf);
+            exit(127);
+        }
+
+        if(waitpid(pid, &status, 0) < 0){   //回收子进程
+            perror("waitpid error");
+            exit(-1);
+        }
+        printf("%% ");
+    }
+
+    exit(0);
+}
+
+
+int main(int argc, char* argv[]){
+    signalFunc();
     return 0;
 }
