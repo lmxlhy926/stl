@@ -22,10 +22,9 @@ using namespace std;
  *                  都没有指定，则打开文件，文件偏移量指示在文件开头处，每次从当前偏移量处开始进行操作。
  */
 
-int getLocation(int fd){
-    return static_cast<int>(lseek(fd, 0, SEEK_CUR));
+off_t getLocation(int fd){
+    return lseek(fd, 0, SEEK_CUR);
 }
-
 
 
 /*
@@ -52,11 +51,11 @@ void readFileContent(){
 void positionForward(){
     char readBuf[1024];
     int fd = openat(AT_FDCWD, "a.txt", O_RDWR | O_CREAT, 0666);
-    printf("pos: %d\n", getLocation(fd));   //初始位置，位置0
+    printf("pos: %ld\n", getLocation(fd));   //初始位置，位置0
     read(fd, readBuf, 5);
-    printf("pos: %d\n", getLocation(fd));   //读取5个字节，位置5
+    printf("pos: %ld\n", getLocation(fd));   //读取5个字节，位置5
     write(fd, "world", 5);
-    printf("pos: %d\n", getLocation(fd));   //从位置5写5个字节，位置10
+    printf("pos: %ld\n", getLocation(fd));   //从位置5写5个字节，位置10
     close(fd);
 }
 
@@ -67,13 +66,39 @@ void positionForward(){
 void writeAppend(){
     int fd = open("a.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
     lseek(fd, 0, SEEK_SET);     //定位到文件开头
-    printf("pos: %d\n", getLocation(fd));
+    printf("pos: %ld\n", getLocation(fd));
     write(fd, "world", 5);             //不管当前位置在哪里，<先定位到文件末尾，然后开始写操作>
-    printf("pos: %d\n", getLocation(fd));
+    printf("pos: %ld\n", getLocation(fd));
     lseek(fd, 0, SEEK_SET);     //定位到文件起始处
-    printf("pos: %d\n", getLocation(fd));
+    printf("pos: %ld\n", getLocation(fd));
     write(fd, "12345", 5);            //再写入数据
-    printf("pos: %d\n", getLocation(fd));
+    printf("pos: %ld\n", getLocation(fd));
+    close(fd);
+}
+
+
+/*
+ * lseek仅将当前的文件偏移量记录在内核中，它并不引起任何I/O操作。然后该偏移量用于下一个读或者写操作。
+ *
+ * 文件偏移量可以大于文件的当前长度，在这种情况下，对文件的下一次写将加长该文件并在文件中构成一个空洞，这一点是允许的。
+ * 位于文件中但没有写过的字节都被读为0
+ *
+ * 尽管可以实现64位文件偏移量，但是能否创建一个大于2GB的文件则依赖于底层文件系统的类型。
+ */
+void filehole(){
+    char buf1[] = "abcdefg";
+    char buf2[] = "ABCDEFG";
+    int fd = open("/home/lhy/file.hole", O_RDWR | O_CREAT, 0666);
+    write(fd, buf1, 7);                 //pos: 7
+    lseek(fd, 16384, SEEK_SET);   //pos: 16384
+    write(fd, buf2, 7);                  //pos: 16391
+
+    lseek(fd, 0, SEEK_SET);     //定位到文件开头
+    char buf3[1024];
+    read(fd, buf3, 16);
+    for(int i = 0; i < 16; ++i){
+        printf("%d\n", buf3[i]);      //位于文件中但是没有被写过的字节都被读为0
+    }
     close(fd);
 }
 
@@ -88,17 +113,17 @@ void stdinout(){
     time_t begin = time(nullptr);
     stringstream ss;
     ss << "start: " << begin << std::endl;
-    write(STDOUT_FILENO, ss.str().c_str(), ss.str().size());
+    write(STDERR_FILENO, ss.str().c_str(), ss.str().size());
 
     ssize_t nRead;
     char buf[BUFFSIZE];
-    while((nRead = read(STDIN_FILENO, buf, BUFFSIZE)) > 0){
-        if(write(STDOUT_FILENO, buf, nRead) != nRead){
+    while((nRead = read(STDIN_FILENO, buf, BUFFSIZE)) > 0){    //从标准输入读取数据
+        if(write(STDOUT_FILENO, buf, nRead) != nRead){             //将数据写至标准输出
             fprintf(stderr, "write error...\n");
             exit(-1);
         }
     }
-    write(STDOUT_FILENO, "\n", 1);
+
     if(nRead < 0){
         fprintf(stderr, "read error....\n");
     }
@@ -106,7 +131,7 @@ void stdinout(){
     time_t end = time(nullptr);
     stringstream ss1;
     ss1 << "end: " << end << std::endl;
-    write(STDOUT_FILENO, ss1.str().c_str(), ss1.str().size());
+    write(STDERR_FILENO, ss1.str().c_str(), ss1.str().size());
 }
 
 
@@ -149,6 +174,6 @@ void dupTest(){
 }
 
 int main(int argc, char* argv[]){
-    dupTest();
+    filehole();
     return 0;
 }
