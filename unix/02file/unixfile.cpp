@@ -147,25 +147,51 @@ void redirectionTest(){
     write(STDERR_FILENO, str.c_str(), 5);
 }
 
+
+/*
+ * 同一个文件在同一个进程中打开2次：2个文件描述符指向2个不同的文件表项，但是2个文件表项指向的是同一个i节点表项
+ * 由于指向的是2个文件表项，每个文件表项有独立的文件位置偏移量，所有会发生数据覆盖的问题
+ * 使用O_APPEND可以解决数据覆盖的问题
+ */
+void openFileTwice(){
+    int fd1 = open("a.txt", O_WRONLY | O_CREAT , 0666);
+    int fd2 = open("a.txt", O_WRONLY | O_CREAT , 0666);
+    std::cout << "fd1: " << fd1 << ", fd2: " << fd2 << std::endl;
+
+    thread thread1([fd1]{
+        for(int i = 0; i < 100; ++i){
+            write(fd1, "hello-", 6);
+        }
+    });
+
+    thread thread2([fd2]{
+       for(int i = 0; i < 100; ++i){
+           write(fd2, "world-", 6);
+       }
+    });
+
+    thread1.join();
+    thread2.join();
+}
+
+
 /*
  *  复制文件描述符，使得多个文件描述符指向同一个文件
  */
 void dupTest(){
-    int fdFirst = dup(1);
-    int fdSecond = dup2(1, 4);
-    std::cout << "fdFirst: " << fdFirst << ", fdSecond: " << fdSecond << std::endl;
+    int third = dup(STDOUT_FILENO);
+    int four = dup2(STDOUT_FILENO, 4);
+    std::cout << "fdFirst: " << third << ", fdSecond: " << four << std::endl;
 
-    thread thread1([fdFirst]{
+    thread thread1([third]{
         for(int i = 0; i < 100; ++i){
-            write(fdFirst, "hello\n", 6);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            write(third, "hello-", 6);
         }
     });
 
-    thread thread2([fdSecond]{
+    thread thread2([four]{
         for(int i = 0; i < 100; ++i){
-            write(fdSecond, "world\n", 6);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            write(four, "world-", 6);
         }
     });
 
@@ -174,6 +200,6 @@ void dupTest(){
 }
 
 int main(int argc, char* argv[]){
-    filehole();
+    dupTest();
     return 0;
 }
