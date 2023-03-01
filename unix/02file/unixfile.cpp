@@ -199,7 +199,64 @@ void dupTest(){
     thread2.join();
 }
 
+
+//打印标志位
+int fileFlags(int argc, char* argv[]){
+    int val;
+    if(argc != 2){
+        printf("usage: a.out <descriptor>\n");
+        exit(-1);
+    }
+    if((val = fcntl(atoi(argv[1]), F_GETFL, 0)) < 0){
+        printf("fcntl error for fd %d\n", atoi(argv[1]));
+    }
+
+    switch(val & O_ACCMODE){    //取得访问方式位
+        case O_RDONLY:
+            printf("read only");
+            break;
+        case O_WRONLY:
+            printf("write only");
+            break;
+        case O_RDWR:
+            printf("read write");
+            break;
+        default:
+            printf("unknown access mode");
+    }
+
+    if(val & O_APPEND)
+        printf(", append");
+    if(val & O_NONBLOCK)
+        printf(", nonblocking");
+    if(val & O_SYNC)
+        printf(", synchronous writes");
+
+    putchar('\n');
+    exit(0);
+}
+
+
+//设置标志位
+void set_fl(int fd, int flags){
+    int val;
+    if((val = fcntl(fd, F_GETFL, 0)) < 0){      //获取标志位
+        printf("fcntl F_GETFL error\n");
+        exit(-1);
+    }
+
+    val |= flags;   //添加标志位
+
+    if(fcntl(fd, F_SETFL, val) < 0){    //设置标志位
+        printf("fcntl F_SETFL error\n");
+        exit(-1);
+    }
+}
+
+
 int main(int argc, char* argv[]){
-    dupTest();
+    set_fl(STDOUT_FILENO, O_APPEND | O_SYNC | O_NONBLOCK);
+    fileFlags(argc, argv);
+
     return 0;
 }
