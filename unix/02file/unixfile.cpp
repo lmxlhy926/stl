@@ -22,6 +22,8 @@ using namespace std;
  *                  都没有指定，则打开文件，文件偏移量指示在文件开头处，每次从当前偏移量处开始进行操作。
  */
 
+
+//获取当前偏移量
 off_t getLocation(int fd){
     return lseek(fd, 0, SEEK_CUR);
 }
@@ -61,7 +63,8 @@ void positionForward(){
 
 
 /*
- * O_APPEND: 写操作之前，文件偏移量移动到文件末尾，这2步是一个原子操作
+ * O_APPEND:
+ *      写操作之前，不管当前文件偏移量在哪里，文件偏移量移动到文件末尾，这2步是一个原子操作
  */
 void writeAppend(){
     int fd = open("a.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
@@ -86,25 +89,25 @@ void writeAppend(){
  * 尽管可以实现64位文件偏移量，但是能否创建一个大于2GB的文件则依赖于底层文件系统的类型。
  */
 void filehole(){
-    char buf1[] = "abcdefg";
-    char buf2[] = "ABCDEFG";
+    char bufLowCase[] = "abcdefg";
+    char bufUpCase[]  = "ABCDEFG";
     int fd = open("/home/lhy/file.hole", O_RDWR | O_CREAT, 0666);
-    write(fd, buf1, 7);                 //pos: 7
-    lseek(fd, 16384, SEEK_SET);   //pos: 16384
-    write(fd, buf2, 7);                  //pos: 16391
+    write(fd, bufLowCase, 7);                 //pos: 7
+    lseek(fd, 16384, SEEK_SET);         //pos: 16384
+    write(fd, bufUpCase, 7);                  //pos: 16391
 
     lseek(fd, 0, SEEK_SET);     //定位到文件开头
-    char buf3[1024];
-    read(fd, buf3, 16);
+    char readBuf[1024];
+    read(fd, readBuf, 16);
     for(int i = 0; i < 16; ++i){
-        printf("%d\n", buf3[i]);      //位于文件中但是没有被写过的字节都被读为0
+        printf("%d\n", readBuf[i]);      //位于文件中但是没有被写过的字节都被读为0
     }
     close(fd);
 }
 
 
 /*
- * 从标准输入读取数据，将数据写至标准输出
+ * 从标准输入读取数据，将数据写至标准输出。通过设置读取缓冲区大小，可以调节执行速度。
  * 重定位标准输入、标准输出，达到复制文件的目的
  * 将打印信息输出到标准错误
  */
@@ -201,14 +204,11 @@ void dupTest(){
 
 
 //打印标志位
-int fileFlags(int argc, char* argv[]){
+int printFileFlags(int fd){
     int val;
-    if(argc != 2){
-        printf("usage: a.out <descriptor>\n");
-        exit(-1);
-    }
-    if((val = fcntl(atoi(argv[1]), F_GETFL, 0)) < 0){
-        printf("fcntl error for fd %d\n", atoi(argv[1]));
+    if((val = fcntl(fd, F_GETFL, 0))  == -1){
+        printf("fcntl error for fd %d\n", fd);
+        return -1;
     }
 
     switch(val & O_ACCMODE){    //取得访问方式位
@@ -233,30 +233,30 @@ int fileFlags(int argc, char* argv[]){
         printf(", synchronous writes");
 
     putchar('\n');
-    exit(0);
+    return 0;
 }
 
 
 //设置标志位
-void set_fl(int fd, int flags){
+int set_fl(int fd, int flags){
     int val;
-    if((val = fcntl(fd, F_GETFL, 0)) < 0){      //获取标志位
+    if((val = fcntl(fd, F_GETFL, 0)) == -1){     //获取标志位
         printf("fcntl F_GETFL error\n");
-        exit(-1);
+        return -1;
     }
 
-    val |= flags;   //添加标志位
+    val |= flags;   //设置标志位
 
-    if(fcntl(fd, F_SETFL, val) < 0){    //设置标志位
+    if(fcntl(fd, F_SETFL, val) == -1){          //存储标志位
         printf("fcntl F_SETFL error\n");
-        exit(-1);
+        return -1;
     }
+    return 0;
 }
 
 
 int main(int argc, char* argv[]){
-    set_fl(STDOUT_FILENO, O_APPEND | O_SYNC | O_NONBLOCK);
-    fileFlags(argc, argv);
+    filehole();
 
     return 0;
 }

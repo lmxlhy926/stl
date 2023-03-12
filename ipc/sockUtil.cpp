@@ -641,15 +641,3 @@ void udpServer(uint16_t port){
 
     close(sockfd);
 }
-
-
-
-int main(int argc, char* argv[]){
-    string ip = "172.29.112.1";
-    uint16_t port = 60000;
-    string message = "login";
-
-    udpClient(ip, port);
-
-    return 0;
-}
