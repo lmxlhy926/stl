@@ -1,3 +1,4 @@
+add_subdirectory(newFeature)
 add_subdirectory(container)
 add_subdirectory(exception)
 add_subdirectory(functionObject)
