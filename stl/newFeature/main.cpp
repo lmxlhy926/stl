@@ -48,7 +48,7 @@ public:
     sampleA(int, int){
         std::cout << "sampleA(int, int)...." << std::endl;
     }
-    sampleA(std::initializer_list<int>){
+    sampleA(std::initializer_list<int>){    //接受一个初值列作为参数
         std::cout << "sampleA(std::initializer_list<int>)..." << std::endl;
     }
 };
@@ -98,6 +98,7 @@ void uniform(){
     fp(p{1, 2});            // explicit conversion of {1, 2} into p
     fp(p{1, 2, 3});      // explicit conversion of {1, 2, 3} into p
 }
+//------------------------------------------------------------------------------------------------------
 
 
 
@@ -128,11 +129,111 @@ void lamda(){
     };
     qq();
 }
+//------------------------------------------------------------------------------------------------------
+
+
+/*
+ * range-based for循环
+ */
+
+class RangeBase{
+public:
+    RangeBase(){
+        std::cout << "RangeBase()..." << std::endl;
+    }
+    explicit RangeBase(int a){
+        std::cout << "RangeBase(int a)..." << std::endl;
+    }
+    RangeBase(const RangeBase& base){
+        std::cout << "RangeBase(const RangeBase& base)..." << std::endl;
+    }
+    RangeBase& operator= (const RangeBase& other){
+        std::cout << "operator= ..." << std::endl;
+        return *this;
+    }
+    ~RangeBase(){
+        std::cout << "~RangeBase()..." << std::endl;
+    }
+};
+
+void range_based_for(){
+    for(int i : {1, 2, 3}){
+        std::cout << i << std::endl;
+    }
+
+    RangeBase rbase;
+    std::vector<RangeBase> vec;
+    vec.reserve(10);
+    vec.emplace_back(rbase);      //创建临时对象，拷贝构造，临时对象析构
+    vec.emplace_back(rbase);
+    std::cout << "--------" << std::endl;
+
+    for(RangeBase rb : vec){    //针对每个元素会调用拷贝构造函数、析构函数
+
+    }
+    std::cout << "--------" << std::endl;
+
+
+    for(RangeBase& rb : vec){   //使用引用，避免每个元素的拷贝构造函数和析构函数
+
+    }
+    std::cout << "--------" << std::endl;
+
+
+    const RangeBase rbValue = rbase;             //拷贝构造
+    const RangeBase& rbReference = rbase;        //引用赋值
+}
+
+
+/*
+ * range-base for循环的本质定义式
+ * 本质上是转换为下列2种格式进行处理的
+ */
+void range_based_for1(){
+    std::vector<int> vec;
+
+    for(auto pos = vec.begin(); pos != vec.end(); ++pos){
+        const auto elem = *pos;       //值访问，会构造一个临时对象，使用完后析构掉
+        std::cout << elem << std::endl;
+    }
+
+    for(auto pos = vec.begin(); pos != vec.end(); ++pos){
+        const auto& elem = *pos;    //引用访问，不会构造临时对象
+        std::cout << elem << std::endl;
+    }
+}
+//------------------------------------------------------------------------------------------------------
+
+class MoveClass{
+public:
+    MoveClass(){
+        std::cout << "MoveClass()..." << std::endl;
+    }
+    MoveClass(const MoveClass& mc){
+        std::cout << "MoveClass(const MoveClass& mc)..." << std::endl;
+    }
+    MoveClass(MoveClass&& mv) noexcept {
+        std::cout << "MoveClass(MoveClass&& mv)..." << std::endl;
+    }
+    ~MoveClass(){
+        std::cout << "~MoveClass()..." << std::endl;
+    }
+};
+
+/*
+ * std::move()自身并不做任何moving工作，它只是将其实参转换为一个所谓的rvalue reference，那是一种申明为X&&的类型。
+ * 必须确保对于被传对象的任何改动——特别是析构——都不至于冲击新对象的状态。
+ */
+void move(){
+    MoveClass mc;
+    std::vector<MoveClass> vec;
+    vec.push_back(std::move(mc));
+}
 
 
 
 int main(int argc, char* argv[]){
-    lamda();
+    move();
 
     return 0;
 }
