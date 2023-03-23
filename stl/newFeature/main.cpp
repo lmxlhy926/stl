@@ -204,6 +204,7 @@ void range_based_for1(){
 }
 //------------------------------------------------------------------------------------------------------
 
+
 class MoveClass{
 public:
     MoveClass(){
@@ -225,15 +226,43 @@ public:
  * 必须确保对于被传对象的任何改动——特别是析构——都不至于冲击新对象的状态。
  */
 void move(){
-    MoveClass mc;
+    MoveClass mc;                   //default构造函数创建一个新对象
     std::vector<MoveClass> vec;
-    vec.push_back(std::move(mc));
+    vec.reserve(10);
+    vec.push_back(mc);              //调用拷贝构造函数创建一个新对象
+    vec.push_back(std::move(mc));   //调用move构造函数创建一个新对象
+}/* 3个对象析构 */
+
+/*
+ * 如果只实现void foo(X&), 而没有实现void foo(X&&);
+ *      foo()可因lvalue但不能因rvalue被调用；
+ *
+ * 如果实现void foo(const X&), 而没有实现void foo(X&&);
+ *      foo()可因lvalue也可因rvalue被调用
+ *
+ * 如果实现void foo(X&), void foo(X&&); 或 void foo(const X&), void foo(X&&);
+ *      可以区分"为rvalue服务"和"为lvalue服务"
+ *
+ * 如果只实现void foo(X&&)
+ *      foo()可因右值被调用，当尝试以lvalue调用它，会触发编译错误。
+ */
+
+void lrvalue(MoveClass& m){         //只能是左值
+    std::cout << "lrvalue(MoveClass& m)..." << std::endl;
+}
+
+void lrvalue(const MoveClass& m){   //左值、右值都可以
+    std::cout << "lrvalue(const MoveClass& m)..." << std::endl;
+}
+
+void lrvalue(MoveClass&& m){       //只能是右值
+    MoveClass mc = std::move(m);
+    std::cout << "lrvalue(MoveClass&& m)..." << std::endl;
 }
 
 
-
 int main(int argc, char* argv[]){
-    move();
+    lrvalue(MoveClass());
 
     return 0;
 }
