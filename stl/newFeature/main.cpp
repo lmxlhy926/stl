@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <vector>
+#include <cstdarg>
 using namespace std;
 
 /*
@@ -259,10 +260,83 @@ void lrvalue(MoveClass&& m){       //只能是右值
     MoveClass mc = std::move(m);
     std::cout << "lrvalue(MoveClass&& m)..." << std::endl;
 }
+//------------------------------------------------------------------------------------------------------
 
+/*
+    可变形参函数：在编写阶段无法确定参数个数，有时甚至无法确定参数类型的函数。
+    定义一个函数，最后一个参数为省略号，省略号前面可以设置自定义参数。
+常用的宏有：
+    va_start(ap, last_arg)：初始化可变参数列表。
+    ap是一个 va_list 类型的变量，last_arg是最后一个固定参数的名称（也就是可变参数列表之前的参数）。该宏将ap指向可变参数列表中的第一个参数。
+
+    va_arg(ap, type)：获取可变参数列表中的下一个参数。
+    ap是一个va_list类型的变量，type是下一个参数的类型。该宏返回类型为type的值，并将ap指向下一个参数。
+
+    va_end(ap)：结束可变参数列表的访问。ap是一个va_list类型的变量。该宏将ap置为NULL。
+    使用宏va_end()来清理赋予va_list变量的内存。
+
+以下摘自《C陷阱与缺陷》
+    这里有一个陷阱需要避免：
+    va_arg宏的第2个参数不能被指定为char、short或者float类型。
+    因为char和short类型的参数会被转换为int类型，而float类型的参数会被转换为double类型 ……
+    例如，这样写肯定是不对的：
+        c = va_arg(ap,char);
+    因为我们无法传递一个char类型参数，如果传递了，它将会被自动转化为int类型。上面的式子应该写成：
+        c = va_arg(ap,int);
+    C标准对默认实际参数提升规则有明确规定。也就是说带有可变长参数列表的函数， 绝对不会接受到char类型的实际参数。
+
+    函数必须根据已有信息（既有约定，或确定实参）来确定可变参数的具体个数与类型。
+    函数原型中、省略号必须在参数列表的末尾；也就是说函数原型中参数列表省略号的右边不能再出现参数。
+
+    printf()函数通过分析第一个字符串参数中的占位符个数来确定形参的个数；通过占位符的不同来确定参数类型（%d表示int类型、%s表示char *）；
+    它也有上述提到的安全问题，如果不小心少提供了个实参，那么越界访问就会发生。
+ */
+void minprintf(char *fmt, int a, ...)   //规定参数 + 可变参数
+{
+    va_list ap;             //创建指针，将会指向可变参数列表
+    va_start(ap, a);        //将ap指向第一个未命名参数
+
+    char *p, *sval;
+    int ival;
+    double dval;
+
+    for (p = fmt; *p; p++) {
+        if (*p != '%') {
+            putchar(*p);
+            continue;
+        }
+        switch (*++p) {
+            case 'd':
+                ival = va_arg(ap, int);     //通过参数列表，参数类型，获取参数的值
+                printf("%d", ival);
+                break;
+            case 'f':
+                dval = va_arg(ap, double);  //type<double>
+                printf("%f", dval);
+                break;
+            case 's':
+                for (sval = va_arg(ap, char *); *sval; sval++)  //此处参数类型为指针，获取指针指向的地址值
+                    putchar(*sval);
+                break;
+            default:
+                putchar(*p);
+                break;
+        }
+    }
+    va_end(ap); /* clean up when done */
+}
+
+void print(){}  //参数为0时，调用函数结束调用
+template <typename T, typename... Types>
+void  print(const T& firstArg, const Types&... args){
+    std::cout << "---size: " << sizeof...(args) << std::endl;   //可变参数的个数
+    std::cout << firstArg << std::endl;
+    print(args...);     //递归调用
+}
 
 int main(int argc, char* argv[]){
-    lrvalue(MoveClass());
+    print("hello", "world");
+
 
     return 0;
 }
