@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <cstdarg>
+#include <map>
+#include <functional>
 using namespace std;
 
 /*
@@ -98,37 +100,6 @@ void uniform(){
     //fp({1, 2, 3});              // ERROR due to explicit
     fp(p{1, 2});            // explicit conversion of {1, 2} into p
     fp(p{1, 2, 3});      // explicit conversion of {1, 2, 3} into p
-}
-//------------------------------------------------------------------------------------------------------
-
-
-
-/*
- * lambda
- */
-void lamda(){
-    []{
-        std::cout << "hello lambda..." << std::endl;
-    }();
-
-    auto l = []{ std::cout << "hello lambda..." << std::endl;};
-    l();
-
-    int x, y;
-    x = y = 10;
-    auto q = [x, &y]() mutable {
-        x++;    //passed by value，必须声明mutable才能更改其值
-        y++;
-        std::cout << "x: " << x << std::endl;
-    };
-    q();
-    q();
-    std::cout << "x: " << x << ", y: " << y << std::endl;
-
-    auto qq = [=, &y]{
-        //y捕获引用，其它捕获值
-    };
-    qq();
 }
 //------------------------------------------------------------------------------------------------------
 
@@ -334,8 +305,124 @@ void  print(const T& firstArg, const Types&... args){
     print(args...);     //递归调用
 }
 
+//Template Typedef，带别名的模板
+template<typename T>
+class smartPtr{
+private:
+    T* ptr;
+public:
+    explicit smartPtr(T* pointer) : ptr(pointer){}
+
+    ~smartPtr(){
+        if(ptr != nullptr){
+            delete ptr;
+        }
+    }
+};
+using smartPtrMoveClass = smartPtr<MoveClass>;
+//------------------------------------------------------------------------------------------------------
+
+
+/*
+ * lambda
+ */
+void lamda(){
+    []{
+        std::cout << "hello lambda..." << std::endl;
+    }();    //直接调用lambda
+
+    auto l = []{ std::cout << "hello lambda..." << std::endl;};
+    l();    //将lambda传递给对象，使之能被调用
+
+    int x, y;
+    x = y = 10;
+    auto q = [x, &y]() mutable {    //捕获值，捕获引用
+        x++;    //passed by value，必须声明mutable才能更改其值
+        y++;
+        std::cout << "x: " << x << std::endl;
+    };
+    q();
+    q();
+    std::cout << "x: " << x << ", y: " << y << std::endl;
+
+    auto qq = [=, &y]{  //所有捕获值，y捕获引用
+    };
+    qq();
+}
+
+//lambda的返回类型
+std::function<int(int, int)> returnLambda(){
+    return [](int x, int y){
+        return x * y;
+    };
+}
+//------------------------------------------------------------------------------------------------------
+
+/*
+ * 关键字decltype:
+ *      新关键字decltype可让编译器找出表达式类型
+ *      decltype的应用之一是声明返回类型，或用来传递一个lambda类型
+ */
+void declType(){
+    std::map<int, int> coll;
+    std::map<int, int>::value_type valueTypeA;
+    decltype(coll)::value_type valueTypeB;
+
+    //传递一个lambda类型
+    auto compare = [](int a, int b){};
+    std::map<int, int, decltype(compare)> Map(compare);
+}
+//------------------------------------------------------------------------------------------------------
+
+/*
+ *  c++11允许我们定义scoped enumeration, 又称为strong enumeration或enumeration class.
+ *  重点在于，在enum之后指明关键字class.
+ *      1. 绝不会隐式转换至/自int
+ *      2. 如果数值不在enumeration被声明的作用域内，你必须改写为className::member形式。
+ *      3. 你可以明显定义底层类型，并因此获得一个保证大小。
+ */
+enum colorEnum{
+    red = 1,
+    blue,
+    yellow
+};
+
+enum class colorClass{
+    red,
+    blue,
+    yellow
+};
+
+enum class colorClass_{   //2个不同的枚举类，定义的枚举元素时独立的
+    red,
+    blue,
+    yellow
+};
+
+void color1(colorEnum c){
+    if(c == red){
+        std::cout << "red..." << std::endl;
+    }else if(c == blue){
+        std::cout << "blue..." << std::endl;
+    }else if(c == yellow){
+        std::cout << "yellow..." << std::endl;
+    }else if(red == 1){
+        std::cout << "枚举类型和数值相互转换..." << std::endl;
+    }
+}
+
+void color2(colorClass c){
+    if(c == colorClass::red){
+        std::cout << "red..." << std::endl;
+    }else if(c == colorClass::blue){
+        std::cout << "blue..." << std::endl;
+    }else if(c == colorClass::yellow){
+        std::cout << "yellow..." << std::endl;
+    }
+}
+
+
 int main(int argc, char* argv[]){
-    print("hello", "world");
 
 
     return 0;
