@@ -9,10 +9,13 @@ int main(int argc, char* argv[]){
 
     svr.Post("/", [](const httplib::Request& request, httplib::Response &res) {
         res.set_content("Hello World!", "text/plain");
-        std::cout << "contentReceive: " << request.body << std::endl;
+        std::cout << "<----------->" << std::endl;
     });
 
-    svr.listen("0.0.0.0", 6666);
+    svr.set_keep_alive_max_count(5);
+    svr.set_keep_alive_timeout(100);
+
+    svr.listen("0.0.0.0", 9999);
 }
 
 

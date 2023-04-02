@@ -2,12 +2,12 @@
 #include "httplib/httplib.h"
 #include <map>
 #include <string>
+#include <csignal>
 
 using namespace std;
 using namespace httplib;
 
 std::map<string, std::unique_ptr<httplib::Client>> clientMap;
-
 
 void sendRequest(string& ip, int port, string& message){
     string iport;
@@ -31,14 +31,19 @@ void sendRequest(string& message){
 }
 
 
-int main(int argc, char* argv[]){
+void sigHandler(int){
     string message = "hello";
     string ip = "127.0.0.1";
-    int port = 6666;
-
-    for(int i = 0; i < 100; i++){
+    int port = 9999;
+    for(int i = 0; i < 1000; i++){
         sendRequest(ip, port, message);
     }
+    std::cout << "----send---->" << std::endl;
+}
+
+int main(int argc, char* argv[]){
+
+    ::signal(SIGQUIT, sigHandler);
 
     while(true){
         sleep(10);
