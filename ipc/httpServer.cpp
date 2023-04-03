@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
         std::cout << "<----------->" << std::endl;
     });
 
-    svr.set_keep_alive_max_count(5);
+    svr.set_keep_alive_max_count(100);
     svr.set_keep_alive_timeout(100);
 
     svr.listen("0.0.0.0", 9999);

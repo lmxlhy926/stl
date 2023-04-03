@@ -22,23 +22,28 @@ void sendRequest(string& ip, int port, string& message){
 }
 
 
-void sendRequest(string& message){
-    string ip = "127.0.0.1";
-    int port = 6666;
-    httplib::Client client(ip, port);
-    client.set_keep_alive(true);
-    httplib::Result result =  client.Post("/", message, "text/json");
-}
+//void sendRequest(string& message){
+//    string ip = "127.0.0.1";
+//    int port = 6666;
+//    httplib::Client client(ip, port);
+//    client.set_keep_alive(true);
+//    httplib::Result result =  client.Post("/", message, "text/json");
+//}
 
 
 void sigHandler(int){
     string message = "hello";
     string ip = "127.0.0.1";
     int port = 9999;
-    for(int i = 0; i < 1000; i++){
+    time_t sendStart = time(nullptr);
+    for(int i = 0; i < 100; i++){
+        time_t start = time(nullptr);
         sendRequest(ip, port, message);
+        time_t end = time(nullptr);
+        std::cout << "--interval: " << end - start << std::endl;
     }
-    std::cout << "----send---->" << std::endl;
+    time_t sendEnd = time(nullptr);
+    std::cout << "---------->sendEdn: " << sendEnd - sendStart << std::endl;
 }
 
 int main(int argc, char* argv[]){
