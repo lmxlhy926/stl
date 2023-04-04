@@ -46,9 +46,54 @@ void sigHandler(int){
     std::cout << "---------->sendEdn: " << sendEnd - sendStart << std::endl;
 }
 
+void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
+    //服务器地址
+    struct sockaddr_in servaddr{};      //IPV4地址结构
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;      //指定为IPV4地址族
+    inet_pton(AF_INET, ip.c_str(), &servaddr.sin_addr.s_addr);  //点分十进制ip地址--->网络字节序二进制地址
+    servaddr.sin_port = htons(port);    //主机字节序端口号--->网络字节序端口号
+
+    //创建套接字描述符
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    std::cout << "sockfd: " << sockfd << std::endl;
+
+    //阻塞，一直到连接成功建立或者发生错误
+    int conRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr));
+    if(conRet == 0){    //成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
+        std::cout << "established...." << std::endl;
+        sleep(30);
+        write(sockfd, writeMesage.c_str(), writeMesage.size());
+        std::cout << "write end...." << std::endl;
+        sleep(30);
+        while(true){
+            std::cout << "---start to read---" << std::endl;
+            char buf[1024];
+            ssize_t nRead = read(sockfd, buf,  1024);
+            if(nRead <= 0){
+                std::cout << "read Error......" << std::endl;
+                close(sockfd);
+                return;
+            }
+            std::cout << "Response from server: ";
+            std::cout << string(buf, nRead) << std::endl;
+            sleep(20);
+        }
+    }
+
+    close(sockfd);
+}
+
+
+
+
+
 int main(int argc, char* argv[]){
 
     ::signal(SIGQUIT, sigHandler);
+
+    tcpClient("127.0.0.1", 9999, string("hello"));
+
 
     while(true){
         sleep(10);
