@@ -61,11 +61,20 @@ void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
     //阻塞，一直到连接成功建立或者发生错误
     int conRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr));
     if(conRet == 0){    //成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
-        std::cout << "established...." << std::endl;
-        sleep(30);
+//        std::cout << "established...." << std::endl;
+        sleep(5);
+
         write(sockfd, writeMesage.c_str(), writeMesage.size());
-        std::cout << "write end...." << std::endl;
-        sleep(30);
+//        std::cout << "write...." << std::endl;
+//        sleep(5);
+//
+//        ssize_t count = write(sockfd, writeMesage.c_str(), writeMesage.size());
+//        std::cout << "count: " << count << std::endl;
+//
+//        while(true){
+//            sleep(10);
+//        }
+
         while(true){
             std::cout << "---start to read---" << std::endl;
             char buf[1024];
@@ -77,7 +86,9 @@ void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
             }
             std::cout << "Response from server: ";
             std::cout << string(buf, nRead) << std::endl;
-            sleep(20);
+
+            ssize_t writeCount = write(sockfd, writeMesage.c_str(), writeMesage.size());
+            std::cout << "writeCount: " << writeCount << std::endl;
         }
     }
 
@@ -85,6 +96,10 @@ void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
 }
 
 
+/*
+    SHUT_WR: 关闭写操作，向对端发送停止报文
+    SHUT_RD: 关闭读操作，依然可以向对端写数据。双方依然处于建立连接状态
+ */
 
 
 
@@ -92,12 +107,12 @@ int main(int argc, char* argv[]){
 
     ::signal(SIGQUIT, sigHandler);
 
-    tcpClient("127.0.0.1", 9999, string("hello"));
+    tcpClient("127.0.0.1", 9999, string("hell"));
 
-
-    while(true){
-        sleep(10);
-    }
+//
+//    while(true){
+//        sleep(10);
+//    }
 
     return 0;
 }

@@ -52,19 +52,23 @@ void socketServer(){
             return;
         }
         std::cout << "received from " << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ipBuf, sizeof(ipBuf))
-                  << " at port " << ntohs(cliaddr.sin_port) << std::endl;
+                  << " at port " << ntohs(cliaddr.sin_port) << ", readCount: " << readCount << std::endl;
 
         for(int i = 0; i < readCount; ++i){
             receiveBuf[i] = ::toupper(receiveBuf[i]);
         }
         write(connfd, receiveBuf, readCount);
-
-
-
-        shutdown(connfd, SHUT_RDWR);
-
-        //关闭和客户端建立的通信端点
 //        close(connfd);
+//        shutdown(connfd, SHUT_WR);
+        shutdown(connfd, SHUT_RD);
+
+        write(connfd, receiveBuf, readCount);
+        sleep(5);
+
+        write(connfd, receiveBuf, readCount);
+
+
+
     }
 }
 
