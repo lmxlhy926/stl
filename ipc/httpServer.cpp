@@ -1,6 +1,29 @@
 
 #include "httplib/httplib.h"
 #include <string>
+using namespace std;
+
+void readHandler(int){
+    char receiveBuf[1024];
+    ssize_t readCount = read(4, receiveBuf, 1024);
+    if(readCount < 0){
+        std::cout << "read failed...." << std::endl;
+        return;
+    }else if(readCount == 0){
+        std::cout << "no data to read..." << std::endl;
+    }else{
+        std::cout << "read content: " << string(receiveBuf, readCount) << std::endl;
+    }
+}
+
+void writeHandler(int){
+    ssize_t writeCount = write(4, "server", 6);
+    std::cout << "writeCount: " << writeCount << std::endl;
+}
+
+void quitHandler(int){
+    shutdown(4, SHUT_RD);
+}
 
 void socketServer(){
     int optval = 1;
@@ -40,35 +63,17 @@ void socketServer(){
          * 在addr中填写客户端的套接字地址，并返回一个已连接描述符，这个描述符可被利用UNIX IO函数与客户端通信
          */
         int connfd = accept(listenfd, reinterpret_cast<sockaddr*>(&cliaddr), &cliaddr_len);
+        std::cout << "connfd: " << connfd << std::endl;
         if(connfd == -1){
             printf("accept failed\n");
-            return;
+            continue;
         }
 
-        char receiveBuf[1024], ipBuf[INET_ADDRSTRLEN];
-        ssize_t readCount = read(connfd, receiveBuf, 1024);
-        if(readCount <= 0){
-            close(connfd);
-            return;
+        //连接建立成功
+
+        while(true){
+            sleep(20);
         }
-        std::cout << "received from " << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ipBuf, sizeof(ipBuf))
-                  << " at port " << ntohs(cliaddr.sin_port) << ", readCount: " << readCount << std::endl;
-
-        for(int i = 0; i < readCount; ++i){
-            receiveBuf[i] = ::toupper(receiveBuf[i]);
-        }
-        write(connfd, receiveBuf, readCount);
-//        close(connfd);
-//        shutdown(connfd, SHUT_WR);
-        shutdown(connfd, SHUT_RD);
-
-        write(connfd, receiveBuf, readCount);
-        sleep(5);
-
-        write(connfd, receiveBuf, readCount);
-
-
-
     }
 }
 
@@ -85,6 +90,10 @@ int main(int argc, char* argv[]){
 //
 //    svr.listen("0.0.0.0", 9999);
 
+
+    ::signal(SIGUSR1, readHandler);
+    ::signal(SIGUSR2, writeHandler);
+    ::signal(SIGQUIT, quitHandler);
     socketServer();
     return 0;
 }

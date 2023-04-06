@@ -46,6 +46,30 @@ void sigHandler(int){
     std::cout << "---------->sendEdn: " << sendEnd - sendStart << std::endl;
 }
 
+
+void readHandler(int){
+    char buf[1024];
+    ssize_t nRead = read(3, buf,  1024);
+    if(nRead < 0){
+        std::cout << "server socket was closed...." << std::endl;
+    }else if(nRead == 0){
+        std::cout << "no data was read...." << std::endl;
+    }else{
+        std::cout << "Response from server: ";
+        std::cout << string(buf, nRead) << std::endl;
+    }
+}
+
+void writeHandler(int){
+    ssize_t writeCount = write(3, "hell", 4);
+    std::cout << "writeCount: " << writeCount << std::endl;
+}
+
+void quitHandler(int){
+    shutdown(3, SHUT_RD);
+}
+
+
 void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
     //服务器地址
     struct sockaddr_in servaddr{};      //IPV4地址结构
@@ -59,39 +83,16 @@ void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
     std::cout << "sockfd: " << sockfd << std::endl;
 
     //阻塞，一直到连接成功建立或者发生错误
+    std::cout << time(nullptr) << std::endl;
     int conRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr));
+    std::cout << time(nullptr) << std::endl;
     if(conRet == 0){    //成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
-//        std::cout << "established...." << std::endl;
-        sleep(5);
-
-        write(sockfd, writeMesage.c_str(), writeMesage.size());
-//        std::cout << "write...." << std::endl;
-//        sleep(5);
-//
-//        ssize_t count = write(sockfd, writeMesage.c_str(), writeMesage.size());
-//        std::cout << "count: " << count << std::endl;
-//
-//        while(true){
-//            sleep(10);
-//        }
-
+        std::cout << "connect successfully....." << std::endl;
         while(true){
-            std::cout << "---start to read---" << std::endl;
-            char buf[1024];
-            ssize_t nRead = read(sockfd, buf,  1024);
-            if(nRead <= 0){
-                std::cout << "read Error......" << std::endl;
-                close(sockfd);
-                return;
-            }
-            std::cout << "Response from server: ";
-            std::cout << string(buf, nRead) << std::endl;
-
-            ssize_t writeCount = write(sockfd, writeMesage.c_str(), writeMesage.size());
-            std::cout << "writeCount: " << writeCount << std::endl;
+            sleep(20);
         }
     }
-
+    std::cout << "connect failed ...." << std::endl;
     close(sockfd);
 }
 
@@ -100,19 +101,12 @@ void tcpClient(const string& ip, uint16_t port, const string& writeMesage){
     SHUT_WR: 关闭写操作，向对端发送停止报文
     SHUT_RD: 关闭读操作，依然可以向对端写数据。双方依然处于建立连接状态
  */
-
-
-
 int main(int argc, char* argv[]){
+    ::signal(SIGUSR1, readHandler);
+    ::signal(SIGUSR2, writeHandler);
+    ::signal(SIGQUIT, quitHandler);
 
-    ::signal(SIGQUIT, sigHandler);
 
-    tcpClient("127.0.0.1", 9999, string("hell"));
-
-//
-//    while(true){
-//        sleep(10);
-//    }
-
+    tcpClient("172.18.227.77", 9999, string("hell"));
     return 0;
 }
