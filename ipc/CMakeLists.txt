@@ -8,3 +8,7 @@ target_link_libraries(httpclient PRIVATE http)
 
 add_executable(httpserver httpServer.cpp)
 target_link_libraries(httpserver PRIVATE http)
+
+
+add_executable(httpTest main.cpp)
+target_link_libraries(httpTest PRIVATE http)

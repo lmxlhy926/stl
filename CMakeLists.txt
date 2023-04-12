@@ -4,7 +4,7 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(srcDirectory ipc)
+set(srcDirectory ipc unix)
 
 foreach(elem ${srcDirectory})
     add_subdirectory(${elem})

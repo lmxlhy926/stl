@@ -1,7 +1,5 @@
 #include <iostream>
 #include "httplib/httplib.h"
-#include "file.hpp"
-#include "time.h"
 
 using namespace std;
 using namespace httplib;
@@ -62,7 +60,16 @@ void func4(string uri, const string& s1, string& s2){
 }
 
 int main() {
-    func1();
+    httplib::Client cli("localhost", 1234);
+
+    std::string body;
+
+    auto res = cli.Get("/large-data",
+                       [&](const char *data, size_t data_length) {
+                           body.append(data, data_length);
+                           return true;
+                       });
+
 
     return 0;
 }
