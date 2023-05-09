@@ -5,6 +5,8 @@
 #include <unistd.h>
 using namespace std;
 
+
+//用st_mode来判断文件类型
 void printFileProperty(int argc, char** argv){
     int i ;
     struct stat statbuf{};  //文件属性信息
