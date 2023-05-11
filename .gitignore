@@ -31,10 +31,6 @@
 *.out
 *.app
 
-#lhy
-.idea/
-cmake-build-debug-wsl_ubuntu
-cmake-build-debug
-cmake-build-wsl
-cmake-build-cygwin
-build
+/build_X86_64
+.vscode
+
