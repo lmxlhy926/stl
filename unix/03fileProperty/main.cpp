@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 using namespace std;
 
 
@@ -42,10 +43,9 @@ void printFileProperty(int argc, char** argv){
 
 
 int main(int argc, char* argv[]){
-    printFileProperty(argc, argv);
-    while(true){
-        sleep(10);
-    }
+    int fd = open("./a.txt", O_RDWR | O_CREAT, 0666);
+    write(fd, "hello", 5);
+    close(fd);
 
     return 0;
 }
