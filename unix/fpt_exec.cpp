@@ -12,8 +12,6 @@ using namespace std;
 
 char * const argv[] = {const_cast<char *>("ls"), const_cast<char *>("-l"), nullptr};
 
-extern char **environ;
-
 int fptExec(int option)
 {
     pid_t pid = fork();
@@ -47,10 +45,12 @@ int fptExec(int option)
             default:
                 cout << "wrong option number" << endl;
         }
-
+        sleep(3);
+        printf("------>child process end-----\n");
     }else if(pid > 0){  //父进程执行单元
         cout << "i am parent, pid = " << getpid() << endl;
-        wait(nullptr);
+        wait(nullptr);  //等待子进程结束
+        printf("------>parent process end-----\n");
     }
     return 0;
 }

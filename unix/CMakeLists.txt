@@ -5,3 +5,4 @@
 add_subdirectory(01basic)
 add_subdirectory(02file)
 add_subdirectory(03fileProperty)
+add_subdirectory(other)
