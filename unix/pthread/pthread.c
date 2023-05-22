@@ -143,7 +143,6 @@ int func1(void)
 }
 
 
-int func2(void)	//线程分离
 {
 	pthread_t tid;
 	int err;
