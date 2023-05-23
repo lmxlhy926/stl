@@ -1,1 +1,2 @@
-add_executable(pthread main.cpp)
+add_executable(pthreadTest main.cpp)
+target_link_libraries(pthreadTest PRIVATE pthread)
