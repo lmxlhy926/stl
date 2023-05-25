@@ -153,9 +153,136 @@ int test3(void){   //线程取消
 }
 
 
+
+/*
+主要内容：互斥量、读写锁、条件变量
+mutex: 0,1; 互斥量。
+	pthread_mutex_t mutex;
+	初始化：	int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr);
+	加锁：	    int pthread_mutex_lock(pthread_mutex_t *mutex);		//阻塞
+	加锁：	    int pthread_mutex_trylock(pthread_mutex_t *mutex);	//立即返回
+	解锁：	    int pthread_mutex_unlock(pthread_mutex_t *mutex);	//解除阻塞
+	销毁：	    int pthread_mutex_destroy(pthread_mutex_t *mutex);	//销毁
+
+
+rwlock: 读共享，写独占。 读锁、写锁并行阻塞，写锁优先级高。
+	pthread_rwlock_t rwlock;
+	int pthread_rwlock_init(pthread_rwlock_t *restrict rwlock, const pthread_rwlockattr_t *restrict attr);
+	int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);		//读锁定
+	int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock);		//试着读锁定
+	int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);		//写锁定
+	int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock);		//试着写锁定
+	int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);		//解除锁定
+	int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);		//销毁
+
+condition: 和mutex结合
+	//条件变量类型
+	pthread_cond_t condition;
+	//初始化条件变量
+	int pthread_cond_init(pthread_cond_t *restrict cond, const pthread_condattr_t *restrict attr);
+	//释放锁，挂起等待
+	int pthread_cond_wait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex);
+	//释放锁，挂起等待，最多等待一段时间
+	int pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, const struct timespec *restrict abstime);
+	//唤醒一个挂起的等待
+	int pthread_cond_signal(pthread_cond_t *cond);
+	//唤醒所有挂起的等待
+	int pthread_cond_broadcast(pthread_cond_t *cond);
+	//销毁条件变量
+	int pthread_cond_destroy(pthread_cond_t *cond);
+
+
+*/
+
+pthread_mutex_t mutex;
+
+void *thread_exce1(void *arg){
+	for(int i = 0; i < 10; ++i){
+		pthread_mutex_lock(&mutex);  //加锁
+			printf("hello world\n");
+			usleep(10 * 1000);
+			printf("world hello\n");
+		pthread_mutex_unlock(&mutex); //解锁
+		usleep(1);
+	}
+	int* ret = new int;
+	*ret = 100;
+	pthread_exit(ret);
+}
+
+void *thread_exce2(void *arg){
+	while(true){
+		pthread_mutex_lock(&mutex);	
+			printf("***** *****\n");
+		pthread_mutex_unlock(&mutex);
+	}
+	pthread_exit(nullptr);
+}
+
+
+int thread_exece_test(void){
+	pthread_t tid[2];
+	pthread_mutex_init(&mutex, nullptr);  //初始化互斥量
+	pthread_create(&tid[0], nullptr, thread_exce1, nullptr);
+	pthread_create(&tid[1], nullptr, thread_exce2, nullptr);
+
+	pthread_join(tid[0], nullptr);
+	pthread_cancel(tid[1]);
+
+	pthread_mutex_destroy(&mutex);	//销毁互斥量
+	return 0;
+}
+
+
+pthread_rwlock_t rwlock;
+
+void *thread_write(void *arg){
+	while(true){
+		pthread_rwlock_wrlock(&rwlock);	
+			printf("??????????????\n");
+			sleep(2);
+		pthread_rwlock_unlock(&rwlock);
+	}
+	pthread_exit(nullptr);
+}
+
+void *thread_read_first(void *arg){
+	while(true){
+		pthread_rwlock_rdlock(&rwlock);
+			printf("xxxxxxxxxxxxxx\n");
+			usleep(10* 1000);
+			printf("xxxxxxxxxxxxxx\n");
+		pthread_rwlock_unlock(&rwlock);
+	}
+	pthread_exit(nullptr);
+}
+
+void *thread_read_second(void *arg){
+	while(true){
+		pthread_rwlock_rdlock(&rwlock);
+			printf("--------------\n");
+			usleep(10* 1000);
+		pthread_rwlock_unlock(&rwlock);
+	}
+	pthread_exit(nullptr);
+}
+
+int readWriteLockTest(void){
+	pthread_t tid[3];
+	pthread_rwlock_init(&rwlock, nullptr);
+	pthread_create(&tid[0], nullptr, thread_write, nullptr);
+	pthread_create(&tid[2], nullptr, thread_read_first, nullptr);
+	pthread_create(&tid[1], nullptr, thread_read_second, nullptr);
+	sleep(1);
+	pthread_rwlock_destroy(&rwlock);
+	return 0;
+}
+
+
+
 int main(int argc, char* argv[]){
-    test3();
-    sleep(2);
+  	readWriteLockTest();
+	
     return 0;
 }
 

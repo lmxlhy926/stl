@@ -32,7 +32,6 @@ rwlock: 读共享，写独占。 读锁、写锁并行阻塞，写锁优先级�
 	int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);		//解除锁定
 	int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);		//销毁
 
-
 condition: 和mutex结合
 	//条件变量类型
 	pthread_cond_t condition;
@@ -73,53 +72,47 @@ int counter = 0;
 
 void *thread_func1(void *arg)
 {
-	srand(time(NULL));
-	
-	while(1)
-	{
+	while(true){
 		pthread_mutex_lock(&mutex);  //加锁
 			printf("HELLO");
-			sleep(rand()%3);
+			usleep(1));
 			printf("WORLD\n");
-		pthread_mutex_unlock(&mutex);  //解锁
-		sleep(rand()%3);
+		pthread_mutex_unlock(&mutex); //解锁
 	}
-	
-	pthread_exit(NULL);
-	
+	pthread_exit(nullptr);
 }
 
 void *thread_write(void *arg)
 {
 	int i = (int)arg;
-	while(1)
+	while(true)
 	{
 		pthread_rwlock_wrlock(&rwlock);	
 			printf("%dth thread_write, counter == %d\n", i, ++counter);
 		pthread_rwlock_unlock(&rwlock);
 		sleep(1);
 	}
-
-	pthread_exit(NULL);
+	pthread_exit(nullptr);
 }
 
 void *thread_read(void *arg)
 {
 	int i = (int)arg;
-	while(1)
+	while(true)
 	{
 		pthread_rwlock_rdlock(&rwlock);
 			printf("%dth thread_read, counter == %d\n", i, counter);
 		pthread_rwlock_unlock(&rwlock);
 		sleep(1);
 	}
-	pthread_exit(NULL);
+	pthread_exit(nullptr);
 }
+
+
 
 void *thread_producer(void *arg)
 {
-	while(1)
-	{
+	while(true){
 		pthread_mutex_lock(&mutex);
 		counter++;
 		printf("thread_producer counter == %d\n", counter);
@@ -128,15 +121,12 @@ void *thread_producer(void *arg)
 		pthread_cond_signal(&has_product);	//操作完数据释放锁后，执行一次唤醒。
 		sleep(3);
 	}
-
 }
 
 void *thread_consumer(void *arg)
 {
-	while(1)
-	{
+	while(true){
 		pthread_mutex_lock(&mutex);		//锁定
-	
 		while(counter == 0) //不满足条件则阻塞且放弃获得的锁
 		{
 			pthread_cond_wait(&has_product, &mutex);  //当条件满足后，再次尝试获取锁，并进行条件判断。
@@ -150,8 +140,9 @@ void *thread_consumer(void *arg)
 		sleep(1);
 	}
 
-	pthread_exit(NULL);
+	pthread_exit(nullptr);
 }
+
 
 
 //生产者往循环队列里放入数据，消费者从循环队列里读取数据。两者的顺序是一致的。
@@ -160,7 +151,7 @@ void *thread_sem_producer(void *arg)
 {
 //占取一个空位、操作状态、放入完成
 	int i = 0;
-	while(1)
+	while(true)
 	{
 		sem_wait(&empty_number);	//空格-1
 		queue[i] = rand() % 100 +1;
@@ -171,14 +162,14 @@ void *thread_sem_producer(void *arg)
 		sleep(rand() % 3);
 	}
 
-	pthread_exit(NULL);
+	pthread_exit(nullptr);
 }
 
 void *thread_sem_consumer(void *arg)
 {
 //占取一个满位、操作状态、消费完成
 	int i = 0;
-	while(1)
+	while(true)
 	{
 		sem_wait(&product_number);
 		printf("***consume***%d\n", queue[i]);
@@ -189,7 +180,7 @@ void *thread_sem_consumer(void *arg)
 		sleep(rand() % 1);
 	}
 
-	pthread_exit(NULL);
+	pthread_exit(nullptr);
 }
 
 int func1(void);
@@ -206,16 +197,16 @@ int main(void)
 	return 0;
 }
 
-int func1(void)
-{
+
+int func1(void){
 	int flag = 5;
 	pthread_t tid;
-	srand(time(NULL));	//设置随机数种子
+	srand(time(nullptr));	//设置随机数种子
 
-	pthread_mutex_init(&mutex, NULL);  //初始化互斥量
-	pthread_create(&tid, NULL, thread_func1, NULL);
+	pthread_mutex_init(&mutex, nullptr);  //初始化互斥量
+	pthread_create(&tid, nullptr, thread_func1, nullptr);
 	
-	while(1)
+	while(true)
 	{
 		pthread_mutex_lock(&mutex);
 			printf("hello");
@@ -226,53 +217,46 @@ int func1(void)
 	}
 
 	pthread_cancel(tid);
-	pthread_join(tid, NULL);
+	pthread_join(tid, nullptr);
 
 	pthread_mutex_destroy(&mutex);	//销毁互斥量
-
 	return 0;
 }
 
 
-int func2(void)
-{
+int func2(void){
 	pthread_t tid[8];
-	pthread_rwlock_init(&rwlock, NULL);
+	pthread_rwlock_init(&rwlock, nullptr);
 
-	for(int i = 0; i < 3; i++)
-	{
-		pthread_create(&tid[i], NULL, thread_write, (void *)i);
+	for(int i = 0; i < 3; i++){
+		pthread_create(&tid[i], nullptr, thread_write, (void *)i);
 	}
-	for(int i = 0; i < 5; i++)
-	{
-		pthread_create(&tid[i+3], NULL, thread_read, (void *)i);
+	for(int i = 0; i < 5; i++){
+		pthread_create(&tid[i+3], nullptr, thread_read, (void *)i);
 	}
 
-	for(int i = 0; i < 8; i++)
-	{
-		pthread_join(tid[i], NULL);
+	for(int i = 0; i < 8; i++){
+		pthread_join(tid[i], nullptr);
 	}
 
-	
 	pthread_rwlock_destroy(&rwlock);
-
 	return 0;
-	
 }
 
-int func3(void)
-{
+
+
+int func3(void){
 	pthread_t cid, pid;
-	pthread_mutex_init(&mutex, NULL);
-	pthread_cond_init(&has_product, NULL);
+	pthread_mutex_init(&mutex, nullptr);
+	pthread_cond_init(&has_product, nullptr);
 
-	srand(time(NULL));
+	srand(time(nullptr));
 
-	pthread_create(&pid, NULL, thread_producer, NULL);
-	pthread_create(&cid, NULL, thread_consumer, NULL);
+	pthread_create(&pid, nullptr, thread_producer, nullptr);
+	pthread_create(&cid, nullptr, thread_consumer, nullptr);
 
-	pthread_join(pid, NULL);
-	pthread_join(cid, NULL);
+	pthread_join(pid, nullptr);
+	pthread_join(cid, nullptr);
 
 	return 0;
 }
@@ -285,11 +269,11 @@ int func4(void)
 	sem_init(&empty_number, 0, NUM);
 	sem_init(&product_number, 0, 0);
 
-	pthread_create(&pid, NULL, &thread_sem_producer, NULL);
-	pthread_create(&cid, NULL, &thread_sem_consumer, NULL);
+	pthread_create(&pid, nullptr, &thread_sem_producer, nullptr);
+	pthread_create(&cid, nullptr, &thread_sem_consumer, nullptr);
 
-	pthread_join(pid, NULL);
-	pthread_join(cid, NULL);
+	pthread_join(pid, nullptr);
+	pthread_join(cid, nullptr);
 
 	sem_destroy(&empty_number);
 	sem_destroy(&product_number);
