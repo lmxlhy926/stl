@@ -69,11 +69,11 @@ void async_future(){
     try{
        f1 = std::async(std::launch::async, normalFunc, "普通函数");                             //普通函数
        f2 = std::async(std::launch::async, &MemberFuncObj::memberFunc, mfobj, "成员函数");      //成员函数
-       f3 = std::async(std::launch::async, funcObj, "函数对象单参数");                           //函数对象
-       f4 = std::async(std::launch::async, funcObj, "hello", "world");                        //函数对象
-       f5 = std::async(std::launch::async,[]{normalFunc("lamda");});                   //lamda
+       f3 = std::async(std::launch::async, funcObj, "函数对象单参数");                          //函数对象
+       f4 = std::async(std::launch::async, funcObj, "hello", "world");                         //函数对象
+       f5 = std::async(std::launch::async, []{normalFunc("lamda");});                          //lamda
 
-    }catch(const exception& e){
+    }catch(const exception& e){ //不能立即启动则抛出异常
         e.what();
     }
 
@@ -84,8 +84,7 @@ void async_future(){
         f4.get();
         f5.get();
         std::cout << "-----------end------------" << std::endl;
-
-    }catch(const exception& e){
+    }catch(const exception& e){ //例程函数执行过程中如果抛出异常，调用get()会重新抛出该异常
         e.what();
     }
 }
@@ -110,11 +109,12 @@ void future_scope1(){
  */
 void future_scope2(){
     std::cout << "in main thread: " << this_thread::get_id() << std::endl;
+    //创建独立线程，在线程内阻塞执行
     std::async(std::launch::async, []{
         std::cout << "in subthread: " << this_thread::get_id() << std::endl;
         for(int i = 0; i < 5; ++i){
             normalFunc("normal");
-            std::this_thread::yield();
+            std::this_thread::yield();  //释放cpu资源
         }
     });
 
@@ -176,7 +176,7 @@ void future_shared(){
  * thread的基本用法:
  *      调用thread时，如果不能立即启动则会抛出异常
  *      如果在thread执行的例程中抛出异常，但是没有被捕获，则会导致程序结束
- * 使用thread时需要try-catch, 在thread启动的函数内部也需要try-catch.
+ *      使用thread时需要try-catch, 在thread启动的函数内部也需要try-catch.
  */
 void thread(){
     try{
@@ -205,11 +205,11 @@ void thread_callableObj(){
     FuncObj fobj;
 
     try{
-        std::thread f1(normalFunc, "普通函数");                            //普通函数
+        std::thread f1(normalFunc, "普通函数");                           //普通函数
         std::thread f2(&MemberFuncObj::memberFunc, mfobj, "成员函数");    //成员函数
-        std::thread f3(fobj, "函数对象单参数");                            //函数对象
-        std::thread f4(fobj, "hello", "world");                         //函数对象
-        std::thread f5([]{normalFunc("lamda");});                   //lamda
+        std::thread f3(fobj, "函数对象单参数");                           //函数对象
+        std::thread f4(fobj, "hello", "world");                          //函数对象
+        std::thread f5([]{normalFunc("lamda");});                        //lamda
 
         f1.join();
         f2.join();
