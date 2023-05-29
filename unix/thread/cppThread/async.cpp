@@ -138,7 +138,7 @@ void async_future(){
     std::future<void> f4;
     std::future<void> f5;
 
-    //尝试在独立分离的线程内一个callable object: 普通函数, lamda, 成员函数, 函数对象
+    //尝试在独立分离的线程内运行一个callable object: 普通函数, lamda, 成员函数, 函数对象
     try{
        f1 = std::async(std::launch::async, normalFunc, "普通函数");                             //普通函数
        f2 = std::async(std::launch::async, &MemberFuncObj::memberFunc, mfobj, "成员函数");      //成员函数
@@ -168,11 +168,14 @@ void async_future(){
  */
 void future_scope1(){
     std::future<void> f = std::async(std::launch::async, []{
+        std::cout << "in subthread: " << std::this_thread::get_id() << std::endl;
         for(int i = 0; i < 5; ++i){
             normalFunc("noraml");
             sleep(1);
         }
     });
+
+    std::cout << "in main thread: " << std::this_thread::get_id() << std::endl;
     
     //当std::future<>要离开其作用域时，会自动调用get()，阻塞在这里，直到例程函数执行完毕。
 }
@@ -275,10 +278,9 @@ void future_shared(){
 
 
 int main(int argc, char* argv[]){
-    future_shared();
+    future_scope1();
 
     return 0;
-
 }
 
 
