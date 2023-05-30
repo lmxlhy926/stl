@@ -35,7 +35,6 @@ namespace mthread{
             func1();
             this_thread::sleep_for(chrono::seconds (1));
             cout << "**********" << endl;
-
         }
 
         void func3(){
@@ -173,7 +172,7 @@ namespace mthread{
                     if(std::try_lock(printMutex, writeMutex) == -1){
                         /*
                          * 锁定后，将锁过继给lock_guard对象，保证在离开guard对象作用域后解除锁定
-                         * 这里try_lock()锁定2个锁后，如果不过继给lock_guard对象，或者不显示调用unlock(), 则不过自动解锁
+                         * 这里try_lock()锁定2个锁后，如果不过继给lock_guard对象，或者不显示调用unlock(), 则不会自动解锁
                          */
                         std::lock_guard<mutex> l(printMutex, std::adopt_lock);
                         std::lock_guard<mutex> g(writeMutex, std::adopt_lock);
