@@ -6,3 +6,6 @@ target_link_libraries(thread PUBLIC pthread)
 
 add_executable(cppMutex 03_cppMutex.cpp)
 target_link_libraries(cppMutex PUBLIC pthread)
+
+add_executable(cppCondition 04_condition.cpp)
+target_link_libraries(cppCondition PUBLIC pthread)
