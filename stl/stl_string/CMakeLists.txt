@@ -1,2 +1,2 @@
 
-add_executable(stl_string main.cpp stlString.cpp)
+add_executable(stl_string main.cpp)

@@ -10,6 +10,14 @@
 
 using namespace std;
 
+
+/*
+ *  双向列表list对象自身提供了2个pointer或称anchor，用来指向第一个或最末一个元素。
+ *  list不支持随机访问，要访问第5个元素，就必须顺着串链逐一爬过前4个元素。
+ *  由于不支持随机访问，list既不提供subscript操作符，也不提供at()。
+ *  特别的list提供了去重，拼接，排序，合并方法。
+ */
+
 //打印列表元素
 void printLists(std::list<int>& list1, std::list<int>& list2){
     std::cout << "list1: ";
@@ -54,3 +62,15 @@ void container::listfunctions(){
     });
     printLists(list1, list2);
 }
+
+
+
+int main(int argc, char* argv[]){
+
+
+    return 0;
+}
+
+
+
+

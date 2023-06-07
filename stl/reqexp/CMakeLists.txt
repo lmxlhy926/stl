@@ -1,3 +1,3 @@
 
-#add_executable(reqexp main.cpp regex.cpp)
-#target_link_libraries(reqexp PUBLIC pthread)
+add_executable(regexp main.cpp)
+target_link_libraries(regexp PUBLIC pthread)

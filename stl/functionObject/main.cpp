@@ -125,6 +125,11 @@ void staticFuncCall(){
 }
 
 
+/**
+ * 成员函数：
+ *      1. 限定类作用域的函数
+ *      2. 默认接受类对象作为第一个参数
+*/
 void memberFuncCall(){
     funcObject fc("function object");
 
@@ -145,6 +150,7 @@ void memberFuncCall(){
     //函数覆盖器方式1
     std::cout << "-------1-------" << std::endl;
     std::function<int(funcObject, int, int)> addMemberFunc1 = &funcObject::add;
+    std::cout << "-------------- " << std::endl;
     addMemberFunc1(fc, 1, 2);   //传递参数时调用拷贝构造函数
 
     std::cout << "-------2-------" << std::endl;
@@ -162,7 +168,7 @@ void memberFuncCall(){
 
     std::cout << "-------5-------" << std::endl;
     //函数覆盖器方式3
-    std::function<int(int, int)> add_mem_lamda = [&](int first, int second) -> int{
+    std::function<int(int, int)> add_mem_lamda = [&fc](int first, int second) mutable -> int{
         return fc.add(first, second);
     };
     add_mem_lamda(1, 2);
@@ -200,9 +206,9 @@ void functionObjectCall(){
 void lamdaCall(){
     funcObject fo("funcObject");
     string s;
-    auto lamda = [s, fo](int, int)->int{
+    auto lamda = [s, fo](int, int) mutable ->int{
         std::cout << "in lamda call" << std::endl;
-        fo.div(1, 2);
+        fo.add(1, 2);
         std::cout << s << std::endl;
         return 0;
     };
@@ -213,35 +219,55 @@ void lamdaCall(){
 }
 
 
-void map_func_call(){
-    using ArithmeticFunc = std::function<int(int, int)>;
-    funcObject a("Arithmetic_a");
+/**
+ * 用std::function<>的统一形式来容纳：普通函数，成员函数，函数对象，lamda;
+*/
+void uniformFormat(){
+    using ArithmeticType = std::function<int(int, int)>;
+    funcObject fo("funcObject");
+    ArithmeticType a1 = addNormal;
+    ArithmeticType a2 = [&fo](int a, int b) mutable -> int{
+        return fo.add(a, b);
+    };
+    ArithmeticType a3 = fo;
+    ArithmeticType a4 = [](int a, int b){
+        return a + b;
+    };
+}
 
-    //成员函数map
-    std::map<string, ArithmeticFunc> arithmeticFuncMap;
-    arithmeticFuncMap.insert(std::make_pair("addNormal", addNormal));
-    arithmeticFuncMap.insert(std::make_pair("addFuncObject",funcObject("funcObject")));
-    arithmeticFuncMap.insert(std::make_pair("lamda", [](int a, int b){
+
+void callbackFunc(){
+    using ArithmeticType = std::function<int(int, int)>;
+    std::map<string, ArithmeticType> callBackMap;
+    // 普通函数
+    std::cout << "----------1----------" << std::endl;
+    callBackMap.insert(std::make_pair("addNormal", addNormal));
+
+    // 成员函数
+    std::cout << "----------2----------" << std::endl;
+    callBackMap.insert(std::make_pair("memFunc", [](int a, int b) mutable -> int{
+        return funcObject("funcObject").add(a, b);
+    }));
+
+    //函数对象
+    std::cout << "----------3----------" << std::endl;
+    callBackMap.insert(std::make_pair("funcObject", funcObject("funcObject")));
+
+    //lamda
+    std::cout << "----------4----------" << std::endl;
+    callBackMap.insert(std::make_pair("lamda", [](int a, int b) -> int{
         return a + b;
     }));
-    arithmeticFuncMap.insert(std::make_pair("member", [&](int first, int second){
-        return a.add(first, second);
-    }));
+    std::cout << "----------5----------" << std::endl;
 
-
-    std::cout << "-------------" << std::endl;
-
-    std::vector<string> keyVec{"addNormal", "addFuncObject", "lamda", "member"};
-    for(auto& elem : keyVec){
-        auto obj = arithmeticFuncMap.find(elem);
-        if(obj != arithmeticFuncMap.end()){
-            std::cout << obj->second(1, 2) << std::endl;
-        }
+    for(auto& elem : callBackMap){
+        elem.second(1, 2);
+        std::cout << "----------" << elem.first << "----------" << std::endl;
     }
 }
 
 
-void map_memberFunc_call(funcObject& object, string& key){
+void map_memberFunc_call(funcObject& object, const string& key, int a, int b){
     using ArithmeticFuncMember = std::function<int(funcObject&, int, int)>;
     std::map<string, ArithmeticFuncMember> mapFunc;
     mapFunc.insert(std::make_pair("add", &funcObject::add));
@@ -251,15 +277,17 @@ void map_memberFunc_call(funcObject& object, string& key){
 
     auto obj = mapFunc.find(key);
     if(obj != mapFunc.end()){
-        obj->second(object, 1, 2);
+        obj->second(object, a, b);
     }
 }
 
 
 int main(int argc, char* argv[]){
-
-    
-    lamdaCall();
+    funcObject fo("funcObject");
+    map_memberFunc_call(fo, "add", 1, 2);
+    map_memberFunc_call(fo, "sub", 1, 2);
+    map_memberFunc_call(fo, "mul", 1, 2);
+    map_memberFunc_call(fo, "div", 1, 2);
 
 
     return 0;

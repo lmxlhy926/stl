@@ -1,2 +1,2 @@
 
-add_executable(sharePointer main.cpp sharePointer.cpp)
+add_executable(sharePointer main.cpp)

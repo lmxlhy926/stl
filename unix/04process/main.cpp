@@ -38,8 +38,7 @@ int printEnviron(){
 }
 
 //获取环境变量的值
-char * getEnvTest(const char *name)
-{
+char * getEnvTest(const char *name){
     char *p = nullptr;
     for(int i = 0; environ[i] != nullptr; ++i){
         p = strstr(environ[i], "=");    //定位到'='字符
