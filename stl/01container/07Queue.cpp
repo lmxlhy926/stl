@@ -2,7 +2,6 @@
 // Created by 78472 on 2022/1/15.
 //
 
-#include "stack_queue.h"
 #include <iostream>
 #include <stack>
 #include <queue>

@@ -2,7 +2,6 @@
 // Created by 78472 on 2021/11/13.
 //
 
-#include "mlist.h"
 #include <list>
 #include <iostream>
 #include <iterator>
@@ -28,7 +27,7 @@ void printLists(std::list<int>& list1, std::list<int>& list2){
 }
 
 
-void container::listfunctions(){
+void listfunctions(){
     list<int> list1, list2;
 
     for(int i = 0; i < 6; i++){

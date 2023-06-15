@@ -2,8 +2,13 @@
 // Created by 78472 on 2021/7/1.
 //
 
-#include "mvector.h"
+#include <vector>
+#include <string>
+#include <iostream>
+#include <iterator>
+#include <deque>
 
+using namespace std;
 
 /*
 vector

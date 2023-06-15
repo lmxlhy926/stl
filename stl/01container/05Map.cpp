@@ -2,10 +2,14 @@
 // Created by lhy on 2021/3/20.
 //
 
-#include "mmap.h"
+#include <map>
+#include <string>
+#include <iostream>
+
 #include <algorithm>
 #include <functional>
 
+using namespace std;
 
 /*
  *  1. 将key/value pair当做元素进行管理，它们可根据key的排序准则自动为元素排序

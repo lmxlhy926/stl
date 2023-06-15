@@ -2,7 +2,6 @@
 // Created by 78472 on 2021/10/27.
 //
 
-#include "marray.h"
 #include <array>
 #include <iostream>
 #include <string>
