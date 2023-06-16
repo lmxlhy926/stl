@@ -91,10 +91,85 @@ func(key, value)
 print("key: ", key)
 print("value: ", value)
 
+print("----------------------------")
+
+
+mytable = {}
+print("mytable 的类型是 ",type(mytable))
+
+mytable[1]= "Lua"
+mytable["wow"] = "修改前"
+
+print("mytable 是 ", mytable)
+print("mytable[1]: ", mytable[1])
+print("mytable[wow]: ", mytable["wow"])
+
+-- alternatetable和mytable的是指同一个 table
+alternatetable = mytable
+alternatetable["wow"] = "修改后"
+print("mytable[1]: ", mytable[1])
+print("mytable[wow]: ", mytable["wow"])
+
+-- 释放变量
+alternatetable = nil
+print("alternatetable 是 ", alternatetable)
+print("mytable[1]: ", mytable[1])
+print("mytable[wow]: ", mytable["wow"])
+
+mytable = nil
+print("mytable 是 ", mytable)
+print("----------------------------")
+
+
+fruits = {"banana","orange","apple"}
+
+-- 在末尾插入
+table.insert(fruits,"mango")
+print("索引为 4 的元素为 ",fruits[4])
+
+-- 在索引为 2 的键处插入
+table.insert(fruits,2,"grapes")
+print("索引为 2 的元素为 ",fruits[2])
+
+for key, value in ipairs(fruits) do
+    print(key, value)
+end
+
+
+
+table.remove(fruits, 3)
+print("------")
+for key, value in ipairs(fruits) do
+    print(key, value)
+end
+print("----------------------------")
+
+
+function table_maxn(t)
+    local mn=nil;
+    for k, v in ipairs(t) do
+      if(mn==nil) then
+        mn=v
+        end
+      if mn < v then
+        mn = v
+        end
+    end
+    return mn
+end
+  tbl = {[1] = 2, [2] = 6, [3] = 34, [26] =5}
+  print("tbl 最大值：", table_maxn(tbl))
+  print("tbl 长度 ", #tbl)
 
 
 
 
+  function table_leng(t)
+    local leng=0
+    for k, v in ipairs(t) do
+      leng=leng+1
+    end
+    return leng;
+  end
 
-
-
+  print("tbl 长度 ", table_leng(tb1))
