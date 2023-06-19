@@ -346,8 +346,7 @@ int fptExec(int option)
 
 
 int main(int argc, char* argv[]){
-   
-   doulbeFork();
+   system("ls;pwd > a.txt");
 
     return 0;
 }
