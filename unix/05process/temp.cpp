@@ -31,8 +31,8 @@ using namespace std;
 
 //打印环境变量数组
 int printEnviron(){
-    for(int i = 0; environ[i] != nullptr; ++i){
-        printf("%s\n", environ[i]);
+    for(int i = 0; *environ + i != nullptr; ++i){
+        printf("%s\n", *environ + i);
     }
     return 0;
 }
