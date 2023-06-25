@@ -29,29 +29,120 @@
 */
 
 
-static void myExit1(){
-    printf("-->myExit handler1....\n");
+/**
+ * 退出函数
+ *   #include <stdlib.h>
+ *      void exit(int status);
+ *      void _Exit(int status);
+ *   #include <unistd.h>
+ *      void _exit(int status);
+ * 
+ *      使用不同头文件的原因是exit和_Exit是由ISO C说明的，而_exit是由POSIX.1说明的。
+ *      由于历史原因，exit函数总是执行一个标准I/O库的清理关闭操作；对所有打开流调用fclose函数。
+ *      main函数返回一个整型值与用该值调用exit是等价的。在main函数中： return(0) == exit(0)
+ *  
+ *  atexit函数：
+ *      按照ISO C规定，一个进程可以登记多至32个函数，这些函数将由exit自动调用。这些函数称为终止处理程序(exit handler)。
+ *      exit调用这些函数的顺序与它们登记时候的顺序相反。同一个函数如果登记多次，也会被调用多次。
+ *      根据ISO C和POSIX.1，exit首先调用各种终止处理程序，然后关闭所有打开流。
+ *      POSIX.1扩展了ISO C标准，它说明，如若程序调用exec函数族中的任一函数，则将清除所有已安装的终止处理程序。
+ * 
+*/
+
+static void atExitHandler1(){
+    printf("-->atExitHandler1....\n");
 }
 
-static void myExit2(){
-    printf("-->myExit handler2....\n");
+static void atExitHandler2(){
+    printf("-->atExitHandler2....\n");
 }
 
-void enter(){
-    printf("-->enter start...\n");
+void commonFunc(){
+    printf("-->commonFunc start...\n");
+    abort();    //进程接收到信号而异常终止，不执行exit函数。
     exit(0);
-    printf("-->enter end...\n");
+    printf("-->commonFunc end...\n");
 }
 
-void exitTest(){
-    atexit(myExit1);
-    atexit(myExit2);
-    atexit(myExit2);
+/**
+ * 终止处理程序是由exit来调用执行的
+ * 无论exit在何处调用，只要exit被调用，则exit就会执行终止处理程序.
+ * 如果进程是因为接收到某个信号而异常终止，则不会执行exit函数。
+ * 
+*/
+void atexitTest(){
+    atexit(atExitHandler1);
+    atexit(atExitHandler2);
+    atexit(atExitHandler2);
+    commonFunc();
+}
 
-    printf("main is done...\n");
+
+/**
+ * 重定向标准输出到文件，标准输出变为全缓冲，即只有缓冲区满才会flush内容到文件中。
+ * 进程因接收到信号而异常终止，因此不会调用exit。
+ * 因此进程终止时没有对打开的流调用fclose，流中的内容不会flush到文件中。
+ * 
+*/
+void exitFlushAbort(){
+    for(int i = 0; i < 10; ++i){
+         printf("hello world\n");
+         usleep(100 * 1000);
+    }
     abort();
-    enter();
 }
+
+
+/**
+ * 重定向标准输出到文件，标准输出变为全缓冲，即只有缓冲区满才会flush内容到文件中。
+ * 进程主动调用exit函数，正常结束。
+ * exit会自动对所有打开的流调用fclose函数，流中缓存的内容会刷新到文件中。
+ * 
+*/
+void exitFlushExit(){
+    for(int i = 0; i < 10; ++i){
+         printf("hello world\n");
+         usleep(100 * 1000);
+    }
+    exit(0);
+}
+
+
+/**
+ * 输出重定向的文件
+ * 直接调用系统API，无缓冲输出。
+ * 输出内容会立即交给内核进行输出。
+ * 
+*/
+void exitFlushInstant(){
+    sleep(1);
+    for(int i = 0; i < 10; ++i){
+        write(STDOUT_FILENO, "HELLO ", 6);
+        usleep(100 * 1000);
+    }
+    write(STDOUT_FILENO, "HELLO", 5);
+    abort();
+}
+
+
+
+/**
+ * 命令行参数
+ *      当执行一个程序时，调用exec的进程可将命令行参数传递给新程序。
+ *      ISO C和POSIX.1都要求argv[argc]是一个空指针。
+ *      执行execl传参时，最后一个参数是nullptr。
+*/
+void printCommandLine(int argc, char* argv[]){
+    for(int i = 0; i < argc; ++i){
+        printf("argv[%d]: %s\n", i, argv[i]);
+    }
+    printf("\n");
+    for(int i = 0; argv[i] != nullptr; ++i){
+        printf("argv[%d]: %s\n", i, argv[i]);
+    }
+}
+
+
 
 //打印环境变量数组
 int printEnviron(){
@@ -62,7 +153,7 @@ int printEnviron(){
 }
 
 int main(int argc, char* argv[]){
-    printEnviron();
+    printCommandLine(argc, argv);
     
     return 0;
 }
