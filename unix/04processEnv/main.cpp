@@ -2,6 +2,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 
 /**
@@ -61,9 +63,27 @@ int printEnviron(){
     return 0;
 }
 
+
+//通过内存映射，可以用操作内存的方式，操作文件内容
+void mmapTest(){
+    int fd = open("/home/lhy/project/stl/unix/04processEnv/a.txt", O_RDWR);
+    char *ptr = static_cast<char *>(mmap(nullptr, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+    for(int i = 0; i < 7; ++i){
+        printf("%c\n", *(ptr + i));
+        *(ptr + i) = 49 + i;
+    }
+
+    FILE* fp = fdopen(fd, "a+");
+    char buf[1024]{};
+    printf("%s\n", fgets(buf, sizeof(buf), fp));
+}
+
+
 int main(int argc, char* argv[]){
-    printEnviron();
     
+    mmapTest();
+
+
     return 0;
 }
 
