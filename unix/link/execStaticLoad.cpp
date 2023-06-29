@@ -1,8 +1,10 @@
+#include <cstdio>
+#include <unistd.h>
 
 // 声明外部函数
 int add(int a, int b);
 int sub(int a, int b);
-void showResult(int result);
+extern "C" void show(int option, int result);
 
 // 定义本地函数
 int mul(int a, int b){
@@ -18,12 +20,14 @@ addFuncType addFuncPtr = add;
 
 
 int main(int argc, char* argv[]){
+    printf("------%s\n", argv[0]);
     int local_a = 1, local_b = 2;
-    showResult(mul(local_a, local_b));
-    showResult(local_a + local_b);
+    show(1, mul(local_a, local_b));
+    show(1, local_a + local_b);
     int result = add(local_a, local_b);
     result = sub(result, 4);
-    showResult(result);
+    show(2, result);
+    show(3, result);
     return 0;
 }
 
