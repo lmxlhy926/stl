@@ -1,8 +1,8 @@
 
 #include <cstdio>
-int a = 100;
-int b = 200;
-char* ptr = nullptr;
+
+int Global_a = 100;
+int Global_b = 200;
 void showResult(int result){
     printf("the result is %d\n", result);
 }
