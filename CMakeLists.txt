@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(srcDirectory unix stl)
 
+add_subdirectory(libevent)
+
 foreach(elem ${srcDirectory})
     add_subdirectory(${elem})
 endforeach()

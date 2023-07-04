@@ -1,1 +1,0 @@
-add_executable(mdns1 mdns.c)
