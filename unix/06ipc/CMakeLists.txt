@@ -1,1 +1,1 @@
-add_executable(ipc main.cpp)
+add_subdirectory(libevent)
