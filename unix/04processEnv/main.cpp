@@ -46,7 +46,7 @@
  *  atexit函数：
  *      按照ISO C规定，一个进程可以登记多至32个函数，这些函数将由exit自动调用。这些函数称为终止处理程序(exit handler)。
  *      exit调用这些函数的顺序与它们登记时候的顺序相反。同一个函数如果登记多次，也会被调用多次。
- *      根据ISO C和POSIX.1，exit首先调用各种终止处理程序，然后关闭所有打开流。
+ *      根据ISO C 和 POSIX.1，exit首先调用各种终止处理程序，然后关闭所有打开流。
  *      POSIX.1扩展了ISO C标准，它说明，如若程序调用exec函数族中的任一函数，则将清除所有已安装的终止处理程序。
  * 
 */
@@ -122,16 +122,15 @@ void exitFlushInstant(){
         write(STDOUT_FILENO, "HELLO ", 6);
         usleep(100 * 1000);
     }
-    write(STDOUT_FILENO, "HELLO", 5);
+    write(STDOUT_FILENO, "HELLO ", 6);
     abort();
 }
-
 
 
 /**
  * 命令行参数
  *      当执行一个程序时，调用exec的进程可将命令行参数传递给新程序。
- *      ISO C和POSIX.1都要求argv[argc]是一个空指针。
+ *      ISO C 和 POSIX.1 都要求argv[argc]是一个空指针。
  *      执行execl传参时，最后一个参数是nullptr。
 */
 void printCommandLine(int argc, char* argv[]){
@@ -171,8 +170,7 @@ void mmapTest(){
 
 
 int main(int argc, char* argv[]){
-    printCommandLine(argc, argv);
-    mmapTest();
+    exitFlushInstant();
 
 
     return 0;
