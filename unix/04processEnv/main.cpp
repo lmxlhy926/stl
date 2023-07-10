@@ -33,6 +33,38 @@
 
 
 /**
+ *函数exit
+ *      进程有5种正常终止和3种异常终止方式
+ *      不管进程如何终止，最后都会执行内核中的同一段代码。这段代码为相应进程关闭所有打开描述符，释放它所使用的存储器等。
+ * 
+ *      常见3种正常终止方式：
+ *          1. 在main函数内执行return语句。等效于调用exit。
+ *          2. 调用exit函数。此函数由ISO C定义，其操作包括调用各种终止处理程序(终止处理程序在调用atexit函数时登记)，
+ *             然后关闭所有标准IO流等。
+ *          3. 调用_Exit函数。ISO C定义_Exit，其目的是为进程提供一种无需运行终止处理程序或信号处理程序而终止的方法。
+ * 
+ *          在UNIX系统中,_exit函数和_Exit函数是同义的，并不冲洗标准IO流。_exit函数由exit函数调用，它处理UNIX系统特定细节。
+ *          exit(3)是标准C库中的一个函数，而_exit(2)则是一个系统调用。
+ * 
+ *      常见的异常终止：
+ *          1. 调用abort。它产生SIGABRT信号，这是下一种异常终止的一种特例。
+ *          2. 当进程接收到某些信号时。信号可由进程自身(如调用abort函数)、其它进程或内核产生。
+ *             若进程引用地址空间之外的存储单元、或者除以0，内核就会为该进程产生相应的信号。
+ *      
+ *      终止进程如何通知其父进程自己是如何终止的？
+ *          对于4个终止函数(return、exit、_exit、_Exit)，将其退出状态作为参数传送给函数。在异常终止情况，内核(不是进程本身)产生一个
+ *          指示其异常终止原因的终止状态。这里使用了"退出状态"和"终止状态"两个术语，以表示有所区别。在最后调用_exit时，内核将
+ *          退出状态转换成终止状态。如果子进程正常终止，则父进程可以获得子进程的退出状态。
+ * 
+ *      如果父进程在子进程之前终止，又将如何？
+ *          对于父进程已经终止的所有进程，它们的父进程都改变为init进程。我们称这些进程由init进程收养。
+ *          init被编写成无论何时只要有一个子进程终止，init就会调用一个wait函数取得其终止状态。
+ *          这样就防止了在系统中塞满僵死进程。
+ * 
+ *      如果子进程在父进程之前终止，父进程如何获取子进程的终止状态？
+ *          内核为每个终止子进程保存了一定量的信息，所以当终止进程的父进程调用wait或waitpid时，可以得到这些信息。
+ *          这些信息至少包括进程ID、该进程的终止状态以及该进程使用的CPU时间总量
+ * 
  * 退出函数
  *   #include <stdlib.h>
  *      void exit(int status);
@@ -52,7 +84,7 @@
  * 
  *  注意，内核使程序执行的唯一方法是调用一个exec函数。进程自愿终止的唯一方法是显示或隐式地(通过调用exit)调用_exit或_Exit。
  *  进程也可非自愿地由一个信号使其终止。
- * 
+ *      
 */
 
 static void atExitHandler1(){
@@ -145,22 +177,6 @@ void printCommandLine(int argc, char* argv[]){
     for(int i = 0; argv[i] != nullptr; ++i){
         printf("argv[%d]: %s\n", i, argv[i]);
     }
-}
-
-
-
-/**
- * 每个程序都接收到一张环境表。环境表也是一个字符指针数组，其中每个指针包含一个以null结束的C字符串地址。
- * 全局变量environ则包含了该指针数组的地址：extern char* *environ;
- * 称environ为环境指针，指针数组为环境表，其中各指针指向的字符串为环境字符串。
- * 环境表的最后一个字符指针指向nullptr.
- * 
-*/
-int printEnviron(){
-    for(int i = 0; *(environ + i) != nullptr; ++i){
-        printf("%s\n", *(environ + i));
-    }
-    return 0;
 }
 
 
@@ -264,10 +280,35 @@ void multiAlloc(){
 }
 
 
+/**
+ * 我们能影响的只是当前进程及其后生成和调用的任何子进程环境，但不能影响父进程的环境，这通常是一个shell进程。
+ * 
+ * 环境表和环境字符串的存储位置：
+ *      环境表和环境字符串通常占用的是进程地址空间的顶部。
+ * 
+ *      如果修改一个现有的name:
+ *          a. 新value的长度 <= 现有value的长度：将新字符串复制到原有字符串的空间中。
+ *          b. 新value的长度 >  现有value的长度：调用malloc为新字符串分配空间，然后将新字符串复制到该空间中，接着使环境表
+ *             中针对name的指针指向新分配区。
+ *     
+ *      增加一个新的name：
+ *          * 首先必须调用malloc为name=value字符串分配空间，然后将字符串分配到此空间中。
+ * 
+ *          a. 如果这是第一次增加一个新name，则必须调用malloc为新的环境表分配空间。接着，将原来的环境表复制到新分配区，并将
+ *             指向新name=value字符串的指针存放在该指针表的表尾，然后将一个空指针存放在其后。最后使environ指向新指针表。但是
+ *             环境表中的大部分指针仍指向栈顶之上的各name=value字符串。
+ * 
+ *          b. 如果这不是第一次增加一个新name，则可知以前已调用malloc在堆中为环境表分配了空间，所以只要调用realloc，以分配比
+ *             原空间多存放一个指针的空间。然后将指向新name=value字符串的指针存放在该表表尾，后面跟着一个空指针。
+ *
+*/
 
-/*
- * 本质：char *environ[] = {"HOME=/home/itcat", "SHELL=/bin/bash", ....}
- * 所有的环境变量都存在于environ这个数组中,下面的三个函数都是针对与该数组进行操作。
+/**
+ * 每个程序都接收到一张环境表。环境表也是一个字符指针数组，其中每个指针包含一个以null结束的C字符串地址。
+ * 全局变量environ则包含了该指针数组的地址：extern char* *environ;
+ * 称environ为环境指针，指针数组为环境表，其中各指针指向的字符串为环境字符串。
+ * 环境表的最后一个字符指针指向nullptr.
+ * 环境字符串存放在栈顶之上，或者堆中。环境字符串的格式是'name=value'
  *
  * 三个函数定义于<stdlib.h>中
  * char *getenv(const char *name);
@@ -275,9 +316,10 @@ void multiAlloc(){
  *
  * int setenv(const char *name, const char *value, int overwrite);
  * 成功： 0； 失败： -1
- * 参数 overwrite 取值：
- *      0： 不覆盖。 (该参数常用于设置新环境变量， 如： ABC = haha-day-night)
- *      1： 覆盖原环境变量
+ * 如果在环境中name已经存在：
+ *      参数 overwrite 取值：
+ *          0： 不删除其现有定义(name不设置为新的value，而且也不出错)
+ *          1： 删除其现有定义，覆盖为新值。
  *
  * int unsetenv(const char *name);
  * 成功： 0； 失败： -1
@@ -286,37 +328,38 @@ void multiAlloc(){
  */
 
 
-//打印环境变量数组
+//打印环境表中的每个字符串，环境表中的最后一个指针为nullptr
 int printEnviron(){
-    for(int i = 0; *environ + i != nullptr; ++i){
-        printf("%s\n", *environ + i);
+    for(int i = 0; *(environ + i) != nullptr; ++i){
+        printf("%s\n", *(environ + i));
     }
     return 0;
 }
 
-//获取环境变量的值
+
+//获取环境变量的值, 指定name，返回其value。
+//字符串比较，定位到value的地址
 char * getEnvTest(const char *name){
     char *p = nullptr;
-    for(int i = 0; environ[i] != nullptr; ++i){
-        p = strstr(environ[i], "=");    //定位到'='字符
-        int len = p - environ[i];       //变量名长度
-        if(strncmp(name, environ[i], len) == 0){    //比较变量名长度
+    for(int i = 0; *(environ + i) != nullptr; ++i){
+        p = strstr(*(environ + i), "=");    //定位到'='字符
+        int len = p - *(environ + i);       //变量名长度
+        if(strncmp(name, *(environ + i), len) == 0){    //比较变量名长度
             return p+1; //返回值的地址地址
         }
     }
     return nullptr;
 }
 
-//设置环境变量
-void setUnsetEnv(const char* name, const char* setValue){
-    char *value;
-    if((value = getEnvTest(name)) != nullptr){
-        printf("value = %s\n", value);
-    }else{
-        printf("%s is not set...\n", name);
-    }
 
-    setenv(name, setValue, 0);
+//设置环境变量
+void setUnsetEnv(const char* name, const char* value){
+    char *ptr = getenv(name);
+    if(ptr == nullptr){
+        printf("the %s is not set\n", name);
+    }
+    setenv(name, value, 1);
+    setenv(name, "hhhhhhhhhhh", 1);
     printEnviron();
 }
 
@@ -341,8 +384,8 @@ void mmapTest(){
 
 
 int main(int argc, char* argv[]){
-    multiAlloc();
-  
+    setUnsetEnv("hello", "world");
+
     return 0;
 }
 
