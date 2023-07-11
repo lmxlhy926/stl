@@ -298,26 +298,51 @@ void fpt_wait(){
 */
 
 
-/*
- * 如何在一个进程中启动其它的程序？
- * 需要的参数：程序的名称(绝对路径、相对路径), 程序的参数(列表、数组)
+
+/**
+ * 如何在一个进程中运行新的程序？
+ * 需指定的参数：
+ *      可执行文件名称：程序的绝对路径或程序名(借助PATH环境变量)
+ *      命令行参数：argv[0] .... argv[n] nullptr
+ *      环境表指针：environ或定制的环境表。 新进程会复制指定的环境表，形成自己专有的环境表。
  *
- * 可执行程序名（相对位置/绝对位置）, PATH环境变量, 整个环境变量environ
- * 参数形式：list vector
- * 环境变量：PATH environ
- *
- * int execl(const char *path, const char *arg, ...);
- * int execlp(const char *file, const char *arg, ...);
- * int execle(const char *path, const char *arg, ..., char *const envp[]);
- *
- * vector path environ
- * int execv(const char *path, char *const argv[]);
- * int execvp(const char *file, char *const argv[]);
- * int execve(const char *path, char *const argv[], char *const envp[]);
+ * exec函数族
+ *      int execl(const char *path, const char *arg, ...);
+ *      int execlp(const char *file, const char *arg, ...);
+ *      int execle(const char *path, const char *arg, ..., char *const envp[]);
  * 
- * execl后，重新加载进程的虚拟地址空间，跳到新程序的入口地址进行执行，执行完毕后进程退出。
- * execl失败才会返回。基本不会返回。
+ *      int execv(const char *path, char *const argv[]);
+ *      int execvp(const char *file, char *const argv[]);
+ *      int execve(const char *path, char *const argv[], char *const envp[]);
+ * 
+ *      execl后，重新加载进程的虚拟地址空间，跳到新程序的入口地址进行执行，执行完毕后进程退出。
+ *      execl失败才会返回。基本不会返回。
  *
+ * 
+ * 当进程调用一种exec函数时，该进程执行的程序完全替换为新程序，而新程序则从其main函数开始执行。因为调用exec并不创建新进程，
+ * 所以前后的进程ID并未改变。exec只是用磁盘上的一个新程序替换了当前进程的正文段、数据段、堆段和栈段。
+ * 
+ * UNIX系统进程控制原语：
+ *      fork：创建新进程
+ *      exec：加载执行新程序
+ *      exit：退出进程
+ *      wait：回收内核保存的进程终止状态信息
+ * 
+ * 如果exec找到了一个可执行文件，但是该文件不是由链接编辑器产生的机器可执行文件，则就认为该文件是一个shell脚本，于是试着调用/bin/sh，
+ * 并以该filename作为shell输入。 
+ * 
+ * 以e结尾的3个函数(execle, execve, fexecve)可以传递一个指向环境字符串指针数组的指针。其它4个函数则使用调用进程中的environ变量为新
+ * 程序复制现有的环境。即父进程可以更改当前环境和后面生成的子进程的环境，但是不能影响自己的父进程的环境。通常，一个进程允许将其环境传播
+ * 给其子进程，但有时也有这种情况，进程想要为子进程指定某一个确定的环境。例如，在初始化一个新登录的shell时，login程序通常创建一个只定义
+ * 少数几个变量的特殊环境，而在我们登录时，可以通过shell启动文件，将其它变量加载到环境中。
+ * 
+ * 进程中每个打开描述符都有一个执行时关闭标志。若设置了此标志，则在执行exec时关闭该描述符；否则该描述符仍打开。除非特地用fcntl设置了该执行时
+ * 关闭标志，否则系统的默认操作是在exec后仍保持这种描述符打开。
+ * 
+ * 在exec前后实际用户ID和实际组ID保持不变，而有效ID是否改变则取决于所执行程序文件的设置用户ID位和设置组ID位是否设置。如果新程序的设置用户ID位
+ * 已设置，则有效用户ID变成程序文件所有者的ID；否则有效用户ID不变。对组ID的处理方式与此相同。
+ * 
+ * 
  */
 
 // 父进程创建一个子进程，子进程加载新程序执行，父进程回收子进程的退出状态。
@@ -369,15 +394,51 @@ int forkExec(int option)
     return 0;
 }
 
+//只能影响当前环境和后面生成的子进程的环境，不能影响前面生成的子进程的环境和父进程的环境
+//因为环境表复制操作发生在exce执行时
+int forkExec1(){
+    pid_t pid;
+    if((pid = fork()) < 0){
+        printf("fork error\n");
+        exit(-1);
+    }else if(pid == 0){
+        //构造环境表
+        char* env_init[] = {(char*)"USER=unknown", (char*)"PATH=/TMP", nullptr};
+        //加载新程序时，会将环境表复制到子进程环境表空间，并使子进程的environ指向此环境表。
+        if(execle("/home/lhy/ownproject/stl/out/bin/echoall", "echoall", "myarg1", "my arg2", nullptr, env_init) == -1){
+            printf("execle error\n");
+            exit(-1);
+        }
+    }
 
+    if(waitpid(pid, nullptr, 0) < 0){
+        printf("waitpid error\n");
+        exit(-1);
+    }
 
+    if((pid = fork()) < 0){
+        printf("fork error\n");
+        exit(-1);
+    }else if(pid == 0){
+        string path(getenv("PATH"));
+        path.append(":/home/lhy/ownproject/stl/out/bin");
+        setenv("PATH", path.c_str(), 1);
+        //默认传递父进程的environ，复制父进程的环境表
+        if(execlp("echoall", "echoall", "only 1 arg", nullptr)  == -1){
+            printf("execle error\n");
+            exit(-1);
+        }
+    }
+
+    exit(0);
+}
 
 
 
 
 
 int main(int argc, char* argv[]){
-    fpt_wait();
+    forkExec1();
 
     return 0;
 }
