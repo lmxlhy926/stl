@@ -493,8 +493,33 @@ void processid(){
     }
 }
 
+
+/**
+ * 解释器文件
+ * 
+*/
+void interpret(){
+    pid_t pid;
+    if((pid = fork()) < 0){
+        printf("fork error\n");
+        exit(-1);
+    }else if(pid == 0){
+        if(execl("/home/lhy/project/stl/unix/05process/testinterp", "estinterp", "arg1", "arg2", nullptr) < 0){
+            printf("execl error\n");
+            exit(-1);
+        }
+    }
+
+    if(waitpid(pid, nullptr, 0) < 0){
+        printf("waitpid error\n");
+    }
+
+    exit(0);
+}
+
+
 int main(int argc, char* argv[]){
-    processid();
+    interpret();
 
     return 0;
 }
