@@ -433,12 +433,68 @@ int forkExec1(){
     exit(0);
 }
 
+// 打印进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
+void printUserId(const char* message){
+    uid_t realUserId, effectiveUserId, saveSetUserId;
+    getresuid(&realUserId, &effectiveUserId, &saveSetUserId);
+    printf("%s > realUserId: %u, effectiveUserId: %u, saveSetUserId: %u\n", message, realUserId, effectiveUserId, saveSetUserId);
+}
+
+// 获取进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
+uid_t getUserId(const char* option){
+    uid_t realUserId, effectiveUserId, saveSetUserId;
+    getresuid(&realUserId, &effectiveUserId, &saveSetUserId);
+    if(strcmp(option, "real") == 0){
+        return realUserId;
+    }else if(strcmp(option, "efftive") == 0){
+        return effectiveUserId;
+    }else if(strcmp(option, "save") == 0){
+        return saveSetUserId;
+    }
+    return -1;
+}
+
+/**
+ * 执行时先将可执行程序的文件所有者更改为root，执行权限设置为所有人可执行。置位设置用户ID位
+ * 以普通用户账号运行程序
+*/
+void processid(){
+    //实际用户id为普通用户，有效用户id为可执行程序的所有者，保存的设置用户ID位为可执行程序的所有者
+    printUserId("1--");
+
+    //设置有效用户ID为实际用户ID，降低程序的特权
+    seteuid(getUserId("real"));
+    printUserId("2--");
+
+    //将有效用户ID恢复为保存的设置用户ID，回复程序特权
+    seteuid(getUserId("save"));
+    printUserId("3--");
+
+    pid_t pid;
+    if((pid = fork()) < 0){
+        printf("fork error\n");
+        exit(-1);
+    }else if(pid == 0){
+        //子进程继承父进程的实际用户ID、有效用户ID、设置的保存用户ID
+        printUserId("child 1--");
+
+        //子进程的有效用户ID为root对应的ID，此时setuid会将实际用户ID、有效用户ID、设置的保存用户ID都设为uid。
+        setuid(getUserId("real"));
+        printUserId("child 2--");
 
 
+        exit(100);
+    }
 
+    int status;
+    pid_t waitPid = waitpid(pid, &status, 0);
+    if(waitPid == pid){
+        pr_exit(status);
+    }
+}
 
 int main(int argc, char* argv[]){
-    forkExec1();
+    processid();
 
     return 0;
 }
