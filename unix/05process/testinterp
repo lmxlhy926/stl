@@ -1,5 +1,4 @@
-#! /usr/bin/bash /home/lhy/project/stl/unix/05process/testinterp
-
-echo $*
+#! /usr/bin/echo -f -a
 
 
+echo "ehlo"

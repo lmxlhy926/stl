@@ -342,7 +342,8 @@ void fpt_wait(){
  * 在exec前后实际用户ID和实际组ID保持不变，而有效ID是否改变则取决于所执行程序文件的设置用户ID位和设置组ID位是否设置。如果新程序的设置用户ID位
  * 已设置，则有效用户ID变成程序文件所有者的ID；否则有效用户ID不变。对组ID的处理方式与此相同。
  * 
- * 
+ * 可执行程序的第一个参数(新程序中的argv[0])设置为路径名的文件名分量。某些shell将此参数设置为完全的路径名。这只是一个惯例。
+ * 我们可将argv[0]设置为任何字符串。
  */
 
 // 父进程创建一个子进程，子进程加载新程序执行，父进程回收子进程的退出状态。
@@ -433,6 +434,23 @@ int forkExec1(){
     exit(0);
 }
 
+
+/**
+ * 用户ID、组ID
+ *      在UNIX系统中，特权以及访问控制(如能否读写一个特定文件)，是基于用户ID和组ID的。一般而言，在设计应用时，总是试图使用最小特权模型。
+ *  依照此模型，我们的程序应当只具有为完成给定任务所需的最小特权。这降低了由恶意用户试图哄骗我们的程序以未预料的方式使用特权造成的安全性风险。
+ * 
+ * int setuid(uid_t uid);
+ *      若进程具有超级用户特权，则setuid函数将实际用户ID、有效用户ID以及保存的设置用户ID设置为uid。
+ *      若进程没有超级用户特权，但是uid等于实际用户ID或保存的设置用户ID，则setuid只将有效用户ID设置为uid。
+ *      仅当对程序文件设置了设置用户ID位时，exec函数才设置有效用户ID，保存的设置用户ID是由exec复制有效用户ID而得到的。
+ *      fork()创建子进程，子进程继承父进程的实际用户ID、有效用户ID、保存的设置用户ID。
+ * 
+ * int seteuid(uid_t uid);
+ *      特权用户：可将有效用户ID设置为uid。（这区别于setuid函数，它更改所有3个用户ID）
+ *      普通用户：将有效用户ID设置为其实际用户ID或其保存的设置用户ID。
+*/
+
 // 打印进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
 void printUserId(const char* message){
     uid_t realUserId, effectiveUserId, saveSetUserId;
@@ -496,6 +514,13 @@ void processid(){
 
 /**
  * 解释器文件
+ *      exec函数族可以加载处理解释器文件，但是要求该解释器文件具有执行权限。
+ * 
+ *      所有现今的UNIX系统都支持解释器文件。这种文件是文本文件，其起始行的形式：#! pathname [optional-argument]; pathname通常是绝对路径名，
+ *      对它不进行什么特殊处理(不使用PATH进行路径搜索)。对这种文件的识别是由内核作为exec系统调用处理的一部分来完成的。内核使调用exec函数的进程实际
+ *      执行的并不是该解释器文件，而是在该解释器文件第一行中pathname所指定的文件。一定要将解释器文件和解释器区分开。  
+ * 
+ *      当内核exec解释器时，argv[0]是该解释器的pathname，argv[1]是解释器文件中的可选参数，其余参数是execl解释器文件时指定的参数。
  * 
 */
 void interpret(){
@@ -504,7 +529,7 @@ void interpret(){
         printf("fork error\n");
         exit(-1);
     }else if(pid == 0){
-        if(execl("/home/lhy/project/stl/unix/05process/testinterp", "estinterp", "arg1", "arg2", nullptr) < 0){
+        if(execl("/home/lhy/ownproject/stl/unix/05process/testinterp", "estinterp", "arg1", "arg2", nullptr) < 0){
             printf("execl error\n");
             exit(-1);
         }
@@ -518,8 +543,66 @@ void interpret(){
 }
 
 
+/**
+ * 在UNIX中，system总是可用的。
+ * int system(const char* cmdstring);
+ * system在其实现中调用了fork、exec和waitpid，因此具有3种返回值：
+ *      1. fork失败或者waitpid返回除EINTR之外的出错，则system返回-1，并且设置errno以指示错误类型。
+ *      2. 如果exec失败(表示不能执行shell)，其返回值如同shell执行了exit(127).
+ *      3. 否则所有3个函数都执行成功，那么system的返回值是shell的终止状态。
+*/
+
+/**
+ * system函数的一个实现
+ * 调用进程创建子进程，子进程加载shell解释器去执行具体的任务
+ * 如果调用进程执行fork或者waitpid时发生错误，则返回-1。否则返回回收到的子进程的终止状态。
+*/
+int system1(const char* cmdstring){
+    pid_t pid;
+    int status;
+
+    //返回非0值，表示支持system函数
+    if(cmdstring == nullptr){
+        return 1;
+    }
+
+    if((pid = fork()) < 0){
+        perror("fork error");
+        status = -1;
+    }else if(pid == 0){ //子进程中加载shell程序，执行命令行指令
+        execl("/usr/bin/bashs", "bash", "-c", cmdstring, nullptr);
+        perror("execl error");
+        _exit(127);
+    }else{  //调用进程进行等待，回收子进程状态
+        while(waitpid(pid, &status, 0) < 0){
+            if(errno !=EINTR){
+                status = -1;
+                break;
+            }
+        }
+    }
+    
+    //fork或者waitpid失败时，返回-1
+    //execl失败时，返回的子进程的退出状态是127
+    //都成功时，返回回收的子进程的终止状态
+    return status;
+}
+
+
+//用户标识
+void printLoginName(){
+    char* ptr = getlogin();
+    if(ptr != nullptr){
+        printf("logName: %s\n", ptr);
+    }else{
+        printf("no login name\n");
+    }
+}
+
+
 int main(int argc, char* argv[]){
-    interpret();
+
+    printLoginName();
 
     return 0;
 }
