@@ -597,6 +597,7 @@ void printLoginName(){
     }else{
         printf("no login name\n");
     }
+    sleep(3);
 }
 
 
