@@ -76,8 +76,24 @@ static void my_alarm_test(){
     }
 }
 
+
+static void sig_alarm(int signo){
+    return;
+}
+
+unsigned int sleep1(unsigned int seconds){
+    if(signal(SIGALRM, sig_alarm) == SIG_ERR){
+        return seconds;
+    }
+    alarm(seconds);
+    pause();
+    return(alarm(0));
+}
+
+
 int main(int argc, char* argv[]){
-    my_alarm_test();
+    unsigned int left = sleep1(2);
+    printf("sleep %d\n", left);
 
     return 0;
 }
