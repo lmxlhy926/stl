@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 #include <pwd.h>
 
 //信号处理函数，打印用户自定义信号
@@ -91,9 +92,88 @@ unsigned int sleep1(unsigned int seconds){
 }
 
 
+void pr_mask(const char* str){
+    sigset_t sigset;
+    int errno_save = errno;
+
+    //取得当前进程的信号屏蔽字
+    if(sigprocmask(0, nullptr, &sigset) == -1){
+        perror("sigprocmask error");
+        exit(-1);
+    }else{
+        //打印该进程的屏蔽的部分信号
+        printf("%s", str);
+        if(sigismember(&sigset, SIGINT)){
+            printf(" SIGINT");
+        }
+        if(sigismember(&sigset, SIGQUIT)){
+            printf(" SIGQUIT");
+        }
+        if(sigismember(&sigset, SIGUSR1)){
+            printf(" SIGUSR1");
+        }
+        if(sigismember(&sigset, SIGALRM)){
+            printf(" SIGALRM");
+        }
+        printf("\n");
+    }
+}
+
+
+void sig_quit(int signo){
+    printf("caught SIGQUIT\n");
+    //恢复SIGQUIT信号的handler为默认
+    if(signal(SIGQUIT, SIG_DFL) == SIG_ERR){
+        perror("can't reset SIGQUIT");
+        exit(-1);
+    }
+}
+
+void sigpending_test(){
+    sigset_t newmask, oldmask, pendmask;
+
+    //注册SIGQUIT信号处理函数
+    if(signal(SIGQUIT, sig_quit) == SIG_ERR){
+        perror("cant't catch SIGQUIT");
+        exit(-1);
+    }
+
+    //将SIGQUIT加入屏蔽信号集，并保存当前信号集合，用于后面恢复
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGQUIT);
+    if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
+        perror("SIG_BLOCK error");
+        exit(-1);
+    }
+
+    sleep(5);
+
+    //取得当前产生但是被阻塞的信号，判断SIGQUIT是否被阻塞
+    if(sigpending(&pendmask) < 0){
+        perror("sigpending error");
+        exit(-1);
+    }
+    if(sigismember(&pendmask, SIGQUIT)){
+        printf("\nSIGQUIT pending\n");
+    }
+    //恢复当前进程的屏蔽信号集合 （解除SIGQUIT信号的阻塞）
+    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
+        perror("SIG_SETMASK error");
+        exit(-1);
+    }
+    printf("SIGQUIT unblocked\n");
+
+    sleep(5);
+    exit(0);
+}
+
+
+
+
+
 int main(int argc, char* argv[]){
-    unsigned int left = sleep1(2);
-    printf("sleep %d\n", left);
+   sigpending_test();
+
 
     return 0;
 }
