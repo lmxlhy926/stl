@@ -4,7 +4,7 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(srcDirectory unix)
+set(srcDirectory unix stl)
 
 add_subdirectory(openSrc)
 
