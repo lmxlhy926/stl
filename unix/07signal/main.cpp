@@ -133,6 +133,7 @@ void sigpending_test(){
     sigset_t newmask, oldmask, pendmask;
 
     //注册SIGQUIT信号处理函数
+    //收到信号后，恢复信号的默认处理函数
     if(signal(SIGQUIT, sig_quit) == SIG_ERR){
         perror("cant't catch SIGQUIT");
         exit(-1);
@@ -156,25 +157,74 @@ void sigpending_test(){
     if(sigismember(&pendmask, SIGQUIT)){
         printf("\nSIGQUIT pending\n");
     }
+
     //恢复当前进程的屏蔽信号集合 （解除SIGQUIT信号的阻塞）
+    //如果有信号递送，则在sigprocmask返回前，至少执行其中一个信号处理函数
     if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
         perror("SIG_SETMASK error");
         exit(-1);
     }
     printf("SIGQUIT unblocked\n");
 
+    //此时不再阻塞SIGQUIT信号，默认操作是结束进程
     sleep(5);
     exit(0);
 }
 
 
+void sigQuitHandler(int signo){
+    printf("sigHandler start....\n");
+    sleep(5);
+    printf("sigHandler end....\n");
+}
 
+void sigIntHandler(int signo){
+    printf("sigIntHandler start....\n");
+    printf("sigIntHandler end....\n");
+}
+
+using Sigfunc = void(int);
+Sigfunc * signal_own(int signo, Sigfunc* func){
+    //创建设置sigaction, 保存sigaction
+    struct sigaction act, oact;
+
+    //设置信号处理函数，执行信号处理函数时需要屏蔽的信号，以及信号可选标志(处理和信号关联的相关特性)
+    act.sa_handler = func;
+    sigemptyset(&act.sa_mask);  //首先清空信号集，以完成初始化
+    act.sa_flags = 0;
+    if(signo == SIGALRM){
+        #ifdef SA_INTERRUPT
+            act.sa_flags |= SA_INTERRUPT;   //不自动启动由该信号中断的系统调用
+        #endif
+    }else{
+        act.sa_flags |= SA_RESTART; //自动启动由该信号中断的系统调用
+    }
+
+    //设置和指定信号相关联的处理动作
+    if(sigaction(signo, &act, &oact) < 0){
+        return SIG_ERR; //出错则返回SIG_ERR
+    }   
+    return oact.sa_handler; //否则返回之前设置的信号处理函数
+}
+
+void sigaction_test(){
+    signal_own(SIGINT, sigIntHandler);
+    
+    struct sigaction act;
+    act.sa_handler = sigQuitHandler;
+    sigemptyset(&act.sa_mask);
+    sigaddset(&act.sa_mask, SIGINT);    //执行SIGQUIT的信号处理函数时，屏蔽SIGINT信号
+    act.sa_flags = 0;
+    if(sigaction(SIGQUIT, &act, nullptr) < 0){
+        perror("sigaction");
+        exit(-1);
+    }
+    sleep(10);
+}
 
 
 int main(int argc, char* argv[]){
-   sigpending_test();
-
-
+    sigaction_test();
     return 0;
 }
 
