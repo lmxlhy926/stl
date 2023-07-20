@@ -2,9 +2,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <signal.h>
+#include <setjmp.h>
 #include <unistd.h>
 #include <errno.h>
 #include <pwd.h>
+#include <time.h>
 
 //信号处理函数，打印用户自定义信号
 void sig_usr(int signo){
@@ -92,12 +94,13 @@ unsigned int sleep1(unsigned int seconds){
 }
 
 
+//打印当前进程的信号屏蔽字
 void pr_mask(const char* str){
     sigset_t sigset;
     int errno_save = errno;
 
     //取得当前进程的信号屏蔽字
-    if(sigprocmask(0, nullptr, &sigset) == -1){
+    if(sigprocmask(SIG_BLOCK, nullptr, &sigset) == -1){
         perror("sigprocmask error");
         exit(-1);
     }else{
@@ -223,8 +226,115 @@ void sigaction_test(){
 }
 
 
+static sigjmp_buf jmpbuf;
+static volatile sig_atomic_t canjump;   //sig_atomic_t：整型，不会被信号处理程序打断
+
+static void sig_alrm(int){
+    //打印信号处理屏蔽字
+    pr_mask("in sig_alrm: ");
+}
+
+static void sig_usr1(int signo){
+    //主程序调用sigsetjmp之前，不响应信号；
+    if(canjump == 0){
+        return;
+    }
+    //打印进程信号屏蔽字
+    pr_mask("starting sig_usr1: ");
+    //给进程设置闹钟
+    alarm(3);
+    //工作5秒，这期间会触发闹钟信号处理函数
+    time_t starttime = time(nullptr);
+    for(; ;){
+        if(time(nullptr) > starttime + 5)
+            break;
+    }
+    //打印信号处理屏蔽字
+    pr_mask("finishing sig_usr1: ");
+    canjump = 0;
+    //跳转到sigsetjmp处
+    siglongjmp(jmpbuf, 1);
+}
+
+void sigsetjmp_siglongjump(){
+    //设置SIGUSR1信号处理程序
+    if(signal_own(SIGUSR1, sig_usr1) == SIG_ERR){
+        perror("signal(SIGUSR1) error");
+        exit(-1);
+    }
+    //设置SIGALRM信号处理程序
+    if(signal_own(SIGALRM, sig_alrm) == SIG_ERR){
+        perror("signal(SIGALRM) error");
+        exit(-1);
+    }
+
+    //打印进程此时的信号屏蔽字
+    pr_mask("starting main: ");
+
+    //保存进程当前状态
+    //如果savemask非0，则sigsetjmp在env中保存进程的当前信号屏蔽字
+    //如果带非0savemask的sigsetjmp调用已经保存了env，则siglongjmp从其中恢复保存的信号屏蔽字
+    if(sigsetjmp(jmpbuf, 1)){
+        pr_mask("ending main: ");
+        exit(0);
+    }
+
+    canjump = 1;
+    for(; ;){
+        pause();
+    }
+}
+
+
+static void sig_init(int signo){
+    pr_mask("\nin sig_init: ");
+}
+
+void sigsuspend_test(){
+    sigset_t newmask, oldmask, waitmask;
+    pr_mask("program start: ");
+    if(signal_own(SIGINT, sig_init) == SIG_ERR){
+        perror("signal(SIGINT) error");
+        exit(-1);
+    }
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGINT);
+    sigemptyset(&waitmask);
+    sigaddset(&waitmask, SIGUSR1);
+
+    //block SIGINT and save current signal mask
+    if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
+        perror("sigprocmask error");
+        exit(-1);
+    }
+    pr_mask("in critial region: ");
+
+    //pause, allowing all signals except SIGUSR1.
+    //在一个原子操作中设置信号屏蔽字，然后使进程休眠
+    //在捕捉到一个信号或发生了一个会终止该进程的信号之前，该进程被挂起。
+    //如果捕捉到一个信号而且从该信号处理程序返回，则sigsuspend返回，并且该进程的信号屏蔽字设置为调用sigsuspend之前的值。
+    if(sigsuspend(&waitmask) != -1){
+        perror("sigsuspend error");
+        exit(-1);
+    }
+    pr_mask("aftern return from sigsuspend: ");
+
+    //reset signal block which unblocks SIGINT
+    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
+        perror("sigprocmask error");
+        exit(-1);
+    }
+
+    pr_mask("program exit: ");
+    exit(0);
+}
+
+
+
+
 int main(int argc, char* argv[]){
-    sigaction_test();
+   sigsuspend_test();
+
     return 0;
 }
 
