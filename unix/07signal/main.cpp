@@ -330,10 +330,65 @@ void sigsuspend_test(){
 }
 
 
+static volatile sig_atomic_t quitflag;
+
+static void sig_init1(int signo){
+    pr_mask("in sig_init1: ");
+    if(signo == SIGINT)
+        printf("\ninterrupt\n");
+    else if(signo == SIGQUIT)
+        quitflag = 1;
+}
+
+void sigsuspend_test1(){
+    sigset_t newmask, oldmask, zeromask;
+    //设置SIGINT、SIGQUIT的信号处理函数
+    if(signal_own(SIGINT, sig_init1) == SIG_ERR){
+        perror("signal(SIGINT) error");
+        exit(-1);
+    }
+    if(signal_own(SIGQUIT, sig_init1) == SIG_ERR){
+        perror("signal(SIGQUIT) error");
+        exit(-1);
+    }
+
+    //构造信号集合
+    sigemptyset(&zeromask);
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGQUIT);
+
+    pr_mask("main starting: ");
+    //阻塞SIGQUIT信号
+    if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
+        perror("sigprocmask error");
+        exit(-1);
+    }
+    pr_mask("after SIG_BLOCK: ");
+
+    while(quitflag == 0){
+        //在一个原子操作中完成：1. 设置新的信号屏蔽字； 2 阻塞等待信号发声
+        //被唤醒号，恢复进程的信号屏蔽字
+        sigsuspend(&zeromask);
+        pr_mask("after sigsuspend: ");
+    }
+        
+
+    quitflag = 0;
+
+    //恢复信号
+    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
+        perror("SIG_SETMASK error");
+        exit(-1);
+    }
+    pr_mask("main ending: ");
+
+    exit(0);
+}
+
 
 
 int main(int argc, char* argv[]){
-   sigsuspend_test();
+   sigsuspend_test1();
 
     return 0;
 }
