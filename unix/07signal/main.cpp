@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <time.h>
+#include <sys/wait.h>
 
 //信号处理函数，打印用户自定义信号
 void sig_usr(int signo){
@@ -385,11 +386,133 @@ void sigsuspend_test1(){
     exit(0);
 }
 
+/**
+ * ISO C要求若捕捉到此信号而且相应信号处理程序返回，abort仍不会返回到其调用者。
+ * 
+ * POSIX.1也说明abort并不理会进程对此信号的阻塞和忽略。
+ * 
+ * 让进程捕捉SIGABRT的意图是：在进程终止之前由其执行所需的清理操作。如果进程并不在信号处理程序中终止自己，POSIX.1声明
+ * 当信号处理程序返回时，abort终止该进程。
+ * 
+ * 
+*/
+void abort_own(){
+    struct sigaction action;
+
+    //获取之前的设置,，如果SIGABRT被阻塞，则恢复为默认
+    sigaction(SIGABRT, nullptr, &action);
+    if(action.sa_handler == SIG_IGN){
+        action.sa_handler = SIG_DFL;
+        sigaction(SIGABRT, &action, nullptr);
+    }
+
+    //如果SIGABRT是默认操作，则刷新标准库缓冲区
+    if(action.sa_handler == SIG_DFL){
+        fflush(nullptr);
+    }
+
+    //阻塞除SIGABRT之外的所有信号
+    sigset_t mask;
+    sigfillset(&mask);
+    sigdelset(&mask, SIGABRT);
+    sigprocmask(SIG_SETMASK, &mask, nullptr);
+    
+    //向调用进程自身发送信号
+    /**
+     * 如果调用kill使其为调用者产生信号，并且如果该信号是不被阻塞的，则在Kill返回前该信号(或某个未决、未阻塞的信号)
+     * 就被传送给了该进程。我们阻塞了SIGABRT外的所有信号，这样就可知如果对Kill的调用返回了，则该进程一定已捕捉到该信号，
+     * 并且也从该信号处理程序返回。
+    */
+    kill(getpid(), SIGABRT);
+    printf("kill here....\n");
+
+    //对于捕获SIGABRT的会返回的handler，控制流会到达这里
+    //设置SIGABRT信号handler为默认，再次发送，终止进程
+    fflush(nullptr);
+    action.sa_handler = SIG_DFL;
+    sigaction(SIGABRT, &action, nullptr);
+    sigprocmask(SIGABRT, &mask, nullptr);
+    kill(getpid(), SIGABRT);
+
+    exit(1);
+}
+
+void abortHandler(int signo){
+    printf("catch SIGABRT...\n");
+}
+
+void abort_test(){
+    signal_own(SIGABRT, abortHandler);
+    abort_own();
+}
+
+
+
+int system_nosignal(const char *cmdstring){
+    pid_t pid;
+    int status;
+
+    if(cmdstring == nullptr){
+        return 1;
+    }
+
+    if((pid = fork()) < 0){
+        status = -1;
+    }else if(pid == 0){
+        execl("/usr/bin/bash", "sh", "-c", cmdstring, nullptr);
+        _exit(127);
+    }else{
+        while(waitpid(pid, &status, 0) < 0){
+            if(errno != EINTR){
+                status = -1;
+                break;
+            }
+        }
+    }
+
+    return status;
+}
+
+
+static void sig_init_1(int signo){
+    printf("caught SIGINT\n");
+}
+
+static void sig_chld_1(int signo){
+    printf("caught SIGCHLD\n");
+}
+
+void system_nosignal_test(){
+    if(signal_own(SIGINT, sig_init_1) == SIG_ERR){
+        perror("signal(SIGINT) error");
+        exit(-1);
+    }
+    if(signal_own(SIGCHLD, sig_chld_1) == SIG_ERR){
+        perror("signal(SIGCHLD) error");
+        exit(-1);
+    }
+
+    if(system_nosignal("/usr/bin/ed") < 0){
+        perror("system error");
+        exit(-1);
+    }
+    exit(0);
+}
 
 
 int main(int argc, char* argv[]){
-   sigsuspend_test1();
+    system_nosignal_test();
 
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
 
