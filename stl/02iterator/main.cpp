@@ -187,8 +187,14 @@ void iterator_invalid(){
  * Stream迭代器
  *      stream迭代器是一种迭代器适配器，借由它，你可以把stream当成算法的来源端和目的端。
  *      更明确的说，一个istream迭代器可用来从input stream读取元素，而一个ostream迭代器可以用来对output stream写入元素。
- * 
- * 
+*/
+/**
+ * ostream迭代器可以将“被赋值”写入output stream。用了它，算法就可以直接写入stream.
+ * ostream迭代器将赋值动作转换为output操作(通过operator<<)，如此一来算法就可以使用寻常的迭代器接口直接对stream执行涂写。
+ *      *iter           : No-op（返回iter）
+ *      iter = value    : ostream << value
+ *      ++iter          : No-op（返回iter）
+ *      iter++          : No-op (返回iter）
 */
 void ostream_iteraotr_test(){
     ostream_iterator<int> intWriter(cout, "\n");
@@ -207,11 +213,32 @@ void ostream_iteraotr_test(){
     cout << endl;
 }
 
-
-void istream_iterator_test(){
+/**
+ * 通过istream迭代器，算法可以从stream直接读取数据
+ * 建立istream迭代器时，必须提供一个input stream作为实参，迭代器将从其中读取数据。通过operator>>从input stream中读取数据。
+ * 
+ * 读取动作有可能失败，算法的数据来源端也需要一个终点位置。使用end-of-stream迭代器来解决。
+ * end-of-stream迭代器以istream迭代器的default构造函数生成，只要有任何一次读取失败，所有istream迭代器都会变成end-of-stream迭代器。
+ *      *iter               : 返回此前读取的值（如果构造函数并未立刻读取第一个值，则本式执行读取任务）
+ *      iter->member        ：返回“此前读取的元素”的成员
+ *      ++iter              ：读取下一个值，并返回其位置
+ *      iter++              ：读取下一个值，但返回的迭代器指向前一个读取值
+ *      iter1 == iter2      ：检查迭代器是否相等
+ *      iter1 != iter2      ：检查迭代器是否不相等
+ * 
+ *  istream迭代器的构造函数会将stream打开，并往往会读取第一个值，否则一旦operator*在此迭代器初始化后被调用，就无法返回第一个元素了。
+ *  所以，在确实需要用到istream迭代器之前，别过早定义它。不过某些实现版本可能会延缓第一次读取动作直到operator*首次被调用。
+ * 
+*/
+void istream_iterator_test1(){
     istream_iterator<int> intReader(cin);
     istream_iterator<int> intReaderEOF;
 
+    /**
+     * 迭代器相等的条件：
+     *      * 两者都是end-of-stream迭代器
+     *      * 两者都可以再进行读取动作，并指向相同的stream。
+    */
     while(intReader != intReaderEOF){
         cout << "once: " << *intReader << endl;
         cout << "once again: " << *intReader << endl;
@@ -219,11 +246,36 @@ void istream_iterator_test(){
     }
 }
 
+void istream_iterator_test2(){
+    istream_iterator<int> intReader(cin);
+    istream_iterator<int> intReaderEOF;
+    std::vector<int> coll;
+    //可将流作为算法数据的来源端，从流中取来源数据
+    copy(intReader, intReaderEOF, back_inserter(coll));
+    std::cout << "print: " << std::endl;
+    copy(coll.begin(), coll.end(), ostream_iterator<int>(cout, " "));
+}
+
+void istram_iterator_test3(){
+    istream_iterator<string> stdinIterator(cin);
+    istream_iterator<string> stdinEOF;
+    ostream_iterator<string> stdoutIterator(cout);
+
+    while(stdinIterator != stdinEOF){
+        advance(stdinIterator, 2);
+        if(stdinIterator != stdinEOF){
+            *stdoutIterator++ = *stdinIterator++;
+        }
+    }
+
+    std::cout << std::endl;
+}
+
+
 
 
 int main(int argc, char* argv[]){
-    istream_iterator_test();
-
+    istram_iterator_test3();
 
     return 0;
 }
