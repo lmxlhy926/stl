@@ -1,13 +1,17 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <pwd.h>
+#include <time.h>
 #include <signal.h>
 #include <setjmp.h>
 #include <unistd.h>
 #include <errno.h>
-#include <pwd.h>
-#include <time.h>
 #include <sys/wait.h>
+
+using namespace std;
 
 //信号处理函数，打印用户自定义信号
 void sig_usr(int signo){
@@ -85,7 +89,7 @@ static void sig_alarm(int signo){
     return;
 }
 
-unsigned int sleep1(unsigned int seconds){
+unsigned int sleep_nosignal(unsigned int seconds){
     if(signal(SIGALRM, sig_alarm) == SIG_ERR){
         return seconds;
     }
@@ -94,6 +98,83 @@ unsigned int sleep1(unsigned int seconds){
     return(alarm(0));
 }
 
+unsigned int sleep_signal(unsigned int seconds){
+    //设置SIGALRM的新信号处理程序，不进行任何处理
+    struct sigaction newact, oldact;
+    newact.sa_handler = sig_alarm;
+    sigemptyset(&newact.sa_mask);
+    newact.sa_flags = 0;
+    sigaction(SIGALRM, &newact, &oldact);
+
+    //阻塞SIGALRM
+    sigset_t newmask, oldmask, suspmask;
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGALRM);
+    sigprocmask(SIG_BLOCK, &newmask, &oldmask);
+
+    //设置定时闹铃
+    alarm(seconds);
+
+    //阻塞等待信号发生，可以为之前系统未屏蔽的任何信号以及SIGALRM信号
+    suspmask = oldmask;
+    sigdelset(&suspmask, SIGALRM);
+    sigsuspend(&suspmask);
+
+    //返回到这里意味着已经捕捉到某个信号。sigsuspend会恢复之前的进程屏蔽信号集合，SIGALRM现在被阻塞。
+
+    int unslept = alarm(0); //返回剩余的时间
+
+    //恢复SIGALRM的信号处理程序，恢复之前的进程信号屏蔽字
+    sigaction(SIGALRM, &oldact, nullptr);
+    sigprocmask(SIG_SETMASK, &oldmask, nullptr);
+
+    return unslept;
+}
+
+void sleep_test(){
+    int start = time(nullptr);
+    int unslept = sleep_signal(3);
+    int end = time(nullptr);
+
+    std::cout << "unslept: " << unslept << " , end - start: " << end - start << std::endl;
+}
+
+void sig_commonHandler(int signo){
+    std::cout << "catch signo" << std::endl;
+}
+
+void nanosleep_test(){
+    signal(SIGINT, sig_commonHandler);
+
+    struct timespec sleeptime, unsleeptime;
+    sleeptime.tv_sec = 3;
+    sleeptime.tv_nsec = 1000 * 1000;
+    nanosleep(&sleeptime, &unsleeptime);
+    std::cout << "unsleeptime.tv_sec: " << unsleeptime.tv_sec
+              << " , unsleeptime.tv_nsec: " << unsleeptime.tv_nsec << std::endl;
+}
+
+
+//打印进程终止状态
+void pr_exit(int status){
+    if(WIFEXITED(status)){  //正常退出，打印退出状态
+        printf("normal termination, exit status = %d\n", WEXITSTATUS(status));
+
+    }else if(WIFSIGNALED(status)){  //异常退出，打印造成退出的信号
+        printf("abnormal termination, signal number = %d%s\n", WTERMSIG(status),
+        #ifdef WCOREDUMP
+            WCOREDUMP(status) ? " (core file generated)" : "");
+        #else
+            "");
+        #endif
+
+    }else if(WIFSTOPPED(status)){   //进程暂停，打印造成暂停的信号
+        printf("child stopped, signal number = %d\n", WSTOPSIG(status));
+
+    }else if(WIFCONTINUED(status)){
+        printf("child continued....\n");
+    }
+}
 
 //打印当前进程的信号屏蔽字
 void pr_mask(const char* str){
@@ -450,7 +531,7 @@ void abort_test(){
 
 int system_nosignal(const char *cmdstring){
     pid_t pid;
-    int status;
+    int status = -1;
 
     if(cmdstring == nullptr){
         return 1;
@@ -473,6 +554,66 @@ int system_nosignal(const char *cmdstring){
     return status;
 }
 
+int system_signal(const char* cmdstring){
+    if(cmdstring == nullptr){   //unix总是支持命令行处理
+        return 1;
+    }
+
+    struct sigaction ignore, saveintr, savequit;
+    sigset_t chldmask, savemask;
+    //忽略SIGINT,SIGQUIT
+    ignore.sa_handler = SIG_IGN;
+    sigemptyset(&ignore.sa_mask);
+    ignore.sa_flags = 0;
+    if(sigaction(SIGINT, &ignore, &saveintr) < 0){
+        return -1;
+    }
+    if(sigaction(SIGQUIT, &ignore, &savequit) < 0){
+        return -1;
+    }
+    //阻塞SIGCHLD
+    sigemptyset(&chldmask);
+    sigaddset(&chldmask, SIGCHLD);
+    if(sigprocmask(SIG_BLOCK, &chldmask, &savemask) < 0){
+        return -1;
+    }
+
+    pid_t pid;
+    int status;
+    if((pid = fork()) < 0){
+        status = -1;
+    }else if(pid == 0){
+        //恢复信号的处理方式
+        sigaction(SIGINT, &saveintr, nullptr);
+        sigaction(SIGQUIT, &savequit, nullptr);
+        //恢复之前的阻塞信合集合
+        sigprocmask(SIG_SETMASK, &savemask, nullptr);
+        execl("/usr/bin/bash", "bash", "-c", cmdstring, nullptr);
+        _exit(127);
+
+    }else{
+        //父进程等待回收子进程
+        while(waitpid(pid, &status, 0) < 0){
+            if(errno != EINTR){
+                status = -1;
+                break;
+            }
+        }
+    }
+
+    //父进程恢复信号处理方式
+    if(sigaction(SIGINT, &saveintr, nullptr) < 0)
+        return -1;
+    if(sigaction(SIGQUIT, &savequit, nullptr) < 0)
+        return -1;
+    //父进程恢复进程屏蔽信号集合
+    if(sigprocmask(SIG_SETMASK, &savemask, nullptr) < 0)
+        return -1;
+
+    return status;
+}
+
+
 
 static void sig_init_1(int signo){
     printf("caught SIGINT\n");
@@ -480,6 +621,10 @@ static void sig_init_1(int signo){
 
 static void sig_chld_1(int signo){
     printf("caught SIGCHLD\n");
+    int status;
+    if(wait(&status) < 0){
+        perror("wait");
+    }
 }
 
 void system_nosignal_test(){
@@ -492,16 +637,70 @@ void system_nosignal_test(){
         exit(-1);
     }
 
-    if(system_nosignal("/usr/bin/ed") < 0){
+    int status;
+    if((status = system_signal("sleep 30")) < 0){
         perror("system error");
         exit(-1);
     }
+
+    pr_exit(status);
+    printf("---end---\n");
+    exit(0);
+}
+
+void sig_tstp(int signo){
+    //处理逻辑
+    std::cout << "in sig_tstp" << std::endl;
+
+    //进入SIGTSTP的信号处理程序后，自动屏蔽SIGTSTP信号。这里解除对SIGTSTP信号的屏蔽。
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGTSTP);
+    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+
+    //恢复SIGTSTP信号的默认处理方式：停止该进程
+    signal(SIGTSTP, SIG_DFL);
+    //向自己发送SIGTSTP信号来停止该进程
+    kill(getpid(), SIGTSTP);
+
+    /**
+     * 仅当某个进程向该进程发送一个SIGCONT信号时，该进程才继续。我们不捕捉SIGCONT信号。该信号的默认配置
+     * 是继续运行停止的进程，当此发生时，此程序如同从kill函数返回一样继续运行。
+    */
+
+
+    //恢复SIGTSTP信号处理程序
+    signal(SIGTSTP, sig_tstp);
+    std::cout << "sig_tstp end...." << std::endl;
+}
+
+void sigtstop_test(){
+    /**
+     * 仅当SIGTSTP信号的配置是SIG_DFL才安排捕捉该信号，其理由是：当此程序由不支持作业控制的shell启动时，
+     * 此信号的配置应当设置为SIG_IGN。只有作业控制shell才应将这3个信号重新设置为SIG_DFL。
+    */
+    if(signal(SIGTSTP, SIG_IGN) == SIG_DFL){
+        signal(SIGTSTP, sig_tstp);
+    }
+
+    while(true){
+        std::cout << "hello world" << std::endl;
+        sleep(1);
+    }
+    
     exit(0);
 }
 
 
+void signal_print_test(){
+    psignal(SIGABRT, "print");
+    char* ptr = strsignal(SIGABRT);
+    printf("strsignal: %s\n", ptr);
+}
+
+
 int main(int argc, char* argv[]){
-    system_nosignal_test();
+    signal_print_test();
 
     return 0;
 }
