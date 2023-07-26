@@ -237,6 +237,11 @@ void peek_test(){
     std::cout << "readLine: " << buf << std::endl;
 }
 
+void output_test(){
+    std::cout.put('a').put('b');
+    std::cout.write("hello", 5);
+    std::cout.flush();
+}
 
 
 void istream_input(){
@@ -279,7 +284,7 @@ void test(){
 
 
 int main(int argc, char* argv[]){
-    peek_test();
+    output_test();
 
     return 0;
 }
