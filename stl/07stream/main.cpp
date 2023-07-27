@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <iterator>
 #include <bitset>
 #include <complex>
 #include <string>
@@ -7,6 +8,7 @@
 #include <string>
 #include <limits>
 #include <unistd.h>
+#include <streambuf>
 
 using namespace std;
 
@@ -81,7 +83,7 @@ void inputOperator(){
 }
 
 
-void printStreamState(std::istream& cin){
+void printStreamState(std::ios& cin){
     if(std::cin.rdstate() & std::ios::eofbit){
         std::cout << "end of file" << std::endl;
     }
@@ -281,11 +283,130 @@ void test(){
    std::cout << "read error..." << std::endl;
 }
 
+void streambuf_iterator_test(){
+    istreambuf_iterator<char> inpos(cin);
+    istreambuf_iterator<char> endpos;
+    ostreambuf_iterator<char> outpos(cout);
+    copy(inpos, endpos, outpos);
+    std::cout << "end..." << std::endl;
+}
+
+class outbuf : public std::streambuf{
+protected:
+    virtual int_type overflow(int_type c) override{
+        if(c != EOF){
+            c = std::toupper(c);
+            if(std::putchar(c) == EOF){
+                return EOF;
+            }
+        }
+        return c;
+    }
+};
+
+void streambuf_test(){
+    outbuf ob;
+    std::ostream out(&ob);
+    out << "你";
+    out << 3 << " " << 3.14 << " helloworld" << " 你好" << std::endl;
+}
+
+//通过重载streambuf的overflow函数，定义输出的输出源
+class fdoutbuf : public std::streambuf{
+    protected:
+        int fd;
+    public:
+        fdoutbuf(int _fd) : fd(_fd){}
+    protected:
+        virtual int_type overflow(int_type c) override{
+            if(c != EOF){
+                char z = c;
+                if(write(fd, &z, 1) != 1){
+                    return EOF;
+                }
+            }
+            return c;
+        }
+};
+    
+//
+class fdostream : public std::ostream{
+    protected:
+        fdoutbuf buf;
+    public:
+        fdostream(int fd) : std::ostream(nullptr), buf(fd){
+            rdbuf(&buf);
+        }
+};
+
+void fdostream_test(){
+    fdostream out(1);
+    out << 1 << " " << 2 << " helloworld" << std::endl;
+}
+
+//带缓冲的streambuf
+class outbuf_buffer : public std::streambuf{
+    protected:
+        static const int bufferSize = 3;
+        char buffer[bufferSize]{};
+    public:
+        outbuf_buffer(){
+            setp(buffer, buffer + (bufferSize - 1));
+        }
+
+        virtual ~outbuf_buffer(){
+           sync();
+        }
+    protected:
+        //flush the characters in the buffer
+        int flushBuffer(){
+            int num = pptr() - pbase();
+            if(write(1, buffer, num) != num){
+                return EOF;
+            }
+            pbump(-num);
+            return num;
+        }
+
+        //buffer满了，输出c和之前的所有字符
+        virtual int_type overflow(int_type c) override{
+            if(c != EOF){
+                //存入字符，此时pptr() == epptr();
+                *pptr() = c;
+                pbump(1);
+            }
+            if(flushBuffer() == EOF){
+                return EOF;
+            }
+            return c;
+        }
+
+        virtual int sync() override{
+            if(flushBuffer() == EOF){
+                return -1;
+            }
+            return 0;
+        }
+};
+
+void streambuf_buffer_test(){
+    outbuf_buffer ob;
+    std::ostream os(&ob);
+    os << 1;
+    sleep(1);
+    std::cout << "--1--" << std::endl;
+    os << 1;
+    sleep(1);
+    std::cout << "--2--" << std::endl;
+    os << 2;
+    sleep(1);
+}
+
 
 
 int main(int argc, char* argv[]){
-    output_test();
-
+   streambuf_buffer_test();
+   
     return 0;
 }
 
