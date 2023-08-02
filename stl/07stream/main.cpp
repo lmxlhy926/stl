@@ -8,6 +8,7 @@
 #include <string>
 #include <limits>
 #include <unistd.h>
+#include <fcntl.h>
 #include <streambuf>
 
 using namespace std;
@@ -16,15 +17,33 @@ using namespace std;
  * operator>> 和 operator<< 被相应的stream class重载，分别用于输入和输出。于是c++的移位操作符摇身一变成了I/O操作符。
  * c/c++的操作符<<和>>分别用于整数中位的左移和右移，然而basic_istream<>和basic_ostream<>重载了它们，使之成为标准I/O操作符。
  * 
+ * basic_istream将>>定义为input操作符。
+ * basic_istream也对几乎所有基础类型重载了operator>>，不包括void和nullptr_t，但包括char*和void*。
+ * 
+ * 和<<一样，我们也可对任意类型重载input操作符，并串联运用它们；
+ * 为了让这成为可能，默认会跳过一开始的空白字符，但这项功能也可以关闭。
+ * 
+ * 在c++11起，并发输入采用相同的stream对象是可能的，但可能导致读入的字符并未在读取它的线程中有定义。
+ * 
 */
-
-void input(){
+void format_raad1(){
     int i;
     float f;
     string s;
     std::cin >> i >> f >> s;
     std::cout << "read: " << i << " " << f << " " << s << std::endl;
 }
+
+
+//格式化读取，每读取一次要验证流对象错误标志是否设置
+void format_read2(){
+   int read;
+   while(std::cin >> read){   
+        std::cout << "read: " << read << std::endl;
+   }
+   std::cout << "read error..." << std::endl;
+}
+
 
 /**
  * basic_ostream将<<定义为output操作符，对所有基础(语言内建)类型均重载，不包括void和nullptr_t，但包括char*和void*。
@@ -40,7 +59,7 @@ void input(){
  * 
  * 自c++11起，并发输出采用相同的stream对象是可能的，但是可能导致交错的字符。
 */
-void outputOperator(){
+void format_output(){
     //int
     std::cout << 7 << std::endl;
 
@@ -65,32 +84,17 @@ void outputOperator(){
     std::cout << "first " << "second " << "third " << std::endl;
 }
 
-/**
- * basic_istream将>>定义为input操作符。
- * basic_istream也对几乎所有基础类型重载了operator>>，不包括void和nullptr_t，但包括char*和void*。
- * 
- * 和<<一样，我们也可对任意类型重载input操作符，并串联运用它们；
- * 为了让这成为可能，默认会跳过一开始的空白字符，但这项功能也可以关闭。
- * 
- * 在c++11起，并发输入采用相同的stream对象是可能的，但可能导致读入的字符并未在读取它的线程中有定义。
-*/
-void inputOperator(){
-    int i;
-    float f;
-    string s;
-    std::cin >> i >> f >> s;
-    std::cout << "i: " << i << " f: " << f << " s: " << s << std::endl;
-}
 
 
+//打印输入流的状态
 void printStreamState(std::ios& cin){
-    if(std::cin.rdstate() & std::ios::eofbit){
+    if(std::cin.rdstate() & std::ios_base::eofbit){
         std::cout << "end of file" << std::endl;
     }
-    if(std::cin.rdstate() & std::ios::failbit){
+    if(std::cin.rdstate() & std::ios_base::failbit){
         std::cout << "fail" << std::endl;
     }
-    if(std::cin.rdstate() & std::ios::badbit){
+    if(std::cin.rdstate() & std::ios_base::badbit){
         std::cout << "bad" << std::endl;
     }
 }
@@ -131,48 +135,6 @@ void get_char_test1(){
     printStreamState(std::cin);
 }
 
-/**
- * istream& istream::get(char* str, streamsize count)
- * istream& istream::get(char* str, streamsize count, char delim)
- *      * 调用者必须保证str足够存入count个字符
- *      * 两种形式均可读取count-1个字符，再附加一个null字符，存入str所指向的字符序列中
- *      * 不会读取终止符delim
- * 
- *      读取终止条件：
- *          * 读取，直到遇到delim或end-of-file
- *          * 最多count-1个字符
- *          遇到delim, 但是stream没有读取到任何内容，stream会报错
- * 
- * 目的：在遇到delim之前读取，遇到delim则读取结束
- * 
-*/
-void get_chars_test(){
-    char buf[1024]{};
-    while(std::cin.get(buf, 3, ' ')){
-        std::cout << "read: " << buf << std::endl;
-    }
-    printStreamState(std::cin);
-}
-
-/**
- * istream& istream::getline(char* str, streamsize count)
- * istream& istream::getline(char* str, streamsize count, char delim)
- *      * 调用者必须保证str足够存入count个字符
- *      * 两种形式均可读取count-1个字符，再附加一个null字符，存入str所指向的字符序列中
- *      * 读取delim，但是不会存储
- *      * 如果在count个字符内没有遇到delim，则读取出错。即在指定字符内没有读取到一行，则读取出错。
- *      * 只要在count个字符内有delim就行，只有delim读取也是正确的。
- * 
- * 目的：在count个字符内读取到一行，如果没有读取到一行，则读取出错。
-*/
-void get_line_test(){
-    char buf[1024];
-    while(std::cin.getline(buf, 3, ',')){
-        std::cout << "read: " << buf << std::endl;
-    }
-    printStreamState(std::cin);
-}
-
 
 /**
  * istream& istream::read(char* str, streamsize count)
@@ -188,6 +150,52 @@ void read_test(){
     }
     printStreamState(std::cin);
 }
+
+
+/**
+ * istream& istream::get(char* str, streamsize count)
+ * istream& istream::get(char* str, streamsize count, char delim)
+ *      * 调用者必须保证str足够存入count个字符；
+ *      * 两种形式均可读取count-1个字符，再附加一个null字符，存入str所指向的字符序列中
+ *      * 不会读取终止符delim
+ * 
+ *      读取终止条件：
+ *          * 如果遇到delim或end-of-file，则停止。如果字符数目已经达到count-1个字符，则停止。
+ *          * 遇到delim或end-of-file, 但是stream没有读取到任何内容，stream会报错
+ * 
+ * 目的：一次性读取，在遇到delim之前读取，遇到delim则读取结束
+ * 
+*/
+void get_chars_test(){
+    char buf[1024]{};
+    while(std::cin.get(buf, 3, ' ')){
+        std::cout << "read: " << buf << std::endl;
+    }
+    printStreamState(std::cin);
+}
+
+
+/**
+ * istream& istream::getline(char* str, streamsize count)
+ * istream& istream::getline(char* str, streamsize count, char delim)
+ *      * 调用者必须保证str足够存入count个字符
+ *      * 两种形式均可读取count-1个字符，再附加一个null字符，存入str所指向的字符序列中
+ *      * 读取delim，但是不会存储。这样在count个字符内有delim就行。
+ *      
+ *      读取终止条件：
+ *          * 如果遇到delim则停止，如果在count个字符内没有遇到delim，则读取出错。即在指定字符内没有读取到一行，则读取出错。
+ *          * 只要在count个字符内有delim就行，只有delim读取也是正确的。
+ * 
+ * 目的：在count个字符内读取到一行，如果没有读取到一行，则读取出错。只要读取到delim，即读取到一行，即使读取到的内容是空的。
+*/
+void get_line_test(){
+    char buf[1024];
+    while(std::cin.getline(buf, 3, ',')){
+        std::cout << "read: " << buf << std::endl;
+    }
+    printStreamState(std::cin);
+}
+
 
 /**
  * istream& istream::ignore()
@@ -212,14 +220,22 @@ void ignore_test(){
     }
     
     //读取5个字符，忽略本行剩下的内容
-    std::cin.read(buf, 5);
-    std::cout << "readLine: " << string(buf, 5) << std::endl;
+    if(std::cin.read(buf, 5)){
+        std::cout << "readLine: " << string(buf, 5) << std::endl;
+    }else{
+        printStreamState(std::cin);
+        return;
+    }
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); //忽略本行剩余部分
 
     //读取一行内容并输出
-    std::cin.getline(buf, 1024);
-    std::cout << "readLine: " << buf << std::endl;
+    if(std::cin.getline(buf, 1024)){
+        std::cout << "readLine: " << buf << std::endl;
+    }else{
+        printStreamState(std::cin);
+    }
 }
+
 
 /**
  * int istream::peek()
@@ -234,62 +250,24 @@ void peek_test(){
         printStreamState(std::cin);
         return;
     }
+
     char buf[1024];
     std::cin.getline(buf, 1024);
     std::cout << "readLine: " << buf << std::endl;
 }
 
+/**
+ * 输出流：
+ *      * 输出一个字符
+ *      * 输出一个字符串
+ *      * 刷新输出
+*/
 void output_test(){
     std::cout.put('a').put('b');
     std::cout.write("hello", 5);
     std::cout.flush();
 }
 
-
-void istream_input(){
-    int read1 = std::cin.get();
-    std::cout << "read1: " << read1 << std::endl;
-
-    char read2;
-    std::cin.get(read2);
-    std::cout << "read2: " << read2 << std::endl;
-
-    char buf[1024];
-    std::cin.get(buf, 1024, '\n');
-    std::cout << buf;
-
-    std::cin.getline(buf, 1024, '\n');
-    std::cout << buf;
-
-    char readbuf[5];
-    std::cin.read(readbuf, 5);
-    std::cout << "readbuf: " << string(readbuf);
-
-    std::cin.ignore(5, '\n').read(readbuf, 5);
-    std::cout << "readbuf: " << string(readbuf);
-}
-
-void ostream_output(){
-    std::cout.put('a') << std::endl;
-    std::cout.write("hello", 5);
-    std::cout.flush();
-}
-
-void test(){
-   int read;
-   while(!(std::cin >> read).fail()){
-        std::cout << "read: " << read << std::endl;
-   }
-   std::cout << "read error..." << std::endl;
-}
-
-void streambuf_iterator_test(){
-    istreambuf_iterator<char> inpos(cin);
-    istreambuf_iterator<char> endpos;
-    ostreambuf_iterator<char> outpos(cout);
-    copy(inpos, endpos, outpos);
-    std::cout << "end..." << std::endl;
-}
 
 class outbuf : public std::streambuf{
 protected:
@@ -306,10 +284,11 @@ protected:
 
 void streambuf_test(){
     outbuf ob;
-    std::ostream out(&ob);
-    out << "你";
-    out << 3 << " " << 3.14 << " helloworld" << " 你好" << std::endl;
+    std::ostream out(&ob);  //给ostream配置流缓冲区
+    out << "你 ";
+    out << 3 << " " << 3.14 << " helloworld" << " from china " <<  "你好" << std::endl;
 }
+
 
 //通过重载streambuf的overflow函数，定义输出的输出源
 class fdoutbuf : public std::streambuf{
@@ -321,37 +300,42 @@ class fdoutbuf : public std::streambuf{
         virtual int_type overflow(int_type c) override{
             if(c != EOF){
                 char z = c;
-                if(write(fd, &z, 1) != 1){
+                if(write(fd, &z, 1) != 1){  //输出通道
                     return EOF;
                 }
             }
             return c;
         }
 };
+
     
-//
+//通过继承ostream，定义新的输出流
 class fdostream : public std::ostream{
     protected:
         fdoutbuf buf;
     public:
         fdostream(int fd) : std::ostream(nullptr), buf(fd){
-            rdbuf(&buf);
+            rdbuf(&buf);    //配置流缓冲区
         }
 };
 
-void fdostream_test(){
-    fdostream out(1);
-    out << 1 << " " << 2 << " helloworld" << std::endl;
+
+void fdostream_test(const char* filepath){
+    int fd = open(filepath, O_RDONLY | O_WRONLY);
+    fdostream cout(fd);
+    cout << 1 << " " << 2 << " helloworld" << std::endl;
 }
+
 
 //带缓冲的streambuf
 class outbuf_buffer : public std::streambuf{
     protected:
         static const int bufferSize = 3;
         char buffer[bufferSize]{};
+        int fd;
     public:
-        outbuf_buffer(){
-            setp(buffer, buffer + (bufferSize - 1));
+        outbuf_buffer(int fd_): fd(fd_) {
+            setp(buffer, buffer + (bufferSize - 1));    //给streambuf设置缓冲区
         }
 
         virtual ~outbuf_buffer(){
@@ -361,19 +345,18 @@ class outbuf_buffer : public std::streambuf{
         //flush the characters in the buffer
         int flushBuffer(){
             int num = pptr() - pbase();
-            if(write(1, buffer, num) != num){
+            if(write(fd, buffer, num) != num){
                 return EOF;
             }
-            pbump(-num);
+            pbump(-num);    //pptr回退到开始处
             return num;
         }
 
-        //buffer满了，输出c和之前的所有字符
+        //建立的这个write缓冲区，只要还剩一个字符空间，就会调用overflow()。buffer满了，输出c和之前的所有字符
         virtual int_type overflow(int_type c) override{
             if(c != EOF){
-                //存入字符，此时pptr() == epptr();
-                *pptr() = c;
-                pbump(1);
+                *pptr() = c;    //将最后一个字符存入缓冲区。
+                pbump(1);       //当前位置前进1。pptr超过epptr。
             }
             if(flushBuffer() == EOF){
                 return EOF;
@@ -387,25 +370,38 @@ class outbuf_buffer : public std::streambuf{
             }
             return 0;
         }
+
 };
 
-void streambuf_buffer_test(){
-    outbuf_buffer ob;
+
+void streambuf_buffer_test(const char* filepath){
+    int fd = open(filepath, O_RDONLY | O_WRONLY);
+    outbuf_buffer ob(fd);
     std::ostream os(&ob);
-    os << 1;
+
+    os << "hh";
+    os << "aa";
+    os.flush();
+
     sleep(1);
-    std::cout << "--1--" << std::endl;
-    os << 1;
+    os << "bb";
+
     sleep(1);
-    std::cout << "--2--" << std::endl;
-    os << 2;
-    sleep(1);
+    std::cout << "quit..." << std::endl;
 }
 
 
+void streambuf_iterator_test(){
+    istreambuf_iterator<char> inpos(cin);
+    istreambuf_iterator<char> endpos;
+    ostreambuf_iterator<char> outpos(cout);
+    copy(inpos, endpos, outpos);
+    std::cout << "end..." << std::endl;
+}
+
 
 int main(int argc, char* argv[]){
-   streambuf_buffer_test();
+    streambuf_buffer_test("/home/lhy/ownproject/stl/stl/07stream/a.txt");
    
     return 0;
 }
