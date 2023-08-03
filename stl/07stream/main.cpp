@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <streambuf>
+#include <fstream>
 #include <sstream>
 
 using namespace std;
@@ -505,10 +506,62 @@ void istringstream_test(){
 }
 
 
+void file_test(string filename){
+    std::ifstream file(filename);
+    if(file){
+        std::cout << file.rdbuf() << std::endl;
+        // file.seekg(0, std::ios_base::beg);
+        std::cout << file.rdbuf() << std::endl;
+    }
+}
+
+
+void infile_test(string filename){
+    std::ifstream file(filename);
+    if(file){
+        char buf[1024]{};
+        while(file.getline(buf, 1024)){
+            std::cout << "getline: " << buf;
+            std::ios::pos_type position = file.tellg();
+            std::cout << "   position: " << position << std::endl;
+        }
+
+        file.clear(); 
+        std::cout << endl << endl;
+
+        file.seekg(-42, std::ios_base::cur);
+        file.getline(buf, 1024);
+        std::cout << "getline: " << buf << "   position: " << file.tellg() << std::endl;
+
+        file.seekg(-7, std::ios::end);
+        file.getline(buf, 1024);
+        std::cout << "getline: " << buf << "   position: " << file.tellg() << std::endl;
+    }
+}
+
+void printAndSleep(const string str){
+    std::cout << str << std::endl;
+    sleep(1);
+}
+
+void outfile_test(string filename){
+    std::ofstream os(filename);
+    if(os){
+        os << "hello";
+        printAndSleep("----");
+        os.write("world", 5);
+        printAndSleep("----");
+        os.seekp(0, std::ios::beg);
+        printAndSleep("----");
+        os << "world";
+    }
+}
+
 
 int main(int argc, char* argv[]){
-    istringstream_test();
-
+    outfile_test("/home/lhy/project/stl/stl/07stream/out.txt");
+    std::cout << "end---" << std::endl;
+    sleep(3);
     return 0;
 }
 
