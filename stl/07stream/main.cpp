@@ -1,4 +1,6 @@
 
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 #include <bitset>
@@ -10,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <streambuf>
+#include <sstream>
 
 using namespace std;
 
@@ -391,6 +394,77 @@ void streambuf_buffer_test(const char* filepath){
 }
 
 
+class inbuf : public std::streambuf{
+    protected:
+        static const int bufferSize = 10;   //缓冲区大小
+        char buffer[bufferSize];    //缓冲区        
+    public:
+        inbuf(){
+            /**
+             * 设置缓冲区的初始指针
+             *      * 保留四个空位用来存放回退字符
+             *      * 初始时eback() == gptr() == egptr()，即无回退字符可读，也无缓冲字符可读
+            */
+            setg(buffer + 4, buffer + 4, buffer + 4);   
+        }
+    protected:
+        virtual int_type underflow() override{
+            /**
+             * gptr() == egptr() 意味着缓冲区没有数据
+             * 如果缓冲区有数据，则直接读取
+            */
+            if(gptr() < egptr()){
+                return traits_type::to_int_type(*gptr());
+            }
+
+            /**
+             * 缓冲区初始时没有数据，或者缓冲区数据已经被读取完毕，需要从外部表述读取新的数据。
+             * 先计算当前位置和eback()的距离，决定要保存的回退字符数量
+             * 这里最大保存4个回退字符
+            */
+            int numPutback;
+            numPutback = gptr() - eback();
+            if(numPutback > 4){
+                numPutback = 4;
+            }
+            std::memmove((buffer + 4) - numPutback, gptr() - numPutback, numPutback);
+
+            //读取新数据到缓冲区
+            int num = read(0, buffer + 4, bufferSize - 4);
+            if(num <= 0){
+                return EOF;
+            }
+
+            //读取完新数据后，调整eback()，gptr()，egptr()。
+            setg((buffer + 4) - numPutback, buffer + 4, (buffer + 4) + num);
+
+            //返回当前指向的数据
+            return traits_type::to_int_type(*gptr());
+        }
+};
+
+void inbuf_test(){
+    inbuf ib;
+    std::istream in(&ib);
+    char buf[1024]{};
+
+    in.getline(buf, 1024);
+    std::cout << "getline: " << buf << std::endl;
+
+    for(int i = 0; i < 8; ++i){
+        if(!in.unget()){
+            std::cout << "---fails in unget()---" << std::endl;
+            return;
+        }
+    }
+
+    in.getline(buf, 1024);
+    std::cout << "getline: " << buf << std::endl;
+
+    in.peek();
+}
+
+
 void streambuf_iterator_test(){
     istreambuf_iterator<char> inpos(cin);
     istreambuf_iterator<char> endpos;
@@ -400,9 +474,41 @@ void streambuf_iterator_test(){
 }
 
 
+/**
+ * stringstream
+*/
+void ostringstream_test(){
+    ostringstream os;
+    os << "dec: " << 15 << hex << " hex: " << 15 << endl;
+    cout << os.str() << std::endl;
+
+    bitset<8> b(7);
+    os << "float: " << 4.67 << " bitset: " << b << endl;
+    cout << os.str() << std::endl;
+
+    os.seekp(0);
+    os << "oct: " << dec << 22;
+    cout << os.str() << std::endl;
+}
+
+void istringstream_test(){
+    int x;
+    float f;
+    std::string s = "3.7";
+    std::istringstream is(s);
+    is >> x >> f;
+    std::cout << "x: " << x << " f: " << f << std::endl;
+
+    
+
+    cout << "is.str(): " << is.str() << std::endl;
+}
+
+
+
 int main(int argc, char* argv[]){
-    streambuf_buffer_test("/home/lhy/ownproject/stl/stl/07stream/a.txt");
-   
+    istringstream_test();
+
     return 0;
 }
 
