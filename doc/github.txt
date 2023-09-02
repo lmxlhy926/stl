@@ -1,0 +1,4 @@
+git remote set-url origin https://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@github.com/lmxlhy926/exhibition.git
+
+lmxlhy926
+6025147ABcd
