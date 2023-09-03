@@ -121,9 +121,82 @@
 
 
 
+### 编译时头文件路径搜索顺序
+
+    1. 首先根据编译时-I指定的路径搜索
+            
+            ```
+    gcc test.c -I/tools/libevent/include -I../include
+            ```
+
+2. 查找gcc/g++的环境变量：C_INCLUDE_PATH    CPLUS_INCLUDE_PATH  OBJC_INCLUDE_PATH
+
+   ```shell
+   C_INCLUDE_PATH=/usr/include/libxml2:/mylibPath
+   CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:/usr/include/libxml2:/mylibPath
+   export C_INCLUDE_PATH
+   export CPLUS_INCLUDE_PATH
+   #对所有用户有效在/etc/profile上增加内容，只对当前用户有效在家目录下的.bashrc下增加内容
+   ```
+
+   3. 搜索系统默认路径下的目录
+
+         ```
+         /usr/include
+         /usr/local/include
+         .....（其它一些系统目录）
+         ```
+
+### 编译时库文件路径搜索顺序
+
+1. 首先搜索-L指定的目录
+
+```
+gcc test.c -L/tools/libevent/lib -L../
+```
+
+2. 搜索gcc/g++环境变量LIBRARY_PATH指定的目录
+
+```shell
+#动态库路径
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/mylib
+export LD_LIBRARY_PATH
+#静态库路径
+LIBRARY_PATH=${LIBRARY_PATH}:/mylib
+export LIBRARY_PATH
+#对所有用户有效在/etc/profile上增加内容，只对当前用户有效在家目录下的.bashrc下增加内容
+#设置库文件路径后：gcc demo.c -o demo -levent就可以了，不再需要-L指定库文件搜索路径
+```
+
+3. 配置文件/etc/ld.so.conf中指定动态库搜索路径
+
+```
+运行ldconfig命令，从而将新加入的库的信息存入缓存文件中
+```
+
+4. 查找系统的默认目录：
+
+```shell
+/lib
+/usr/lib
+/usr/local/lib  #通常自己添加的库文件如.a或.so文件放在该路径下
+```
+
+### 运行时库搜索路径：运行时只会搜索动态库
+
+```
+1. 在配置文件/etc/ld.so.conf中指定的路径
+2. 环境变量LD_LIBRARY_PATH指定的路径
+3. 编译时可以指定动态库的搜索路径：-rpath
+4. 默认的动态库所有路径：/lib   /usr/lib    /usr/local/lib
+```
 
 
 
+1. 在编译机器上可运行的编译程序
+2. 目标主机上可执行的第三方程序、系统程序
+3. 目标主机上可加载的标准库、系统库、第三方库
+4. 第三方头文件、标准头文件、系统头文件
 
 
 

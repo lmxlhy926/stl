@@ -17,21 +17,9 @@
 ### **Git配置**
 
 ```shell
-#设置邮件地址、用户名、编辑器
 git config --global user.email "784723153@qq.com"
 git config --global user.name "lhy"
 git config --global core.editor vim
-
-#禁用SSL验证
-第一步，克隆远程仓库时，用env命令设置GIT_SSL_NO_VERIFY环境变量为"ture"，并同时调用正常的git clone命令。完整的命令如下：
-env GIT_SSL_NO_VERIFY=true git clone https://<host_name/git/project.git
-
-第二步，在克隆完毕的仓库中将http.sslVerify设置为"false"。完整的命令如下：
-git config http.sslVerify"false"
-
-#全局禁用
-git config --global http.sslVerify false
-
 
 #公司仓库信息：
 全名：lmxlhy926
@@ -89,7 +77,7 @@ git branch testing	#创建分支
 git checkout testing #切换到testing分支
 git checkout -b <newbranchname>	#创建一个新分支并切换过去
 git merge hotfix #将hotfix分支合并到当前分支
-git branch -d hotfix #删除本地hotfix分支
+git branch -d hotfix #删除hotfix分支
 
 #本地分支与远程分支
 git checkout -b <branch> <remote>/<branch>	
@@ -108,7 +96,7 @@ git push origin --delete serverfix #删除远程分支
 
 
 
-### **Git远程仓库：**
+### **远程仓库：**
 
 ```shell
 #查看远程仓库
@@ -155,7 +143,10 @@ git clean -nfd
 
 
 
-
+```
+# 设置新的personal token
+git remote set-url origin https://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@github.com/lmxlhy926/java.git
+```
 
 
 
