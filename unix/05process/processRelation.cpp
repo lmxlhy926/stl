@@ -1,4 +1,7 @@
 
+#include <iostream>
+#include <unistd.h>
+
 /**
  *      进程组以及POSIX.1引入的会话的概念。登录shell(登录时所调用的)和所有从登录shell启动的进程之间的关系
  * 
@@ -33,16 +36,65 @@
  * 
 */
 
-#include <iostream>
-#include <unistd.h>
+
+/**
+ * 进程组是一个或多个进程的集合。
+ * 同一进程组的各进程接收来自同一终端的各种信号。每个进程组有一个唯一的进程组ID。
+ * 每个进程组有一个组长进程。组长进程的进程组ID等于其进程ID。
+ * 进程组组长可以创建一个进程组、创建该组中的进程，然后终止。从进程组创建开始到其中最后一个进程离开为止的时间区间称为进程组的生命期。
+ * 
+ * 进程调用setpgid可以加入一个现有的进程组或者创建一个新进程组。
+ * 一个进程只能为它自己或它的子进程设置进程组ID。在它的子进程调用了exec后，它就不再更改该子进程的进程组ID。
+ * 
+ * 
+ * 会话是一个或多个进程组的集合。
+ * 通常是由shell的管道将几个进程编成一组。
+ * 
+ * 如果调用此函数的进程不是一个进程组的组长，则此函数创建一个新会话。
+ *      该进程变成新会话的会话首进程，会话首进程是创建该会话的进程。此时，该进程是新会话中的唯一进程。
+ *      该进程成为一个新进程组的组长进程。新进程组ID是该调用进程的进程ID。
+ *      该进程没有控制终端。
+ * 
+*/
+
+/**
+ * fork后子进程继承父进程的进程组ID
+ * 获取进程组ID，设置进程组ID
+*/
+void processGrp(){
+    std::cout << "parent pid: " << getpid() << std::endl;
+    std::cout << "parent gid: " << getpgrp() << std::endl;
+    pid_t pid = fork();
+    if(pid == 0){
+        std::cout << "child pid: " << getpid() << std::endl;
+        std::cout << "child gid: " << getpgrp() << std::endl;
+        if(setpgid(getpid(), getpid()) == -1){  //设置进程的进程组ID
+            std::cout << "setpgid error..." << std::endl;
+        }   
+        std::cout << "child gid: " << getpgrp() << std::endl;
+    }
+}
+
+
+//设置会话ID、获取会话ID
+void sessionId(){
+    std::cout << "parent pid: " << getpid() << std::endl;
+    std::cout << "parent gid: " << getpgrp() << std::endl;
+    pid_t pid = fork();
+    if(pid == 0){
+        std::cout << "child pid: " << getpid() << std::endl;
+        std::cout << "child grp: " << getpgrp() << std::endl;
+        pid_t grp = setsid();
+        std::cout << "grp: " << grp << std::endl;  
+        std::cout << "grp id: " << getpgrp() << std::endl;
+        std::cout << "session id: " << getsid(0) << std::endl;      
+    }
+}
+
 
 
 int main(int argc, char* argv[]){
-    std::cout << getpid() << std::endl;
-    if(setpgid(getpid(), 100) == -1){
-        std::cout << "error.." << std::endl;
-    }
-    std::cout << getpgrp() << std::endl;
+    sessionId();
 
 
     return 0;
