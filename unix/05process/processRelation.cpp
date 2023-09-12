@@ -1,6 +1,9 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string>
+using namespace std;
 
 /**
  *      进程组以及POSIX.1引入的会话的概念。登录shell(登录时所调用的)和所有从登录shell启动的进程之间的关系
@@ -59,7 +62,6 @@
 
 /**
  * fork后子进程继承父进程的进程组ID
- * 获取进程组ID，设置进程组ID
 */
 void processGrp(){
     std::cout << "parent pid: " << getpid() << std::endl;
@@ -76,26 +78,72 @@ void processGrp(){
 }
 
 
-//设置会话ID、获取会话ID
+/**
+ * 会话是一个或多个进程组的集合。
+ * 通常是由shell的管道将几个进程编成一组。
+ * 
+ * 如果调用此函数的进程不是一个进程组的组长，则此函数创建一个新会话。
+ *      该进程变成新会话的会话首进程，会话首进程是创建该会话的进程。此时，该进程是新会话中的唯一进程。
+ *      该进程成为一个新进程组的组长进程。新进程组ID是该调用进程的进程ID。
+ *      该进程没有控制终端。
+ * 
+ * 通常先调用fork，然后使其父进程终止，而子进程则继续。因为子进程继承了父进程的进程组ID，而其进程ID则是
+ * 新分配的，两者不可能相等，这就保证了子进程不是一个进程组的组长。
+*/
 void sessionId(){
+    if(setsid() == -1)  perror("setsid");   //调用setsid()的进程不能是一个进程组的组长。
     std::cout << "parent pid: " << getpid() << std::endl;
     std::cout << "parent gid: " << getpgrp() << std::endl;
     pid_t pid = fork();
     if(pid == 0){
+        pid_t grp = setsid();
         std::cout << "child pid: " << getpid() << std::endl;
         std::cout << "child grp: " << getpgrp() << std::endl;
-        pid_t grp = setsid();
-        std::cout << "grp: " << grp << std::endl;  
-        std::cout << "grp id: " << getpgrp() << std::endl;
-        std::cout << "session id: " << getsid(0) << std::endl;      
     }
 }
 
 
+/**
+ * 控制终端
+ * 
+ * 一个会话可以有一个控制终端。这通常是终端设备(在终端登录情况下)或伪终端设备(在网络登录情况下)。
+ * 建立与控制终端连接的会话首进程被称为控制进程。
+ * 一个会话中的几个进程组可被分为一个前台进程组以及一个或多个后台进程组。
+ * 
+*/
+
+void controlingDevice(){
+    std::cout << "parent pid: " << getpid() << std::endl;
+    std::cout << "parent controling process: " << tcgetpgrp(0) << std::endl;
+    std::cout << "parent controling process: " << tcgetpgrp(1) << std::endl;
+    std::cout << "parent controling process: " << tcgetpgrp(2) << std::endl;
+    std::cout << "parent controling process: " << tcgetpgrp(3) << std::endl;
+
+    pid_t pid = fork();
+    if(pid == 0){
+        setsid();
+        std::cout << "child pid: " << getpid() << std::endl;
+        std::cout << "child gid: " << getpgrp() << std::endl;
+        std::cout << "child controling process: " << tcgetpgrp(0) << std::endl;
+        int fd = open("/home/lhy/project/stl/unix/05process/a.txt", O_RDONLY | O_WRONLY);
+        std::cout << "fd: " << fd << std::endl;
+        std::cout << "child controling process: " << tcgetpgrp(fd) << std::endl;
+
+        int devtty = open("/dev/tty", O_RDONLY | O_WRONLY);
+        perror("open");
+        std::cout << "devtty: " << devtty << std::endl;
+        char buf[1024]{};
+        int nRead = read(devtty, buf, 5);
+        std::cout << "nRead: " << nRead << ", " << string(buf) << std::endl;
+    }
+
+
+
+}
+
 
 int main(int argc, char* argv[]){
-    sessionId();
-
+    controlingDevice();
 
     return 0;
 }
