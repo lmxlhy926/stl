@@ -2,6 +2,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <string>
 using namespace std;
 
@@ -110,10 +111,18 @@ void sessionId(){
  * 建立与控制终端连接的会话首进程被称为控制进程。
  * 一个会话中的几个进程组可被分为一个前台进程组以及一个或多个后台进程组。
  * 
+ *  需要有一种方法来通知内核哪一个进程组是前台进程组，这样，终端设备驱动程序就能知道将终端输入和终端产生的信号
+ * 发送到何处
+ *      函数tcgetpgrp返回前台进程组ID，它与在fd上打开的终端相关联。
+ *      一个打开的控制终端对应一个文件描述符fd，控制终端和前台进程组绑定起来，即fd和前台进程组关联。
+ *      如果进程有一个控制终端，则该进程可以调用tcsetpgrp将前台进程组ID设置为pgrpid。pgrpid值应当是在同一会话中的
+ * 一个进程组ID。fd必须引用该会话的控制终端。
+ * 
 */
 
 void controlingDevice(){
     std::cout << "parent pid: " << getpid() << std::endl;
+    std::cout << "parent gid: " << getpgrp() << std::endl;
     std::cout << "parent controling process: " << tcgetpgrp(0) << std::endl;
     std::cout << "parent controling process: " << tcgetpgrp(1) << std::endl;
     std::cout << "parent controling process: " << tcgetpgrp(2) << std::endl;
@@ -125,21 +134,20 @@ void controlingDevice(){
         std::cout << "child pid: " << getpid() << std::endl;
         std::cout << "child gid: " << getpgrp() << std::endl;
         std::cout << "child controling process: " << tcgetpgrp(0) << std::endl;
-        int fd = open("/home/lhy/project/stl/unix/05process/a.txt", O_RDONLY | O_WRONLY);
+        std::cout << "child controling process: " << tcgetpgrp(1) << std::endl;
+        std::cout << "child controling process: " << tcgetpgrp(2) << std::endl;
+        int fd = open("/home/lhy/project/stl/unix/02file/a.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
         std::cout << "fd: " << fd << std::endl;
-        std::cout << "child controling process: " << tcgetpgrp(fd) << std::endl;
-
-        int devtty = open("/dev/tty", O_RDONLY | O_WRONLY);
-        perror("open");
-        std::cout << "devtty: " << devtty << std::endl;
         char buf[1024]{};
-        int nRead = read(devtty, buf, 5);
+        int nRead = read(fd, buf, 5);
         std::cout << "nRead: " << nRead << ", " << string(buf) << std::endl;
+        ioctl(fd, TIOCSCTTY, nullptr);
+        std::cout << "child controling process: " << tcgetpgrp(fd) << std::endl;
     }
-
-
-
 }
+
+
+
 
 
 int main(int argc, char* argv[]){
@@ -147,54 +155,6 @@ int main(int argc, char* argv[]){
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

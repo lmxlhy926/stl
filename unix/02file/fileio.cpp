@@ -67,7 +67,7 @@ void positionForward(){
  *      写操作之前，不管当前文件偏移量在哪里，文件偏移量移动到文件末尾，这2步是一个原子操作
  */
 void writeAppend(){
-    int fd = open("a.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+    int fd = open("/home/lhy/project/stl/unix/02file/a.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
     lseek(fd, 0, SEEK_SET);     //定位到文件开头
     printf("pos: %ld\n", getLocation(fd));
     write(fd, "world", 5);             //不管当前位置在哪里，<先定位到文件末尾，然后开始写操作>
@@ -256,7 +256,7 @@ int set_fl(int fd, int flags){
 
 
 int main(int argc, char* argv[]){
-    filehole();
+    writeAppend();
 
     return 0;
 }
