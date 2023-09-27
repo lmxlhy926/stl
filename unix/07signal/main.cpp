@@ -15,6 +15,41 @@
 
 using namespace std;
 
+std::vector<int> sigvec{
+        SIGINT,	
+        SIGILL,	
+        SIGABRT,	
+        SIGFPE,	
+        SIGSEGV,	
+        SIGTERM,	
+        SIGHUP,	
+        SIGQUIT,	
+        SIGTRAP,
+        SIGKILL,	
+        SIGSYS,	
+        SIGPIPE,	
+        SIGALRM,	
+        SIGURG,	
+        SIGSTOP,	
+        SIGTSTP,	
+        SIGCONT,	
+        SIGCHLD,	
+        SIGTTIN,	
+        SIGTTOU,	
+        SIGPOLL,	
+        SIGXCPU,	
+        SIGXFSZ,	
+        SIGVTALRM,
+        SIGPROF,	
+        SIGUSR1,	
+        SIGUSR2,	
+        SIGWINCH,	
+        SIGIO,		
+        SIGIOT,	
+        SIGCLD	
+};
+
+
 //信号处理函数，打印用户自定义信号
 void sig_usr(int signo){
     if(signo == SIGUSR1){
@@ -131,7 +166,7 @@ unsigned int sleep_signal(unsigned int seconds){
     newact.sa_handler = sig_alarm;  //信号处理函数
     sigemptyset(&newact.sa_mask);   //执行信号处理函数时，要额外屏蔽的信号集合
     newact.sa_flags = 0;            //设定信号相关特性
-    sigaction(SIGALRM, &newact, &oldact);   //设置信号处理函数
+    sigaction(SIGALRM, &newact, &oldact);   //设置信号处理函数，并返回之前的信号处理函数
 
     //阻塞SIGALRM，记录此时的进程信号屏蔽集合
     sigset_t newmask, oldmask, suspmask;
@@ -145,7 +180,7 @@ unsigned int sleep_signal(unsigned int seconds){
     //阻塞等待信号发生，可以为之前系统未屏蔽的任何信号以及SIGALRM信号中断
     suspmask = oldmask;
     sigdelset(&suspmask, SIGALRM);
-    sigsuspend(&suspmask);  //设置屏蔽信号集合并阻塞在这里，返回时恢复屏蔽信号集合
+    sigsuspend(&suspmask);  //设置屏蔽信号集合并阻塞在这里，返回时恢复原屏蔽信号集合
 
     /**
      * 返回到这里意味着已经捕捉到某个信号。sigsuspend会恢复之前的进程屏蔽信号集合，SIGALRM现在被阻塞。
@@ -159,6 +194,7 @@ unsigned int sleep_signal(unsigned int seconds){
 
     return unslept;
 }
+
 
 /**
  * kill -SIGUSR1 PID， 中断进程运行，测试sleep时间
@@ -190,7 +226,7 @@ void nanosleep_test(){
 
     struct timespec sleeptime, unsleeptime{};
     sleeptime.tv_sec = 15;  //秒
-    sleeptime.tv_nsec = 1000 * 1000 * 100;  //纳秒
+    sleeptime.tv_nsec = 1000 * 1000 * 1000;  //纳秒
     nanosleep(&sleeptime, &unsleeptime);
     std::cout << "unsleeptime.tv_sec: " << unsleeptime.tv_sec
               << " , unsleeptime.tv_nsec: " << unsleeptime.tv_nsec << std::endl;
@@ -222,54 +258,16 @@ void pr_exit(int status){
 //打印当前进程的信号屏蔽字
 int pr_mask(const char* str){
     //取得当前进程的信号屏蔽字集合
-    sigset_t blockSet, nowSigset;
-    sigemptyset(&blockSet);
-    sigaddset(&blockSet, SIGALRM);
-    sigaddset(&blockSet, SIGUSR1);
-    sigprocmask(SIG_BLOCK, &blockSet, nullptr);
-    if(sigprocmask(SIG_BLOCK, nullptr, &nowSigset) == -1){
+    sigset_t blockSet;
+    if(sigprocmask(SIG_BLOCK, nullptr, &blockSet) == -1){
         perror("sigprocmask error");
         exit(-1);
     }
 
     //打印该进程的屏蔽的部分信号
     printf("%s", str);
-    std::vector<int> sigvec{
-        SIGINT,	
-        SIGILL,	
-        SIGABRT,	
-        SIGFPE,	
-        SIGSEGV,	
-        SIGTERM,	
-        SIGHUP,	
-        SIGQUIT,	
-        SIGTRAP,
-        SIGKILL,	
-        SIGSYS,	
-        SIGPIPE,	
-        SIGALRM,	
-        SIGURG,	
-        SIGSTOP,	
-        SIGTSTP,	
-        SIGCONT,	
-        SIGCHLD,	
-        SIGTTIN,	
-        SIGTTOU,	
-        SIGPOLL,	
-        SIGXCPU,	
-        SIGXFSZ,	
-        SIGVTALRM,
-        SIGPROF,	
-        SIGUSR1,	
-        SIGUSR2,	
-        SIGWINCH,	
-        SIGIO,		
-        SIGIOT,	
-        SIGCLD	
-    };
-
     for(auto& signo : sigvec){
-        if(sigismember(&nowSigset, signo)){
+        if(sigismember(&blockSet, signo)){
             printf(" %s", strsignal(signo));
         }
     }
@@ -287,10 +285,13 @@ void sig_quit(int signo){
     }
 }
 
+
 /**
  *  sigpending：返回当前进程的阻塞信号集合
 */
 void sigpending_test(){
+    std::cout << "pid: " << getpid() << std::endl;
+
     //注册SIGQUIT信号处理函数
     if(signal(SIGQUIT, sig_quit) == SIG_ERR){
         perror("cant't catch SIGQUIT");
@@ -298,7 +299,7 @@ void sigpending_test(){
     }
 
     //将SIGQUIT加入屏蔽信号集，并保存当前信号集合，用于后面恢复
-    sigset_t newmask, oldmask, pendmask;
+    sigset_t newmask, oldmask;
     sigemptyset(&newmask);
     sigaddset(&newmask, SIGQUIT);
     if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
@@ -307,9 +308,10 @@ void sigpending_test(){
     }
 
     std::cout << "now start to signal a SIGQUIT ..." << std::endl;
-    sleep(5);
+    sleep(10);
 
     //取得当前产生但是被阻塞的信号，判断SIGQUIT是否被阻塞
+    sigset_t pendmask;
     if(sigpending(&pendmask) < 0){
         perror("sigpending error");
         exit(-1);
@@ -328,7 +330,7 @@ void sigpending_test(){
 
     //此时不再阻塞SIGQUIT信号，默认操作是结束进程
     std::cout << "now start to signal a SIGQUIT ..." << std::endl;
-    sleep(5);
+    sleep(10);
     exit(0);
 }
 
@@ -781,8 +783,16 @@ void signal_print_test(){
 }
 
 
+void test(int a){
+    std::cout << "---" << a << std::endl;
+}
+using funcType = void(int);
+
 int main(int argc, char* argv[]){
-    pr_mask("set: ");
+    funcType *ft = test;
+    
+
+
     
 
     return 0;
