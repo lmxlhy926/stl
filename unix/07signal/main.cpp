@@ -81,8 +81,14 @@
  * 
  * 
  * sigpending
- *      sigpending函数返回一信号集，对于调用进程而言，其中的各信号是阻塞不能递送的，因而也一定是当前未决的。
  *      int sigpending(sigset_t *set);
+ *          sigpending() returns the set of signals that are pending for delivery to the calling thread.
+ * 
+ *          If a signal is both blocked and has a disposition of "ignored", it is not added to the mask of pending
+ *          signals when generated.
+ * 
+ *          The set of signals that is pending for a thread is the union of the set of signals  that  is  pending  for 
+ *          that thread and the set of signals that is pending for the process as a whole; see signal(7).
  * 
  * 
  * sigaction
@@ -93,9 +99,20 @@
  * 
  * sigsuspend
  *      int sigsuspend(const sigset_t *sigmask);    在一个原子操作中先恢复信号屏蔽字，然后使进程休眠。
- *      进程的信号屏蔽字设置为由sigmask指向的值。在捕捉到一个信号或发生了一个会终止该进程的信号之前，该进程被挂起。
- * 如果捕捉到一个信号而且从该信号处理程序返回，则sigsuspend返回，并且该进程的信号屏蔽字设置为调用sigsuspend之前的值。
+ * 
+ *      sigsuspend()  temporarily  replaces  the signal mask of the calling thread with the mask given by mask and
+ * then suspends the thread until delivery of a signal whose action is to invoke a signal handler or to  terminate a process.
  *      
+ *      If the signal terminates the process, then sigsuspend() does not return.  If the signal is caught, then
+ * sigsuspend() returns after the signal handler returns, and the signal mask is restored to the state before
+ * the call to sigsuspend().
+ * 
+ *      Normally, sigsuspend() is used in conjunction with sigprocmask(2) in order to prevent delivery of a signal
+ * during the execution of a critical code section.  The caller first blocks the signals with sigprocmask(2).
+ * When the critical code has completed, the caller then waits for the signals by calling sigsuspend() with
+ * the signal mask that was returned by sigprocmask(2) (in the oldset argument).
+ * 
+ * 
  *  
  * abort
  *      #include <stdlib.h>
@@ -193,12 +210,12 @@ void pr_exit(int status){
 
 
 
-//打印当前进程的信号屏蔽字
+//打印当前线程的信号屏蔽字
 int pr_mask(const char* str){
+    int err;
     sigset_t blockSet;
-    int errno_save = errno;
-    if(sigprocmask(SIG_BLOCK, nullptr, &blockSet) == -1){   //取得当前进程的信号屏蔽字集合
-        perror("sigprocmask error");
+    if((err = pthread_sigmask(SIG_BLOCK, nullptr, &blockSet)) != 0){   //取得当前线程的信号屏蔽字集合
+        printf("pthread_sigmask error: %s\n", strerror(err));
         exit(-1);
     }
 
@@ -210,7 +227,7 @@ int pr_mask(const char* str){
         }
     }
     printf("\n");
-    errno = errno_save;
+    fflush(stdout);
     return 0;
 }
 
@@ -554,44 +571,89 @@ void process_sync(){
     exit(0);
 }
 
+
+void printBlockedSet(const char* str, sigset_t set){
+    printf("%s", str);
+    for(auto signo : SigSetAll){
+        if(sigismember(&set, signo)){
+            printf("%s ", strsignal(signo));
+        }
+    }
+    printf("\n");
+    fflush(stdout);
+}
+
+
 /**
- * 每个线程都有自己的信号屏蔽字，但是信号的处理是进程中所有线程共享的。
+ * 每个线程都有自己的信号屏蔽字，但是信号的处理是进程中所有线程共享的。这意味着单个线程可以阻止某些信号，
+ * 但当某个线程修改了与某个给定信号相关的处理行为后，所有的线程都必须共享这个处理行为的改变。即对进程来说
+ * 信号的行为是唯一且确定的，每个线程都可以修改信号的行为，信号的行为由最近一次的修改行为决定。
  * 
  * 进程中的信号是递送到单个线程的。如果一个信号与硬件故障相关，那么该信号一般会被发送到引起该事件的线程中去，
  * 而其它的信号则被发送到任意一个线程。
  * 
  * sigprocmask是针对单线程进程的，其行为在多线程进程中并没有定义，线程必须使用pthread_sigmask。
  * 
- * 线程可以通过调用sigwait等待一个或多个信号的出现。
+ * 
+ * int sigwait(const sigset_t *restrict set, int *restrict signop);
+ *      set指定了线程等待的信号集。返回时signop指向触发返回的信号编号。
+ *      如果信号集中的某个信号在sigwait调用的时候处于挂起状态，那么sigwait将无阻塞的返回。在返回之前，sigwait
+ * 将从进程中移除那些处于挂起等待状态的信号。sigwait函数会原子的取消信号集的阻塞状态，直到有新的信号被递送。在
+ * 返回之前，sigwait将恢复线程的信号屏蔽字。如果信号在sigwait被调用的时候没有被阻塞，那么在线程完成对sigwait的
+ * 调用之前会出现一个时间窗，在这个时间窗中，信号就可以被发送给线程。为了避免错误行为发生，线程在调用sigwait之前，
+ * 必须阻塞那些它正在等待的信号。
+ *      使用sigwait的好处在于它可以简化信号处理，允许把异步产生的信号用同步的方式处理。为了防止信号中断线程，可以
+ * 把信号加到每个线程的信号屏蔽字中。然后可以安排专用线程处理信号。这些专用线程可以进行函数调用，不需要担心在信号
+ * 处理程序中调用哪些函数是安全的，因为这些函数调用来自正常的线程上下文，而非会中断线程正常执行的传统信号处理程序。
+ *      如果多个线程在sigwait的调用中因等待同一个信号而阻塞，那么在信号递送的时候，就只有一个线程可以从sigwait中
+ * 返回。如果一个信号被捕获，而且一个线程正在sigwait调用中等待统一信号，那么这时将由操作系统实现来决定以何种方式递
+ * 送信号。操作系统实现可以让sigwait返回，也可以激活信号处理程序，单这2种情况不会同时发生。
  * 
 */
+
 int quitflag1 = 0;
 sigset_t mask;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t waitloc = PTHREAD_COND_INITIALIZER;
 
-void* thr_fn(void *arg){
-    sigset_t blockset;
-    sigemptyset(&blockset);
-    sigaddset(&blockset, SIGUSR1);
-    sigaddset(&blockset, SIGUSR2);
-    pthread_sigmask(SIG_BLOCK, &blockset, nullptr);
-    pr_mask("thr_fn: ");
+/**
+ * (1) 确定要响应的信号。
+ *（2）在其它线程中屏蔽上述信号，开启一个专用线程处理信号。调用sigwait等待信号前，线程要先屏蔽该信号，否则会有时间窗。
+ * (3) 信号唤醒sigwait后，线程恢复其原先的屏蔽信号集，然后开始执行线程后续逻辑
+ * 
+ * 对比：
+ *      (1) 传统的信号处理程序中，必须调用异步安全的函数，因为传统信号处理程序会中断其它线程的正常执行，造成函数的重入。
+ * 很多函数是不可重入的，因此造成错误。
+ *      (2) 采用sigwait的方式时，其它的线程屏蔽要响应的信号。专用线程中开始时也屏蔽响应信号，然后调用sigwait原子操作
+ * 解除信号屏蔽并等待。信号递送时唤醒sigwait,然后执行线程后续逻辑。在此过程中，没有函数被中断，因此只要调用线程安全
+ * 的函数即可。
+ * 
+ * sigsuspend和sigwait的区别：
+ *      sigsuspend中指定线程要屏蔽的信号集合，其可被未指定的信号唤醒。但是不知道是被哪个信号唤醒。
+ *      sigwait中指定线程要等待的信号的集合，被唤醒后，知道是被哪个信号唤醒的。
+ * 
+ * 注：
+ *      通过阻塞信号以及在专用线程中处理信号，可以解决信号中断带来的问题。
+*/
 
+void* thr_fn(void *arg){
     int err, signo;
     for(; ;){
+        //-------调用sigwait之前信号要先被阻塞，否则这里有时间窗口-------
         err = sigwait(&mask, &signo);   //线程阻塞等待信号，直到被信号唤醒。
         if(err != 0){
             printf("sigwait error: %s\n", strerror(err));
             exit(-1);
         }
+       
+        //线程结束阻塞，开始执行后续逻辑
         switch(signo){
             case SIGINT:
                 printf("\ninterrupt\n");
                 break;
             case SIGQUIT:
-                pthread_mutex_lock(&lock);  //加锁安全操作。
+                pthread_mutex_lock(&lock);  //线程中的共享数据需要加锁保护
                 quitflag1 = 1;
                 pthread_mutex_unlock(&lock);
                 pthread_cond_signal(&waitloc);
@@ -603,6 +665,12 @@ void* thr_fn(void *arg){
     }
 }
 
+/**
+ * 线程的阻塞信号和进程的阻塞信号：
+ *      进程收到一个信号后，会随机发送给任意一个线程。因此sigpending获取到的线程的未决信号集合，
+ * 包含明确发送给该线程但被阻塞的信号以及发送给该进程但被阻塞的信号。
+ *      sigpending获取到的是线程的未决信号集合。
+*/
 void sig_multiThread_process(){
     int err;
     sigset_t oldmask;
@@ -611,36 +679,28 @@ void sig_multiThread_process(){
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGQUIT);
-    pr_mask("start: ");
-    
-    if((err = pthread_sigmask(SIG_BLOCK, &mask, &oldmask)) != 0){
+    if((err = pthread_sigmask(SIG_BLOCK, &mask, &oldmask)) != 0){   //设置主线程信号屏蔽字
         printf("pthread_sigmask error: %s\n", strerror(err));
         exit(-1);
     }
-    sleep(1);
-    pr_mask("after pthread_sigmask: ");
 
     err = pthread_create(&tid, nullptr, thr_fn, nullptr);
     if(err != 0){
         printf("pthread_create error: %s\n", strerror(err));
         exit(-1);
     }
-
-    sleep(2);
-    pr_mask("after pthread_create: ");
-
-
+   
     pthread_mutex_lock(&lock);
     while(quitflag1 == 0){
         pthread_cond_wait(&waitloc, &lock); //线程等待被唤醒，满足条件则执行后续逻辑，否则继续陷入等待
     }
     pthread_mutex_unlock(&lock);
-
-
-    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
-        perror("SIG_SETMASK error");
+   
+    if((err = pthread_sigmask(SIG_SETMASK, &oldmask, nullptr)) != 0){
+        printf("pthread_sigmask error: %s\n", strerror(err));
         exit(-1);
     }
+
     exit(0);
 }
 
