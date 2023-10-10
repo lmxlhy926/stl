@@ -5,6 +5,8 @@
 #include <string>
 
 #include <iostream>
+#include <vector>
+#include <map>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -117,6 +119,7 @@ void parent_child_writeOnCoyp(){
 }
 
 
+
 /**
  *进程终止
  *      进程有5种正常终止和3种异常终止方式
@@ -125,19 +128,20 @@ void parent_child_writeOnCoyp(){
  * 
  *      常见4种正常终止方式：
  *          1. 在main函数内执行return语句。等效于调用exit。
- *          2. 调用exit函数。此函数由ISO C定义，其操作包括调用各种终止处理程序(终止处理程序在调用atexit函数时登记)，然后关闭所有标准IO流等。
- *          3. 调用_Exit函数。ISO C定义_Exit，其目的是为进程提供一种无需运行终止处理程序或信号处理程序而终止的方法。
- *             在UNIX系统中,_exit函数和_Exit函数是同义的，并不冲洗标准IO流。_exit函数由exit函数调用，它处理UNIX系统特定细节。
- *             exit(3)是标准C库中的一个函数，而_exit(2)则是一个系统调用。
+ *          2. 调用exit函数。
+ *                  exit(3)是标准C库中的一个函数。
+ *                  此函数由ISO C定义，其操作包括调用各种终止处理程序(终止处理程序在调用atexit函数时登记)，然后关闭所有标准IO流等。
+ *          3. 调用_Exit函数。
+ *                  _exit(2)则是一个系统调用。  
+ *                  ISO C定义_Exit，其目的是为进程提供一种无需运行终止处理程序或信号处理程序而终止的方法。
+ *                  在UNIX系统中,_exit函数和_Exit函数是同义的，并不冲洗标准IO流。_exit函数由exit函数调用，它处理UNIX系统特定细节。
  *          4. 进程的最后一个线程结束。
  * 
  *      常见的异常终止：
  *          1. 调用abort。它产生SIGABRT信号，这是下一种异常终止的一种特例。
- *          2. 当进程接收到某些信号时。信号可由进程自身(如调用abort函数)、其它进程或内核产生。
- *             例如若进程引用地址空间之外的存储单元、或者除以0，内核就会为该进程产生相应的信号。
+ *          2. 当进程接收到某些信号时。信号可由进程自身(如调用abort函数)、其它进程或内核产生。例如若进程引用地址空间之外的存储单元、或者除以0，内核就会为该进程产生相应的信号。
  *     
- *      不管进程如何终止，最后都会执行内核中的同一段代码。这段代码为相应进程关闭所有打开描述符，释放它所使用的存储器等。
- *      
+ * 
  *      终止进程如何通知其父进程自己是如何终止的？
  *          对于3个终止函数(exit、_exit、_Exit)，将其退出状态作为参数传送给函数。在异常终止情况，内核(不是进程本身)产生一个
  *          指示其异常终止原因的终止状态。这里使用了"退出状态"和"终止状态"两个术语，以表示有所区别。在最后调用_exit时，内核将
@@ -151,7 +155,72 @@ void parent_child_writeOnCoyp(){
  *          内核为每个终止子进程保存了一定量的信息，所以当终止进程的父进程调用wait或waitpid时，可以得到这些信息。
  *          这些信息至少包括进程ID、该进程的终止状态以及该进程使用的CPU时间总量
  *          在UNIX术语中，一个已经终止、但是其父进程尚未对其进行善后处理(获取终止子进程的有关信息、释放它仍占用的资源)的进程被称为僵死进程(zombie)。
+ * 
+ * 退出函数
+ *   #include <stdlib.h>
+ *      void exit(int status);
+ *      void _Exit(int status);
+ *   #include <unistd.h>
+ *      void _exit(int status);
+ * 
+ *      使用不同头文件的原因是exit和_Exit是由ISO C说明的，而_exit是由POSIX.1说明的。
+ *      由于历史原因，exit函数总是执行一个标准I/O库的清理关闭操作；对所有打开流调用fclose函数。
+ *      main函数返回一个整型值与用该值调用exit是等价的。在main函数中： return(0) == exit(0)
+ *  
+ *  atexit函数：
+ *      按照ISO C规定，一个进程可以登记多至32个函数，这些函数将由exit自动调用。这些函数称为终止处理程序(exit handler)。
+ *      exit调用这些函数的顺序与它们登记时候的顺序相反。同一个函数如果登记多次，也会被调用多次。
+ *      根据ISO C 和 POSIX.1，exit首先调用各种终止处理程序，然后关闭所有打开流。
+ *      POSIX.1扩展了ISO C标准，它说明，如若程序调用exec函数族中的任一函数，则将清除所有已安装的终止处理程序。
+ * 
+ *      注意，内核使程序执行的唯一方法是调用一个exec函数。进程自愿终止的唯一方法是显示或隐式地(通过调用exit)调用_exit或_Exit。
+ *  进程也可非自愿地由一个信号使其终止。
 */
+
+static void atExitHandler1(){
+    printf("-->atExitHandler1....\n");
+}
+
+static void atExitHandler2(){
+    printf("-->atExitHandler2....\n");
+}
+
+
+/**
+ * 终止处理程序是由exit来调用执行的
+ * 无论exit在何处调用，只要exit被调用，则exit就会执行终止处理程序.
+ * 如果进程是因为接收到某个信号而异常终止，则不会执行exit函数。
+ * 
+*/
+void atexitTest(){
+    atexit(atExitHandler1);
+    atexit(atExitHandler2);
+    atexit(atExitHandler2);     //按照注册的相反顺序进行调用，单个函数多次注册会多次调用。
+    printf("-->commonFunc start...\n");
+    abort();    //进程接收到信号而异常终止，不执行exit函数。
+    _exit(0);   //不执行终止处理程序，不刷新I/O流
+     exit(0);   //调用终止处理程序，刷新标准I/O流(fflush(nullptr))。然后调用_exit(0);
+}
+
+
+/**
+ * 无缓冲的输出系统API，会直接将内容发送到设备驱动程序进行输出。
+ * printf是先将输出内容存储到缓冲区，然后调用系统API将内容输出。缓冲区的缓冲规则一般是无缓冲、行缓冲、全缓冲。
+ * 由于缓冲机制的存在，在进程正常结束时会刷新I/O缓冲区。
+ * 
+*/
+void ioFlush(){
+    for(int i = 0; i < 10; ++i){
+         printf("hello world\n");   //重定向标准输出到文件，标准输出变为全缓冲，即只有缓冲区满才会flush内容到文件中。
+         usleep(100 * 1000);
+    }
+    for(int i = 0; i < 10; ++i){
+        write(STDOUT_FILENO, "HELLO ", 6);  //调用系统API的无缓冲输出，输出内容会立即交给内核进行输出。
+        usleep(100 * 1000);
+    }
+    abort();    //异常终止，不会刷新标准I/O缓冲区
+    exit(0);    //exit会自动对所有打开的流调用fclose函数，流中缓存的内容会刷新到文件中。
+}
 
 
 
@@ -185,11 +254,11 @@ void parent_child_writeOnCoyp(){
  * 
  *      参数：
  *          pid：
- *              >0：回收指定 ID 的子进程
+ *              >0：回收指定ID的子进程
  *              -1：回收任意子进程（相当于 wait）
  *          status:
  *               接收进程返回状态
- *          options: 或者是0，或者是以下常量按位或运算的结果。
+ *          options: 或者是0，或者是以下常量 按位或 运算的结果。
  *              0:          阻塞等待
  *              WNOHANG:    不阻塞
  *              WUNTRACED:  进程处于停止状态，并且其状态自停止以来还未报告过，则返回其状态。
@@ -207,15 +276,15 @@ void parent_child_writeOnCoyp(){
  *          WSTOPSIG(status)    如上宏为真， 使用此宏 → 取得使进程暂停的那个信号的编号。
  * 
  *          WIFCONTINUED(status) 非0 → 作业控制暂停后已经继续的子进程返回了状态
- *      
  */
 
+//打印回收的子进程的终止状态
 void pr_exit(int status){
     if(WIFEXITED(status)){  //正常退出，打印退出状态
         printf("normal termination, exit status = %d\n", WEXITSTATUS(status));
 
     }else if(WIFSIGNALED(status)){  //异常退出，打印造成退出的信号
-        printf("abnormal termination, signal number = %d%s\n", WTERMSIG(status),
+        printf("abnormal termination, signal<%s>%s\n", strsignal(WTERMSIG(status)),
         #ifdef WCOREDUMP
             WCOREDUMP(status) ? " (core file generated)" : "");
         #else
@@ -223,10 +292,51 @@ void pr_exit(int status){
         #endif
 
     }else if(WIFSTOPPED(status)){   //进程暂停，打印造成暂停的信号
-        printf("child stopped, signal number = %d\n", WSTOPSIG(status));
+        printf("child stopped, signal<> = %s\n", strsignal(WSTOPSIG(status)));
 
     }else if(WIFCONTINUED(status)){
         printf("child continued....\n");
+    }
+}
+
+
+/**
+ * 父进程创建多个子进程，子进程执行自己的逻辑
+ * 父进程阻塞等待，按序回收子进程
+*/
+void multifork_waitpid(){
+    std::vector<int> waitPidVec;
+    for(int count = 0; count < 5; count++){
+        int pid = fork();   //只有在父进程的逻辑里调用fork，所有的fork创建的进程都是父进程的子进程
+        if(pid == -1){   
+            perror("fork error, parent process exit....");  
+            exit(-1);
+
+        }else if(pid == 0){ //子进程
+            cout << "i am " << count << " child, my pid == " << getpid() << " my parentpid == " << getppid() << endl;
+            sleep(count);
+            if(count < 3){
+                abort();    //异常终止
+            }else{
+                exit(count);    //正常终止
+            }
+
+        }else if(pid > 0){  //父进程
+            waitPidVec.push_back(pid);
+        }
+    }
+
+    cout << "i am parent, my pid == " << getpid() << endl;
+    int cpid, status;
+    for(auto pid : waitPidVec){     //按序回收子进程
+        cpid = waitpid(pid, &status, 0);
+        if(cpid > 0){
+            std::cout << cpid << " : " << std::endl;
+            pr_exit(status);
+        }else if(cpid == -1){
+            std::cout << "parent complete...." << std::endl;
+            return;
+        }
     }
 }
 
@@ -235,69 +345,35 @@ void pr_exit(int status){
 /**
  * 父进程创建一个子进程，子进程再创建自己的子进程
  * 如果子进程在自己的子进程之前结束，则其子进程成为孤儿进程，被init进程收养，由init进程负责回收
- * 父进程只能回收自己创建的子进程
+ * 父进程只能回收自己创建的子进程，孤儿进程由init进程负责回收
 */
-void processAdoption(){
+void process_adoption(){
     pid_t pid;
     if((pid = fork()) < 0){
         printf("fork error\n");
         exit(-1);
-    }else if(pid == 0){ //创建的第一个子进程
+    }else if(pid == 0){ //子进程
         if((pid = fork()) < 0){
             printf("fork error\n");
             exit(-1);
-        }else if(pid > 0){ //第一个子进程退出
-            sleep(1);
-            exit(10);
-        }else if (pid == 0){ //第一个子进程创建的子进程
+        }else if (pid == 0){ //子进程的子进程
             sleep(2);
-            printf("second child, parent pid = %d\n", getppid());
+            printf("child child exit, pid = %d, ppid = %d\n", getpid(), getppid());
             exit(0);
-        }
+        } 
+        sleep(1);
+        printf("child exit: pid = %d\n", getpid());
+        exit(10);
+    } 
 
-    }else if (pid > 0){ //父进程
-        int status;
-        if(waitpid(pid, &status, 0) != pid){ //回收创建的子进程
-            printf("waitpid error\n");
-            exit(-1);
-        }else{
-            printf("first child, pid = %d\n", pid);
-            pr_exit(status);
-            exit(0);
-        }
+    int status;
+    if(waitpid(pid, &status, 0) != pid){ //回收创建的子进程
+        printf("waitpid error\n");
+        exit(-1);
     }
-}
-
-
-//一个父进程创建多个子进程，子进程执行完逻辑后退出，父进程回收子进程状态。
-void fpt_wait(){
-    for(int index = 0; index < 5; index++){
-        int pid = fork();
-        if(pid == -1){  
-            perror("fork error, parent process exit....");
-            exit(-1);
-        }else if(pid == 0){ //子进程
-            cout << "i am " << index << " child, my pid == " << getpid() << " my parentpid == " << getppid() << endl;
-            sleep(3);
-            if(index < 3){
-                abort();
-            }else{
-                exit(index);
-            }
-        }
-    }
-
-    cout << "i am parent, my pid == " << getpid() << endl;
-    int status, waitPid;
-    while(true){
-        waitPid = waitpid(-1, &status, 0);
-        if(waitPid > 0){
-            pr_exit(status);
-        }else if(waitPid == -1){
-            std::cout << "parent complete...." << std::endl;
-            break;
-        }
-    }
+    printf("child is collected, pid = %d\n", pid);
+    pr_exit(status);
+    exit(0);
 }
 
 
@@ -339,72 +415,75 @@ void fpt_wait(){
  *      exit：退出进程
  *      wait：回收内核保存的进程终止状态信息
  * 
- * 如果exec找到了一个可执行文件，但是该文件不是由链接编辑器产生的机器可执行文件，则就认为该文件是一个shell脚本，于是试着调用/bin/sh，
+ *      如果exec找到了一个可执行文件，但是该文件不是由链接编辑器产生的机器可执行文件，则就认为该文件是一个shell脚本，于是试着调用/bin/sh，
  * 并以该filename作为shell输入。 
  * 
- * 以e结尾的3个函数(execle, execve, fexecve)可以传递一个指向环境字符串指针数组的指针。其它4个函数则使用调用进程中的environ变量为新
- * 程序复制现有的环境。即父进程可以更改当前环境和后面生成的子进程的环境，但是不能影响自己的父进程的环境。通常，一个进程允许将其环境传播
- * 给其子进程，但有时也有这种情况，进程想要为子进程指定某一个确定的环境。例如，在初始化一个新登录的shell时，login程序通常创建一个只定义
- * 少数几个变量的特殊环境，而在我们登录时，可以通过shell启动文件，将其它变量加载到环境中。
+ * 每个进程拥有独立的环境变量
+ *      以e结尾的3个函数(execle, execve, fexecve)可以传递一个指向环境字符串指针数组的指针。其它4个函数则使用调用进程中的environ变量
+ * 为新程序复制现有的环境。即父进程可以更改当前环境和后面生成的子进程的环境，但是不能影响自己的父进程的环境。通常，一个进程允许将其环境
+ * 传播给其子进程，但有时也有这种情况，进程想要为子进程指定某一个确定的环境。例如，在初始化一个新登录的shell时，login程序通常创建一个只
+ * 定义少数几个变量的特殊环境，而在我们登录时，可以通过shell启动文件，将其它变量加载到环境中。
  * 
- * 进程中每个打开描述符都有一个执行时关闭标志。若设置了此标志，则在执行exec时关闭该描述符；否则该描述符仍打开。除非特地用fcntl设置了该执行时
- * 关闭标志，否则系统的默认操作是在exec后仍保持这种描述符打开。
+ *      进程中每个打开描述符都有一个执行时关闭标志。若设置了此标志，则在执行exec时关闭该描述符；否则该描述符仍打开。除非特地用fcntl设置
+ * 了该执行时关闭标志，否则系统的默认操作是在exec后仍保持这种描述符打开。
  * 
- * 在exec前后实际用户ID和实际组ID保持不变，而有效ID是否改变则取决于所执行程序文件的设置用户ID位和设置组ID位是否设置。如果新程序的设置用户ID位
- * 已设置，则有效用户ID变成程序文件所有者的ID；否则有效用户ID不变。对组ID的处理方式与此相同。
+ *      在exec前后实际用户ID和实际组ID保持不变，而有效ID是否改变则取决于所执行程序文件的设置用户ID位和设置组ID位是否设置。如果新程序的
+ * 设置用户ID位已设置，则有效用户ID变成程序文件所有者的ID；否则有效用户ID不变。对组ID的处理方式与此相同。
  * 
- * 可执行程序的第一个参数(新程序中的argv[0])设置为路径名的文件名分量。某些shell将此参数设置为完全的路径名。这只是一个惯例。
- * 我们可将argv[0]设置为任何字符串。
+ *      可执行程序的第一个参数(新程序中的argv[0])设置为路径名的文件名分量。某些shell将此参数设置为完全的路径名。这只是一个惯例。我们可
+ * 将argv[0]设置为任何字符串。
  */
 
-// 父进程创建一个子进程，子进程加载新程序执行，父进程回收子进程的退出状态。
+
+/**
+ * 父进程创建一个子进程，子进程加载新程序执行，父进程回收子进程的退出状态。
+*/
 char* const lsArgument[] = { (char*)"ls", (char*)"-l", nullptr};
-int forkExec(int option)
-{
+int fork_exec(int option){
     pid_t pid = fork();     //通知内核创建一个新进程
-    if(pid == 0){   //子进程执行单元
+    if(pid == 0){           //子进程执行单元
         cout << "i am child process, my pid == " << getpid() << endl;
         switch(option){
             case 0:
-                execl("/usr/bin/pwd", "pwd", nullptr);  //绝对路径
+                execl("/usr/bin/pwd", "pwd", nullptr);  //绝对路径 + 默认环境变量数组environ
                 perror("error");
                 break;
             case 1:
-                execlp("ls", "ls", "-l", nullptr);  //相对路径      
+                execlp("ls", "ls", "-l", nullptr);  //相对路径 + 默认环境变量数组environ      
                 perror("error");
                 break;
             case 2:
-                execle("/usr/bin/ls", "ls", "-l", nullptr, environ);    //绝对路径 + 环境变量数组
+                execle("/usr/bin/ls", "ls", "-l", nullptr, environ);    //绝对路径 + 指定环境变量数组
                 perror("error");
                 break;
             case 3:
-                execv("/bin/ls", lsArgument);
+                execv("/bin/ls", lsArgument);   //绝对路径 + 默认环境变量数组environ
                 perror("error");
                 break;
             case 4:
-                execvp("ls", lsArgument);
+                execvp("ls", lsArgument);   //相对路径 + 默认环境变量数组environ
                 perror("error");
                 break;
             case 5:
-                execve("/bin/ls", lsArgument, environ);
+                execve("/bin/ls", lsArgument, environ); //绝对路径 + 指定环境变量数组
                 perror("error");
                 break;
             default:
                 cout << "wrong option number" << endl;
         }
-
-    }else if(pid > 0){  //父进程执行单元
-        cout << "i am parent, pid = " << getpid() << endl;
-        int status, waitPid;
-        waitPid = wait(&status);  //父进程回收子进程
-        if(waitPid > 0){
-          pr_exit(status);
-        }else{
-            std::cout << "parent exit, no child process needed to adopt...." << std::endl;
-        }
     }
+
+    cout << "i am parent, pid = " << getpid() << endl;
+    int status, cpid;
+    cpid = wait(&status);  //父进程回收子进程
+    if(cpid > 0){  
+        printf("%d is collected....\n", cpid); 
+        pr_exit(status);    
+    }
+    std::cout << "parent exit, no child process needed to adopt...." << std::endl;
     return 0;
 }
+
 
 //只能影响当前环境和后面生成的子进程的环境，不能影响前面生成的子进程的环境和父进程的环境
 //因为环境表复制操作发生在exce执行时
@@ -444,6 +523,7 @@ int forkExec1(){
 
     exit(0);
 }
+
 
 
 /**
@@ -613,6 +693,8 @@ void printLoginName(){
 
 
 int main(int argc, char* argv[]){
+
+    fork_exec(0);
 
     return 0;
 }

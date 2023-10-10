@@ -97,8 +97,9 @@ static void atExitHandler2(){
 
 void commonFunc(){
     printf("-->commonFunc start...\n");
-    abort();    //进程接收到信号而异常终止，不执行exit函数。
-    exit(0);
+    // abort();    //进程接收到信号而异常终止，不执行exit函数。
+    // exit(0);
+    _exit(0);
     printf("-->commonFunc end...\n");
 }
 
@@ -384,7 +385,7 @@ void mmapTest(){
 
 
 int main(int argc, char* argv[]){
-    setUnsetEnv("hello", "world");
+    atexitTest();
 
     return 0;
 }
