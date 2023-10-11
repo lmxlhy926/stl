@@ -1,4 +1,1 @@
-#! /usr/bin/echo -f -a
-
-
-echo "ehlo"
+#! /home/lhy/ownproject/stl/out/bin/echoall

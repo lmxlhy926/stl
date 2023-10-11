@@ -13,6 +13,29 @@
 using namespace std;
 
 /**
+ * int main(int argc, char* argv[])
+ * argc是命令行参数的数目，argv是指向参数的各个指针所构成的数组。
+ * 
+ *      当内核执行C程序时(使用一个exec函数)，在调用main前先调用一个特殊的启动例程。可执行程序文件将
+ * 此启动例程指定为程序的起始地址。启动例程从内核取得命令行参数和环境变量值，然后为按上述方式调用main
+ * 函数做好安排。启动例程是这样编写的，使得从main返回后立即调用exit函数。如果启动例程以C代码形式表示，
+ * 实际该例程常常是用汇编语言编写的，则它调用main函数的形式可能是：exit(main(argc, argv))
+ * 
+ *      当执行一个程序时，调用exec的进程可将命令行参数传递给新程序。ISO C 和 POSIX.1 都要求argv[argc]是一个空指针。
+ * 执行execl传参时，最后一个参数是nullptr。调用exec时要依次指定argv[0]、argv[1]、argv[2].....
+*/
+void printCommandLine(int argc, char* argv[]){
+    for(int i = 0; i < argc; ++i){
+        printf("argv[%d]: %s\n", i, argv[i]);
+    }
+    printf("\n");
+    for(int i = 0; argv[i] != nullptr; ++i){
+        printf("argv[%d]: %s\n", i, argv[i]);
+    }
+}
+
+
+/**
  * UNIX系统的进程控制，包括创建新进程、执行程序和进程终止。
  * 进程标识：
  *      每个进程都有一个非负整型表示的唯一进程ID。
@@ -406,7 +429,7 @@ void process_adoption(){
  *      execl失败才会返回。基本不会返回。
  *
  * 
- * 当进程调用一种exec函数时，该进程执行的程序完全替换为新程序，而新程序则从其main函数开始执行。因为调用exec并不创建新进程，
+ *      当进程调用一种exec函数时，该进程执行的程序完全替换为新程序，而新程序则从其main函数开始执行。因为调用exec并不创建新进程，
  * 所以前后的进程ID并未改变。exec只是用磁盘上的一个新程序替换了当前进程的正文段、数据段、堆段和栈段。
  * 
  * UNIX系统进程控制原语：
@@ -485,27 +508,31 @@ int fork_exec(int option){
 }
 
 
-//只能影响当前环境和后面生成的子进程的环境，不能影响前面生成的子进程的环境和父进程的环境
-//因为环境表复制操作发生在exce执行时
-int forkExec1(){
+/**
+ *  (1) 每个进程拥有独立的进程环境表，每个进程的environ指向本进程的环境表
+ *  (2) 进程环境表的复制发生在exec执行时，因此更改环境表只能影响后续创建的子进程，不能影响已创建的子进程和自己的父进程的环境表。
+*/
+int exec_environ_copy(){
+    string parentPathBefore(getenv("PATH"));
+    std::cout << "parentPathBefore: " << parentPathBefore << std::endl;
+
     pid_t pid;
     if((pid = fork()) < 0){
         printf("fork error\n");
         exit(-1);
     }else if(pid == 0){
-        //构造环境表
-        char* env_init[] = {(char*)"USER=unknown", (char*)"PATH=/TMP", nullptr};
+        char* env_init[] = {(char*)"USER=unknown", (char*)"PATH=/TMP", nullptr};    //构造环境表
         //加载新程序时，会将环境表复制到子进程环境表空间，并使子进程的environ指向此环境表。
-        if(execle("/home/lhy/ownproject/stl/out/bin/echoall", "echoall", "myarg1", "my arg2", nullptr, env_init) == -1){
+        if(execle("/home/lhy/ownproject/stl/out/bin/echoall", "echoall first", "myarg1", "my arg2", nullptr, env_init) == -1){
             printf("execle error\n");
             exit(-1);
         }
     }
 
-    if(waitpid(pid, nullptr, 0) < 0){
-        printf("waitpid error\n");
-        exit(-1);
-    }
+    sleep(1);
+    wait(nullptr);
+    string parentPathAfter(getenv("PATH"));
+    std::cout << "parentPathAfter: " << parentPathAfter << std::endl;
 
     if((pid = fork()) < 0){
         printf("fork error\n");
@@ -515,104 +542,94 @@ int forkExec1(){
         path.append(":/home/lhy/ownproject/stl/out/bin");
         setenv("PATH", path.c_str(), 1);
         //默认传递父进程的environ，复制父进程的环境表
-        if(execlp("echoall", "echoall", "only 1 arg", nullptr)  == -1){
+        if(execlp("echoall", "echoall second", "arg1", nullptr)  == -1){
             printf("execle error\n");
             exit(-1);
         }
     }
-
     exit(0);
 }
 
 
-
 /**
- * 用户ID、组ID
- *      在UNIX系统中，特权以及访问控制(如能否读写一个特定文件)，是基于用户ID和组ID的。一般而言，在设计应用时，总是试图使用最小特权模型。
- *  依照此模型，我们的程序应当只具有为完成给定任务所需的最小特权。这降低了由恶意用户试图哄骗我们的程序以未预料的方式使用特权造成的安全性风险。
+ * 我们能影响的只是当前进程及其后生成和调用的任何子进程环境，但不能影响父进程的环境，这通常是一个shell进程。
  * 
- * int setuid(uid_t uid);
- *      若进程具有超级用户特权，则setuid函数将实际用户ID、有效用户ID以及保存的设置用户ID设置为uid。
- *      若进程没有超级用户特权，但是uid等于实际用户ID或保存的设置用户ID，则setuid只将有效用户ID设置为uid。
- *      仅当对程序文件设置了设置用户ID位时，exec函数才设置有效用户ID，保存的设置用户ID是由exec复制有效用户ID而得到的。
- *      fork()创建子进程，子进程继承父进程的实际用户ID、有效用户ID、保存的设置用户ID。
+ * 环境表和环境字符串的存储位置：
+ *      环境表和环境字符串通常占用的是进程地址空间的顶部。
  * 
- * int seteuid(uid_t uid);
- *      特权用户：可将有效用户ID设置为uid。（这区别于setuid函数，它更改所有3个用户ID）
- *      普通用户：将有效用户ID设置为其实际用户ID或其保存的设置用户ID。
-*/
+ *      如果修改一个现有的name:
+ *          a. 新value的长度 <= 现有value的长度：将新字符串复制到原有字符串的空间中。
+ *          b. 新value的长度 >  现有value的长度：调用malloc为新字符串分配空间，然后将新字符串复制到该空间中，接着使环境表
+ *             中针对name的指针指向新分配区。
+ *     
+ *      增加一个新的name：
+ *          * 首先必须调用malloc为name=value字符串分配空间，然后将字符串分配到此空间中。
+ * 
+ *          a. 如果这是第一次增加一个新name，则必须调用malloc为新的环境表分配空间。接着，将原来的环境表复制到新分配区，并将
+ *             指向新name=value字符串的指针存放在该指针表的表尾，然后将一个空指针存放在其后。最后使environ指向新指针表。但是
+ *             环境表中的大部分指针仍指向栈顶之上的各name=value字符串。
+ * 
+ *          b. 如果这不是第一次增加一个新name，则可知以前已调用malloc在堆中为环境表分配了空间，所以只要调用realloc，以分配比
+ *             原空间多存放一个指针的空间。然后将指向新name=value字符串的指针存放在该表表尾，后面跟着一个空指针。
+ * 
+ * 
+ *      每个程序都接收到一张环境表。环境表也是一个字符指针数组，其中每个指针包含一个以null结束的C字符串地址。全局变量environ则
+ * 包含了该指针数组的地址：extern char* *environ; 称environ为环境指针，指针数组为环境表，其中各指针指向的字符串为环境字符串。
+ * 环境表的最后一个字符指针指向nullptr.环境字符串存放在栈顶之上，或者堆中。环境字符串的格式是'name=value'
+ *
+ * 三个函数定义于<stdlib.h>中
+ *      char *getenv(const char *name);
+ *          成功： 返回环境变量的值； 失败： NULL (name 不存在)
+ *
+ *      int setenv(const char *name, const char *value, int overwrite);
+ *          成功： 0； 失败： -1
+ *          如果在环境中name已经存在：
+ *              参数 overwrite 取值：
+ *                  0： 不删除其现有定义(name不设置为新的value，而且也不出错)
+ *                  1： 删除其现有定义，覆盖为新值。
+ *
+ *      int unsetenv(const char *name);
+ *          成功： 0； 失败： -1
+ *          注意事项： name 不存在仍返回 0(成功)， 当 name 命名为"ABC="时则会出错。
+ */
 
-// 打印进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
-void printUserId(const char* message){
-    uid_t realUserId, effectiveUserId, saveSetUserId;
-    getresuid(&realUserId, &effectiveUserId, &saveSetUserId);
-    printf("%s > realUserId: %u, effectiveUserId: %u, saveSetUserId: %u\n", message, realUserId, effectiveUserId, saveSetUserId);
-}
 
-// 获取进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
-uid_t getUserId(const char* option){
-    uid_t realUserId, effectiveUserId, saveSetUserId;
-    getresuid(&realUserId, &effectiveUserId, &saveSetUserId);
-    if(strcmp(option, "real") == 0){
-        return realUserId;
-    }else if(strcmp(option, "efftive") == 0){
-        return effectiveUserId;
-    }else if(strcmp(option, "save") == 0){
-        return saveSetUserId;
+//打印环境表中的每个字符串，环境表中的最后一个指针为nullptr
+int printEnviron(){
+    for(int i = 0; *(environ + i) != nullptr; ++i){
+        printf("%s\n", *(environ + i));
     }
-    return -1;
-}
-
-/**
- * 执行时先将可执行程序的文件所有者更改为root，执行权限设置为所有人可执行。置位设置用户ID位
- * 以普通用户账号运行程序
-*/
-void processid(){
-    //实际用户id为普通用户，有效用户id为可执行程序的所有者，保存的设置用户ID位为可执行程序的所有者
-    printUserId("1--");
-
-    //设置有效用户ID为实际用户ID，降低程序的特权
-    seteuid(getUserId("real"));
-    printUserId("2--");
-
-    //将有效用户ID恢复为保存的设置用户ID，回复程序特权
-    seteuid(getUserId("save"));
-    printUserId("3--");
-
-    pid_t pid;
-    if((pid = fork()) < 0){
-        printf("fork error\n");
-        exit(-1);
-    }else if(pid == 0){
-        //子进程继承父进程的实际用户ID、有效用户ID、设置的保存用户ID
-        printUserId("child 1--");
-
-        //子进程的有效用户ID为root对应的ID，此时setuid会将实际用户ID、有效用户ID、设置的保存用户ID都设为uid。
-        setuid(getUserId("real"));
-        printUserId("child 2--");
-
-
-        exit(100);
-    }
-
-    int status;
-    pid_t waitPid = waitpid(pid, &status, 0);
-    if(waitPid == pid){
-        pr_exit(status);
-    }
+    return 0;
 }
 
 
 /**
- * 解释器文件
+ * 通过遍历environ指向的环境表实现
+ *      (1) 定位到环境字符串
+ *      (2) 返回"="后面的值
+*/
+char * getEnv_implement(const char *name){
+    char *p = nullptr;
+    for(int i = 0; *(environ + i) != nullptr; ++i){
+        p = strstr(*(environ + i), "=");    //定位到'='字符
+        int len = p - *(environ + i);       //变量名长度
+        if(strncmp(name, *(environ + i), len) == 0){    //比较变量名长度
+            return p+1; //返回值的地址地址
+        }
+    }
+    return nullptr;
+}
+
+
+/**
+ * exec解释器文件时的命令行参数
  *      exec函数族可以加载处理解释器文件，但是要求该解释器文件具有执行权限。
  * 
  *      所有现今的UNIX系统都支持解释器文件。这种文件是文本文件，其起始行的形式：#! pathname [optional-argument]; pathname通常是绝对路径名，
- *      对它不进行什么特殊处理(不使用PATH进行路径搜索)。对这种文件的识别是由内核作为exec系统调用处理的一部分来完成的。内核使调用exec函数的进程实际
- *      执行的并不是该解释器文件，而是在该解释器文件第一行中pathname所指定的文件。一定要将解释器文件和解释器区分开。  
+ *      对它不进行什么特殊处理(不使用PATH进行路径搜索)。对这种文件的识别是由内核作为exec系统调用处理的一部分来完成的。内核使调用exec函数的进程
+ *      实际执行的并不是该解释器文件，而是在该解释器文件第一行中pathname所指定的程序。一定要将解释器文件和解释器区分开。  
  * 
  *      当内核exec解释器时，argv[0]是该解释器的pathname，argv[1]是解释器文件中的可选参数，其余参数是execl解释器文件时指定的参数。
- * 
 */
 void interpret(){
     pid_t pid;
@@ -626,10 +643,7 @@ void interpret(){
         }
     }
 
-    if(waitpid(pid, nullptr, 0) < 0){
-        printf("waitpid error\n");
-    }
-
+    wait(nullptr);
     exit(0);
 }
 
@@ -641,14 +655,13 @@ void interpret(){
  *      1. fork失败或者waitpid返回除EINTR之外的出错，则system返回-1，并且设置errno以指示错误类型。
  *      2. 如果exec失败(表示不能执行shell)，其返回值如同shell执行了exit(127).
  *      3. 否则所有3个函数都执行成功，那么system的返回值是shell的终止状态。
-*/
-
-/**
+ * 
+ * 
  * system函数的一个实现
  * 调用进程创建子进程，子进程加载shell解释器去执行具体的任务
  * 如果调用进程执行fork或者waitpid时发生错误，则返回-1。否则返回回收到的子进程的终止状态。
 */
-int system1(const char* cmdstring){
+int system_implement(const char* cmdstring){
     pid_t pid;
     int status;
 
@@ -661,15 +674,15 @@ int system1(const char* cmdstring){
         perror("fork error");
         status = -1;
     }else if(pid == 0){ //子进程中加载shell程序，执行命令行指令
-        execl("/usr/bin/bashs", "bash", "-c", cmdstring, nullptr);
+        execl("/usr/bin/bash", "bash", "-c", cmdstring, nullptr);
         perror("execl error");
         _exit(127);
-    }else{  //调用进程进行等待，回收子进程状态
-        while(waitpid(pid, &status, 0) < 0){
-            if(errno !=EINTR){
-                status = -1;
-                break;
-            }
+    }  
+
+    while(waitpid(pid, &status, 0) < 0){    //waitpid被中断后会再次调用
+        if(errno != EINTR){
+            status = -1;
+            break;
         }
     }
     
@@ -677,6 +690,100 @@ int system1(const char* cmdstring){
     //execl失败时，返回的子进程的退出状态是127
     //都成功时，返回回收的子进程的终止状态
     return status;
+}
+
+
+
+/**
+ * 用户ID、组ID
+ *      在UNIX系统中，特权以及访问控制(如能否读写一个特定文件)，是基于用户ID和组ID的。一般而言，在设计应用时,
+ *总是试图使用最小特权模型。依照此模型，我们的程序应当只具有为完成给定任务所需的最小特权。这降低了由恶意用户试
+ *图哄骗我们的程序以未预料的方式使用特权造成的安全性风险。
+ *
+ * int setuid(uid_t uid);
+ *      若进程具有超级用户特权，则setuid函数将实际用户ID、有效用户ID以及保存的设置用户ID设置为uid。
+ *      若进程没有超级用户特权，但是uid等于实际用户ID或保存的设置用户ID，则setuid只将有效用户ID设置为uid。
+ *      若对程序文件设置了设置用户ID位时，exec函数才设置有效用户ID，保存的设置用户ID是由exec复制有效用户ID而得到的。
+ *     
+ * int seteuid(uid_t uid);
+ *      特权用户：可将有效用户ID设置为uid。（这区别于setuid函数，它更改所有3个用户ID）
+ *      普通用户：将有效用户ID设置为其实际用户ID或其保存的设置用户ID。
+ * 
+ *fork()创建子进程，子进程继承父进程的实际用户ID、有效用户ID、保存的设置用户ID。 
+*/
+
+// 打印进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
+void printUserId(const char* message){
+    uid_t realUserId, effectiveUserId, saveSetUserId;
+    getresuid(&realUserId, &effectiveUserId, &saveSetUserId);
+    printf("%s > realUserId: %u, effectiveUserId: %u, saveSetUserId: %u\n", message, realUserId, effectiveUserId, saveSetUserId);
+}
+
+// 获取进程的用户ID、组ID、保存的设置用户ID(saved set-user-ID)
+uid_t getsuid(){
+    uid_t realUserId, effectiveUserId, saveSetUserId;
+    getresuid(&realUserId, &effectiveUserId, &saveSetUserId);
+    return saveSetUserId;
+}
+
+/**
+ * 执行时先将可执行程序的文件所有者更改为root，执行权限设置为所有人可执行。置位设置用户ID位
+ * 以普通用户账号运行程序
+*/
+void processid(){
+    /**
+     * ruid:    普通用户
+     * euid:    可执行程序的所有者
+     * suid:    可执行程序的所有者
+     * exece加载时设置
+    */
+    printUserId("1--");
+
+    /**
+     * 将有效用户ID设回为实际用户ID，降低用户特权，保存的设置用户ID不变
+     * ruid:    普通用户
+     * euid:    普通用户
+     * suid:    可执行程序的所有者
+    */
+    seteuid(getuid());  //设置为实际用户ID
+    printUserId("2--");
+
+    /**
+     * 将有效用户ID恢复为保存的设置用户ID，回复程序特权
+     * ruid:    普通用户
+     * euid:    可执行程序的所有者
+     * suid:    可执行程序的所有者
+    */
+    seteuid(getsuid());     //设置为保存的设置用户ID
+    printUserId("3--");
+
+    pid_t pid1, pid2;
+    pid1 = fork();
+    if(pid1 == 0){
+        //子进程继承父进程的实际用户ID、有效用户ID、设置的保存用户ID
+        printUserId("child 1--");
+        exit(0);
+    }
+    sleep(1);
+
+    /**
+     * 进程的有效用户ID为root对应的ID，此时setuid会将实际用户ID、有效用户ID、设置的保存用户ID都设为uid。
+    */
+    setuid(getuid());
+    printUserId("parent--");
+    pid2 = fork();
+    if(pid2 == 0){
+        printUserId("child 2--");
+        exit(0);
+    }
+    sleep(1);
+
+    pid_t wid;
+    while(true){
+        if((wid = wait(nullptr)) < 0){
+            break;
+        }
+    }
 }
 
 
@@ -694,7 +801,7 @@ void printLoginName(){
 
 int main(int argc, char* argv[]){
 
-    fork_exec(0);
+    interpret();
 
     return 0;
 }

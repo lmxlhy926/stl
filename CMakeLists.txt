@@ -4,7 +4,7 @@ project(stl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(srcDirectory unix stl json)
+set(srcDirectory unix  json)
 
 add_subdirectory(openSrc)
 
