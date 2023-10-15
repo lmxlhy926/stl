@@ -72,7 +72,7 @@ using namespace std;
  * future<>::get(): 获取线程结果
  *      如果函数被启动于一个分离线程中并且已结束：   立刻获得其结果
  *      如果函数被启动于分离线程中但是尚未结束：     get()会引发停滞直到函数执行完后获得结果
- *      如果函数尚未启动：                      函数会被强迫启动如同一个同步调用, get()会引发停滞直到产生结果.
+ *      如果函数尚未启动：                         函数会被强迫启动如同一个同步调用, get()会引发停滞直到产生结果.
  *      只能调用一次, 调用之后future就处于无效状态, 除了valid()和析构外,对它的任何调用都会导致不可预期的行为
  *
  * future<>::wait(): 等待线程执行结束
@@ -84,8 +84,10 @@ using namespace std;
  *      std::future_status::timeout:  线程启动但是未结束，waiting又已逾期
  *      std::future_status::ready:    线程已结束
  *      轮询时先检查是否启动，再检查是否结束。否则有可能因为线程未启动而陷入死循环。
+ * 
+ * shared future
+ *      函数对应的线程只执行一次, 将结果存储下来, 因此调用get()时, 导致相同的结果, 或导致抛出同一个异常.
  */
-
 
 //普通函数
 int normalFunc(const string& str){
@@ -132,6 +134,7 @@ void async_future(){
     MemberFuncObj mfobj;
     FuncObj funcObj;
 
+    //当离开返回的future object作用域时,程序会阻塞等待后台任务结束
     std::future<int>  f1;
     std::future<void> f2;
     std::future<void> f3;
@@ -140,17 +143,21 @@ void async_future(){
 
     //尝试在独立分离的线程内运行一个callable object: 普通函数, lamda, 成员函数, 函数对象
     try{
-       f1 = std::async(std::launch::async, normalFunc, "普通函数");                             //普通函数
-       f2 = std::async(std::launch::async, &MemberFuncObj::memberFunc, mfobj, "成员函数");      //成员函数
-       f3 = std::async(std::launch::async, funcObj, "函数对象单参数");                          //函数对象
-       f4 = std::async(std::launch::async, funcObj, "hello", "world");                         //函数对象
-       f5 = std::async(std::launch::async, []{std::cout << "lamda" << std::endl;});            //lamda
+       f1 = std::async(std::launch::async, normalFunc, "普通函数");                              //普通函数
+       f2 = std::async(std::launch::async, &MemberFuncObj::memberFunc, mfobj, "成员函数");       //成员函数
+       f3 = std::async(std::launch::async, funcObj, "函数对象单参数");                           //函数对象
+       f4 = std::async(std::launch::async, funcObj, "hello", "world");                          //函数对象
+       f5 = std::async(std::launch::async, [](const string& str){std::cout << str << std::endl;}, "lamda"); //lamda
 
     }catch(const exception& e){ //不能立即启动则抛出异常
         e.what();
     }
 
     try{
+        /**
+         * 顺序阻塞获取其结果，只能获取结果一次
+         * 可以传播异常
+        */
         f1.get();
         f2.get();
         f3.get();
@@ -176,7 +183,6 @@ void future_scope1(){
     });
 
     std::cout << "in main thread: " << std::this_thread::get_id() << std::endl;
-    
     //当std::future<>要离开其作用域时，会自动调用get()，阻塞在这里，直到例程函数执行完毕。
 }
 
@@ -184,11 +190,19 @@ void future_scope1(){
 /*
  * 线程以std::launch::async方式启动，如果没有将返回值赋值给future object
  * 调用者会在此停滞直到目标函数结束, 相当于一个同步调用.
- * 还是会在一个分离线程内执行，但是会阻塞，直到该线程执行完毕，期间不会切换到其它线程执行
+ * 还是会在一个分离线程内执行，但是会阻塞，直到该线程执行完毕，std::async函数返回
  */
 void future_scope2(){
     std::cout << "in main thread: " << this_thread::get_id() << std::endl;
-    //创建独立线程，在线程内阻塞执行，相当于一个同步调用，不换切换线程执行
+
+    std::future<void> f1 = std::async(std::launch::async, []{
+        while(true){
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            std::cout << "xxxxxxxxxx" << std::endl;
+        }
+    });
+
+    //创建独立线程，在线程内阻塞执行，直到线程执行完毕退出
     std::async(std::launch::async, []{
         std::cout << "in subthread: " << this_thread::get_id() << std::endl;
         for(int i = 0; i < 5; ++i){
@@ -203,7 +217,10 @@ void future_scope2(){
 
 
 /*
- * 启动线程后，等待线程结束，或查询线程的执行状态
+ * 查询线程状态：可以多次调用
+        std::future_status::deferred:   线程没有启动，立即返回
+        std::future_status::timeout:    线程已启动，但是在等待时间内依然没有执行完毕
+        std::future_status::ready:      线程执行完毕
  */
 void future_wait(){
     std::future<void> f = std::async(std::launch::async, []{
@@ -224,11 +241,32 @@ void future_wait(){
                 break;
             case std::future_status::ready:
                 std::cout << "==>ready" << std::endl;
-                return;
+                break;
             default:
                 std::cout << "==>unkown" << std::endl;
+                break;
+        }
+        if(fs == std::future_status::ready){
+            break;
         }
     }
+
+    std::future_status fs = f.wait_for(std::chrono::milliseconds(100));
+    switch(fs){
+            case std::future_status::deferred:
+                std::cout << "==>defered" << std::endl;
+                break;
+            case std::future_status::timeout:
+                std::cout << "==>timeout" << std::endl;
+                break;
+            case std::future_status::ready:
+                std::cout << "==>ready" << std::endl;
+                break;
+            default:
+                std::cout << "==>unkown" << std::endl;
+                break;
+    }
+
 }
 
 
@@ -249,40 +287,18 @@ void future_shared(){
         return 9999;
     }).share();
 
-    while(true){
-        std::future_status fs = f.wait_for(std::chrono::seconds(1));
-        switch(fs){
-            case std::future_status::deferred:
-                std::cout << "==>defered" << std::endl;
-                break;
-            case std::future_status::timeout:
-                std::cout << "==>timeout" << std::endl;
-                break;
-            case std::future_status::ready:
-                std::cout << "==>ready" << std::endl;
-                break;
-            default:
-                std::cout << "==>unkown" << std::endl;
-        }
-        if(fs == std::future_status::ready){
-            break;
-        }
-    }
-
+    std::cout << "wati for result...." << std::endl;
     cout << f.get() << endl;
     cout << f.get() << endl;
-    sleep(1);
 }
-
 
 
 
 int main(int argc, char* argv[]){
-    future_scope1();
+    future_shared();
 
     return 0;
 }
-
 
 
 

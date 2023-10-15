@@ -59,13 +59,20 @@ void thread_callableObj(){
         std::thread f2(&MemberFuncObj::memberFunc, mfobj, "成员函数");    //成员函数
         std::thread f3(fobj, "函数对象单参数");                           //函数对象
         std::thread f4(fobj, "hello", "world");                          //函数对象
-        std::thread f5([]{normalFunc("lamda");});                        //lamda
+        std::thread f5([](const string& str){                            //lamda
+            for(int i = 0; i < 10; ++i){
+                std::cout << str << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }, "lamda");                        
 
+        f5.join();
+        std::cout << "--------------lamda join--------------------" << std::endl;
         f1.join();
         f2.join();
         f3.join();
         f4.join();
-        f5.join();
+        
         std::cout << "---------end---------" << std::endl;
 
     }catch(const exception& e){
@@ -73,20 +80,26 @@ void thread_callableObj(){
     }
 }
 
+
+
 /*
  * 在thread object的寿命结束前不调用join()或detach()的其中一个会导致进程结束
  */
 void thread_joinDetach(){
-    std::thread thread1([]{
-        while(true){
-            normalFunc("noraml");
-        }
-    });
+    {
+        std::thread thread1([]{
+            while(true){
+                normalFunc("noraml");
+            }
+        });
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-    std::cout << "thread_joinDetach end....." << std::endl;
-
-    //离开作用域前没有调用join()或者detach()，会导致进程结束
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::cout << "thread_joinDetach end....." << std::endl;
+        //离开作用域前没有调用join()或者detach()，会导致进程结束
+    }
+    while(true){
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
 }
 
 
@@ -106,6 +119,7 @@ void thread_exception(){
     }
 }
 
+
 /*
  * thread的基本用法:
  *      调用thread时，如果不能立即启动则会抛出异常
@@ -117,13 +131,15 @@ void thread_usage(){
         std::thread thread1([]{
             try{
                 normalFunc("noraml");
+                throw std::runtime_error(string("runtime_error"));
             }catch(const exception& e){
                 std::cout << e.what() << std::endl;
             }
         });
 
-        std::cout << "join thread...." << std::endl;
+        std::cout << "join thread start...." << std::endl;
         thread1.join();
+        std::cout << "join thread end...." << std::endl;
     }catch(const exception& e){
         std::cout << e.what() << std::endl;
     }
@@ -134,24 +150,29 @@ void thread_usage(){
  * main函数结束时，所有后台线程（detached）都会被强制结束
  */
 void thread_detached(){
-    std::thread thread1([]{
+    {
+        std::thread thread1([]{
         while(true){
             normalFunc("noraml");
         }
-    });
-    thread1.detach();
+        });
+        thread1.detach();
+    }
+    std::cout << "wait start....." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    std::cout << "thread_joinDetach end....." << std::endl;
-
+    std::cout << "wait end....." << std::endl;
     //函数执行完毕，线程在后台继续运行，直到线程例程执行完毕或者main函数结束。
 }
 
 
 
-//利用promise来从线程中返回值或者异常
-void executeAndReturn(std::promise<std::string>& p){
+/**
+ * 使用thread时，如何获取其线程执行结果
+ *      线程例程函数参数中有promise对象引用，利用promise传递线程结果或异常
+*/
+void executeAndReturn(const string& str, std::promise<std::string>& p){
     try{
-        std::cout << "read char ('x' for exception): " << std::endl;
+        std::cout << str << std::endl;
         char c = std::cin.get();
         if(c == 'x'){
             throw std::runtime_error(std::string("char ") + c + " read");
@@ -164,25 +185,25 @@ void executeAndReturn(std::promise<std::string>& p){
 }
 
 
+
 /*
  * class promise用来设置结果值或者异常
  * promise的所有用来设置数值或者异常的成员函数都是线程安全的
  * copying不适用于promise.
  */
-void threadRetValue(){
+void thread_promise(){
     try{
         std::promise<string> p;
-        std::future<string> f(p.get_future());
-        std::thread t(executeAndReturn, std::ref(p));
+        std::thread t(executeAndReturn, "read char ('x' for exception): ", std::ref(p));
         sleep(1);
 
         /*
-         * get()会导致block直到shared state成为ready，当promise的set_value()或set_exception()执行后便是如此。
+         * get()会导致block, 直到shared state成为ready，当promise的set_value()或set_exception()执行后便是如此。
          * 但是这并不意味着设定此promise的线程已经结束，该线程可能仍执行其它语句，甚至存储其它结果放进其它promise内。
          * 如果想令shared state在线程确实结束时变为ready,则必须调用
          * set_value_at_thread_exit(),或set_exception_at_tread_exit()
          */
-        std::cout << "result: " << f.get() << std::endl;
+        std::cout << "result: " << p.get_future().get() << std::endl;
         t.join();
     }catch(...){
         std::cout << "exception: " << std::endl;
@@ -191,8 +212,6 @@ void threadRetValue(){
 
 
 int main(int argc, char* argv[]){
-
-    threadRetValue();
-
+    thread_promise();
     return 0;
 }

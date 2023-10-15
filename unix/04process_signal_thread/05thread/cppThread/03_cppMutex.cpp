@@ -27,11 +27,12 @@ using namespace std;
  *      timed_mutex：             mutex增加try_lock_for(), try_lock_until()
  *      recursive_timed_mutex     recursive_mutex增加try_lock_for(), try_lock_until()
  *
- *
+ * 
  * lock_guard()
  *      lock_guard lg(m) :              为mutex m建立一个lock guard并锁定之
  *      lock_guard lg(m, adopt_lock):   为已经被锁定的mutex m建立一个lock guard
  *
+ * 
  * unique_lock()
  *      unique_lock l:                  建立一个lock但不关联任何mutex
  *      unique_lock l(m):               建立一个lock_guard并锁定它
@@ -71,6 +72,7 @@ void cppMutex(){
     }
 }
 
+
 /**
  * timed_mutex基本用法：lock(), try_lock(), try_lock_for(), try_lock_until(), unlock()
 */
@@ -87,7 +89,6 @@ void cppTimedMutex(){
     }else{
         std::cout << "try_lock_for failed..." << std::endl;
     }
-    tMutex.unlock();
     tMutex.unlock();
 }
 
@@ -108,15 +109,15 @@ void lockGuard(){
 }
 
 
+
 /**
  * 按照默认规范来调用接口，‘std::adopt_lock’指明传递的锁已经上锁
  * 当将锁交给unique_lock对象来控制，后续就应该全程使用unique_lock对象来控制
 */
 void uniqueLock_adopt(){
     std::mutex mutex_;
-    mutex_.unlock();
-    std::unique_lock<std::mutex> ula(mutex_, std::adopt_lock);  //接受一个已加锁的mutex, 及时没加锁也认为加锁
-    ula.lock();             //此时加锁，会抛异常，ula认为自己接受的锁已经加锁
+    std::unique_lock<std::mutex> ula(mutex_, std::adopt_lock);  //接受一个已加锁的mutex, 即使没加锁也认为加锁
+    // ula.lock();             //此时加锁，会抛异常，ula认为自己接受的锁已经加锁
     mutex_.unlock();        //即使这里解锁，下面的判断依然认为是加锁状态，以为没有使用unique_lock对象来操作 
     if(ula.owns_lock()){    //即使传递的锁没有上锁，ula认为其接受的是一个已经上锁的锁，此处会认为已上锁
         std::cout << "---locked---" << std::endl;
@@ -235,7 +236,7 @@ void printStr3(){
     try{
         std::unique_lock<mutex> l(mutex_);
         std::cout << "-----printStr3-----" << std::endl;
-        std::__throw_length_error("sss");
+        std::__throw_length_error("exception.....");
     }catch(const exception& e){
         cout << e.what() << endl;
     }
@@ -325,7 +326,8 @@ public:
 
 
 int main(int argc, char* argv[]){
-    sleep(1);
+    printAsyncTest();
+
     return 0;
 }
 

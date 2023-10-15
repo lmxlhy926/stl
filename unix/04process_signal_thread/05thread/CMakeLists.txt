@@ -1,2 +1,5 @@
-add_executable(posixThread posix_pthread.cpp)
-target_link_libraries(posixThread PRIVATE pthread)
+add_subdirectory(pthread)
+add_subdirectory(cppThread)
+
+
+

@@ -1,6 +1,7 @@
 
 
 #include <string>
+#include <vector>
 #include <iostream>
 #include <thread>
 #include <future>
@@ -28,7 +29,7 @@ using namespace std;
  */
 
 
-string str{"hello"};                //共享变量
+std::vector<int> globalVec;
 std::mutex mutexLock;               //保护锁
 std::condition_variable condVar;    //同步机制
 
@@ -39,21 +40,32 @@ std::condition_variable condVar;    //同步机制
  */
 void provider(){
     std::this_thread::sleep_for(std::chrono::seconds(5));
-    std::lock_guard<std::mutex> lg(mutexLock);
-    str = "world";
+    {
+        std::lock_guard<std::mutex> lg(mutexLock);
+        for(int i = 0; i < 10; ++i){
+            globalVec.push_back(i);
+        }
+    }
     condVar.notify_all();   //唤醒挂载在condVar的所有等待，唤醒后，清除等待记录；
     std::cout << "---notify---" << std::endl;
 }
 
+
 /*
- * . wait函数之后的操作在unique_lock的限定的保护区间内进行
+ *  wait函数之后的操作在unique_lock的限定的保护区间内进行
  */
 void consumer(){
-    std::unique_lock<std::mutex> ul(mutexLock);
-    std::cout << "----consumer start to wait----" << std::endl;
-    condVar.wait(ul);  //解锁，阻塞，等待被唤醒；被唤醒后执行后续逻辑
-    std::cout << "consumer str: " << str << std::endl;
+    while(true){
+        std::unique_lock<std::mutex> ul(mutexLock);
+        std::cout << "----consumer start to wait----" << std::endl;
+        condVar.wait(ul);  //解锁，阻塞，等待被唤醒；被唤醒后执行后续逻辑
+        for(auto elem : globalVec){
+            std::cout << "++consume: " << elem << std::endl;
+        }
+        globalVec.clear();
+    }
 }
+
 
 /**
  * 带条件的wait():
@@ -63,17 +75,17 @@ void consumer(){
  *      4. 被唤醒：重复执行上述步骤
 */
 void consumer1(){
-    std::unique_lock<std::mutex> ul(mutexLock);
-    std::cout << "----consumer1 start to wait----" << std::endl;
-    condVar.wait(ul, []()->bool{   
-        if(str == "hello"){
-            return false;
-        }else if(str == "world"){
-            return true;
+    while(true){
+        std::unique_lock<std::mutex> ul(mutexLock);
+        std::cout << "----consumer1 start to wait----" << std::endl;
+        condVar.wait(ul, []()->bool{    //陷入等待，直到条件为真  
+            return !globalVec.empty();
+        });  
+        for(auto elem : globalVec){
+            std::cout << "**consume1: " << elem << std::endl;
         }
-        return false;
-    });  
-    std::cout << "consumer1 str: " << str << std::endl;
+        globalVec.clear();
+    }
 }
 
 
@@ -81,16 +93,11 @@ void conVarTest(){
     auto p1 = std::async(std::launch::async, provider);
     auto c  = std::async(std::launch::async, consumer);
     auto c1 = std::async(std::launch::async, consumer1);
-    p1.get();
-    c.get();
-    c1.get();
 }
 
 
 int main(int argc, char* argv[]){
     conVarTest();
-
-
     return 0;
 }
 
