@@ -15,87 +15,6 @@
 
 using namespace std;
 
-std::vector<int> sigvec{
-        SIGINT,	
-        SIGILL,	
-        SIGABRT,	
-        SIGFPE,	
-        SIGSEGV,	
-        SIGTERM,	
-        SIGHUP,	
-        SIGQUIT,	
-        SIGTRAP,
-        SIGKILL,	
-        SIGSYS,	
-        SIGPIPE,	
-        SIGALRM,	
-        SIGURG,	
-        SIGSTOP,	
-        SIGTSTP,	
-        SIGCONT,	
-        SIGCHLD,	
-        SIGTTIN,	
-        SIGTTOU,	
-        SIGPOLL,	
-        SIGXCPU,	
-        SIGXFSZ,	
-        SIGVTALRM,
-        SIGPROF,	
-        SIGUSR1,	
-        SIGUSR2,	
-        SIGWINCH,	
-        SIGIO,		
-        SIGIOT,	
-        SIGCLD	
-};
-
-
-//信号处理函数，打印用户自定义信号
-void sig_usr(int signo){
-    if(signo == SIGUSR1){
-        printf("pid = %d, received SIGUSR1\n", getpid());
-    }else if(signo == SIGUSR2){
-        printf("pid = %d, received SIGUSR2\n", getpid());
-    }
-}
-
-/**
- * 为SIGUSR1注册信号处理函数
- * 为SIGUSR2注册信号处理函数
- * 循环调用pause，等待被信号唤醒
- * 让进程在后台运行，然后调用 kill -USR1 <PID>; kill -USR2 <PID>; kill <PID>
- * 
- * 当执行一个程序时，所有信号的状态都是系统默认或忽略。
- * 
- * exec族函数将原先设置为要捕捉的信号都更改为默认动作，其它信号状态则不变。
- * 一个进程原先要捕捉的信号，当其执行一个新程序后，就不能再捕捉了，因为捕捉函数的地址很可能在所执行的新程序文件中已无意义。
- * 
- * 当一个进程调用fork时，其子进程继承父进程的信号处理方式。
- * 因为子进程在开始时复制了父进程内存映像，所以信号捕捉函数的地址在子进程中是有意义的。
-*/
-void sigusr_test(){
-    //设置信号处理函数
-    if(signal(SIGUSR1, sig_usr) == SIG_ERR){
-        perror("can't catch SIGUSR1");
-        exit(-1);
-    }
-    if(signal(SIGUSR2, sig_usr) == SIG_ERR){
-        perror("can't catch SIGUSR2");
-    }
-
-    pid_t pid;
-    if((pid = fork()) < 0){
-        perror("fork error");
-        exit(-1);
-    }
-
-    //fork后，子进程继承父进程的信号处理方式
-    for(; ;){
-        std::cout << "start to pause, <" << getpid() << "> ..." << std::endl; 
-        pause();
-        std::cout << "end pause, <" << getpid() << "> ..." << std::endl; 
-    }
-}
 
 
 static void my_alarm(int signo){
@@ -152,6 +71,8 @@ unsigned int sleep_nosignal_test(){
     std::cout << "alarm(0): " << alarm(0) << std::endl;
     return 0;
 }
+
+
 
 
 /**
@@ -234,172 +155,8 @@ void nanosleep_test(){
 }
 
 
-//解析并打印回收的进程状态信息
-void pr_exit(int status){
-    if(WIFEXITED(status)){  //正常退出，打印退出状态
-        printf("normal termination, exit status = %d\n", WEXITSTATUS(status));
-
-    }else if(WIFSIGNALED(status)){  //异常退出，打印造成退出的信号
-        printf("abnormal termination, signal number = %d%s\n", WTERMSIG(status),
-        #ifdef WCOREDUMP
-            WCOREDUMP(status) ? " (core file generated)" : "");
-        #else
-            "");
-        #endif
-
-    }else if(WIFSTOPPED(status)){   //进程暂停，打印造成暂停的信号
-        printf("child stopped, signal number = %d\n", WSTOPSIG(status));
-
-    }else if(WIFCONTINUED(status)){   //进程恢复
-        printf("child continued....\n");
-    }
-}
-
-
-//打印当前进程的信号屏蔽字
-int pr_mask(const char* str){
-    //取得当前进程的信号屏蔽字集合
-    sigset_t blockSet;
-    if(sigprocmask(SIG_BLOCK, nullptr, &blockSet) == -1){
-        perror("sigprocmask error");
-        exit(-1);
-    }
-
-    //打印该进程的屏蔽的部分信号
-    printf("%s", str);
-    for(auto& signo : sigvec){
-        if(sigismember(&blockSet, signo)){
-            printf(" %s", strsignal(signo));
-        }
-    }
-    printf("\n");
-    return 0;
-}
-
-
-void sig_quit(int signo){
-    printf("caught SIGQUIT\n");
-    //恢复SIGQUIT信号的handler为默认
-    if(signal(SIGQUIT, SIG_DFL) == SIG_ERR){
-        perror("can't reset SIGQUIT");
-        exit(-1);
-    }
-}
-
-
-/**
- *  sigpending：返回当前进程的阻塞信号集合
-*/
-void sigpending_test(){
-    std::cout << "pid: " << getpid() << std::endl;
-
-    //注册SIGQUIT信号处理函数
-    if(signal(SIGQUIT, sig_quit) == SIG_ERR){
-        perror("cant't catch SIGQUIT");
-        exit(-1);
-    }
-
-    //将SIGQUIT加入屏蔽信号集，并保存当前信号集合，用于后面恢复
-    sigset_t newmask, oldmask;
-    sigemptyset(&newmask);
-    sigaddset(&newmask, SIGQUIT);
-    if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
-        perror("SIG_BLOCK error");
-        exit(-1);
-    }
-
-    std::cout << "now start to signal a SIGQUIT ..." << std::endl;
-    sleep(10);
-
-    //取得当前产生但是被阻塞的信号，判断SIGQUIT是否被阻塞
-    sigset_t pendmask;
-    if(sigpending(&pendmask) < 0){
-        perror("sigpending error");
-        exit(-1);
-    }
-    if(sigismember(&pendmask, SIGQUIT)){
-        printf("\nSIGQUIT pending\n");
-    }
-
-    //恢复当前进程的屏蔽信号集合 （解除SIGQUIT信号的阻塞）
-    //如果有信号递送，则在sigprocmask返回前，至少执行其中一个信号处理函数
-    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
-        perror("SIG_SETMASK error");
-        exit(-1);
-    }
-    printf("SIGQUIT unblocked\n");
-
-    //此时不再阻塞SIGQUIT信号，默认操作是结束进程
-    std::cout << "now start to signal a SIGQUIT ..." << std::endl;
-    sleep(10);
-    exit(0);
-}
-
-
-/**
- * 由sigaction实现的signal:
- *      * 出错返回SIG_ERR，否则返回之前设置的信号处理函数
- *      * 由该信号中断的系统调用，默认重启
-*/
-using Sigfunc = void(int);
-Sigfunc * signal_own(int signo, Sigfunc* func){
-    struct sigaction act, oact;
-    act.sa_handler = func;
-    sigemptyset(&act.sa_mask);  //首先清空信号集，以完成初始化
-    act.sa_flags = 0;
-    if(signo == SIGALRM){
-        #ifdef SA_INTERRUPT
-            act.sa_flags |= SA_INTERRUPT;   //不自动启动由SIGALRM信号中断的系统调用
-        #endif
-
-    }else{
-        act.sa_flags |= SA_RESTART; //自动启动由该信号中断的系统调用
-    }
-
-    if(sigaction(signo, &act, &oact) < 0){
-        return SIG_ERR; //出错则返回SIG_ERR
-    }   
-
-    return oact.sa_handler; //否则返回之前设置的信号处理函数
-}
-
-
-void sigQuitHandler(int signo){
-    printf("sigQuitHandler start....\n");
-    sleep(5);
-    sleep(2);
-    printf("sigQuitHandler end....\n");
-}
-
-void sigIntHandler(int signo){
-    printf("sigIntHandler start....\n");
-    printf("sigIntHandler end....\n");
-}
-
-void sigaction_test(){
-    signal_own(SIGINT, sigIntHandler);
-    
-    struct sigaction act;
-    act.sa_handler = sigQuitHandler;
-    sigemptyset(&act.sa_mask);
-    sigaddset(&act.sa_mask, SIGINT);    //执行SIGQUIT的信号处理函数时，屏蔽SIGINT信号
-    act.sa_flags = 0;
-    if(sigaction(SIGQUIT, &act, nullptr) < 0){
-        perror("sigaction");
-        exit(-1);
-    }
-
-    sleep(10);
-}
-
-
 static sigjmp_buf jmpbuf;
 static volatile sig_atomic_t canjump;   //sig_atomic_t：整型，不会被信号处理程序打断
-
-static void sig_alrm(int){
-    //打印信号处理屏蔽字
-    pr_mask("in sig_alrm: ");
-}
 
 static void sig_usr1(int signo){
     //主程序调用sigsetjmp之前，不响应信号；
@@ -422,6 +179,7 @@ static void sig_usr1(int signo){
     //跳转到sigsetjmp处
     siglongjmp(jmpbuf, 1);
 }
+
 
 void sigsetjmp_siglongjump(){
     //设置SIGUSR1信号处理程序
@@ -453,191 +211,32 @@ void sigsetjmp_siglongjump(){
 }
 
 
-static void sig_init(int signo){
-    pr_mask("\nin sig_init: ");
-}
-
-void sigsuspend_test(){
-    sigset_t newmask, oldmask, waitmask;
-    pr_mask("program start: ");
-    if(signal_own(SIGINT, sig_init) == SIG_ERR){
-        perror("signal(SIGINT) error");
-        exit(-1);
-    }
-    sigemptyset(&newmask);
-    sigaddset(&newmask, SIGINT);
-    sigemptyset(&waitmask);
-    sigaddset(&waitmask, SIGUSR1);
-
-    //block SIGINT and save current signal mask
-    if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
-        perror("sigprocmask error");
-        exit(-1);
-    }
-    pr_mask("in critial region: ");
-
-    //pause, allowing all signals except SIGUSR1.
-    //在一个原子操作中设置信号屏蔽字，然后使进程休眠
-    //在捕捉到一个信号或发生了一个会终止该进程的信号之前，该进程被挂起。
-    //如果捕捉到一个信号而且从该信号处理程序返回，则sigsuspend返回，并且该进程的信号屏蔽字设置为调用sigsuspend之前的值。
-    if(sigsuspend(&waitmask) != -1){
-        perror("sigsuspend error");
-        exit(-1);
-    }
-    pr_mask("aftern return from sigsuspend: ");
-
-    //reset signal block which unblocks SIGINT
-    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
-        perror("sigprocmask error");
-        exit(-1);
-    }
-
-    pr_mask("program exit: ");
-    exit(0);
-}
 
 
-static volatile sig_atomic_t quitflag;
-
-static void sig_init1(int signo){
-    pr_mask("in sig_init1: ");
-    if(signo == SIGINT)
-        printf("\ninterrupt\n");
-    else if(signo == SIGQUIT)
-        quitflag = 1;
-}
-
-void sigsuspend_test1(){
-    sigset_t newmask, oldmask, zeromask;
-    //设置SIGINT、SIGQUIT的信号处理函数
-    if(signal_own(SIGINT, sig_init1) == SIG_ERR){
-        perror("signal(SIGINT) error");
-        exit(-1);
-    }
-    if(signal_own(SIGQUIT, sig_init1) == SIG_ERR){
-        perror("signal(SIGQUIT) error");
-        exit(-1);
-    }
-
-    //构造信号集合
-    sigemptyset(&zeromask);
-    sigemptyset(&newmask);
-    sigaddset(&newmask, SIGQUIT);
-
-    pr_mask("main starting: ");
-    //阻塞SIGQUIT信号
-    if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0){
-        perror("sigprocmask error");
-        exit(-1);
-    }
-    pr_mask("after SIG_BLOCK: ");
-
-    while(quitflag == 0){
-        //在一个原子操作中完成：1. 设置新的信号屏蔽字； 2 阻塞等待信号发生
-        //被唤醒号，恢复进程的信号屏蔽字
-        sigsuspend(&zeromask);
-        pr_mask("after sigsuspend: ");
-    }
-        
-
-    quitflag = 0;
-
-    //恢复信号
-    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) < 0){
-        perror("SIG_SETMASK error");
-        exit(-1);
-    }
-    pr_mask("main ending: ");
-
-    exit(0);
-}
-
-/**
- * ISO C要求若捕捉到此信号而且相应信号处理程序返回，abort仍不会返回到其调用者。
- * 
- * POSIX.1也说明abort并不理会进程对此信号的阻塞和忽略。
- * 
- * 让进程捕捉SIGABRT的意图是：在进程终止之前由其执行所需的清理操作。如果进程并不在信号处理程序中终止自己，POSIX.1声明
- * 当信号处理程序返回时，abort终止该进程。
- * 
- * 
-*/
-void abort_own(){
-    struct sigaction action;
-
-    //获取之前的设置,，如果SIGABRT被阻塞，则恢复为默认
-    sigaction(SIGABRT, nullptr, &action);
-    if(action.sa_handler == SIG_IGN){
-        action.sa_handler = SIG_DFL;
-        sigaction(SIGABRT, &action, nullptr);
-    }
-
-    //如果SIGABRT是默认操作，则刷新标准库缓冲区
-    if(action.sa_handler == SIG_DFL){
-        fflush(nullptr);
-    }
-
-    //阻塞除SIGABRT之外的所有信号
-    sigset_t mask;
-    sigfillset(&mask);
-    sigdelset(&mask, SIGABRT);
-    sigprocmask(SIG_SETMASK, &mask, nullptr);
-    
-    //向调用进程自身发送信号
-    /**
-     * 如果调用kill使其为调用者产生信号，并且如果该信号是不被阻塞的，则在Kill返回前该信号(或某个未决、未阻塞的信号)
-     * 就被传送给了该进程。我们阻塞了SIGABRT外的所有信号，这样就可知如果对Kill的调用返回了，则该进程一定已捕捉到该信号，
-     * 并且也从该信号处理程序返回。
-    */
-    kill(getpid(), SIGABRT);
-    printf("kill here....\n");
-
-    //对于捕获SIGABRT的会返回的handler，控制流会到达这里
-    //设置SIGABRT信号handler为默认，再次发送，终止进程
-    fflush(nullptr);
-    action.sa_handler = SIG_DFL;
-    sigaction(SIGABRT, &action, nullptr);
-    sigprocmask(SIGABRT, &mask, nullptr);
-    kill(getpid(), SIGABRT);
-
-    exit(1);
-}
-
-void abortHandler(int signo){
-    printf("catch SIGABRT...\n");
-}
-
-void abort_test(){
-    signal_own(SIGABRT, abortHandler);
-    abort_own();
-}
 
 
 
 int system_nosignal(const char *cmdstring){
-    pid_t pid;
-    int status = -1;
-
     if(cmdstring == nullptr){
         return 1;
     }
-
+    pid_t pid;
+    int status = -1;
     if((pid = fork()) < 0){
         status = -1;
     }else if(pid == 0){
         execl("/usr/bin/bash", "sh", "-c", cmdstring, nullptr);
         _exit(127);
-    }else{
-        while(waitpid(pid, &status, 0) < 0){
-            if(errno != EINTR){
-                status = -1;
-                break;
-            }
+    }
+    while(waitpid(pid, &status, 0) < 0){
+        if(errno != EINTR){
+            status = -1;
+            break;
         }
     }
-
     return status;
 }
+
 
 int system_signal(const char* cmdstring){
     if(cmdstring == nullptr){   //unix总是支持命令行处理
@@ -656,6 +255,7 @@ int system_signal(const char* cmdstring){
     if(sigaction(SIGQUIT, &ignore, &savequit) < 0){
         return -1;
     }
+
     //阻塞SIGCHLD
     sigemptyset(&chldmask);
     sigaddset(&chldmask, SIGCHLD);

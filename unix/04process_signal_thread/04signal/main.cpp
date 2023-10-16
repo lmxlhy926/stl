@@ -56,9 +56,12 @@
 
 /**
  * 信号相关的处理函数概述：
- * 
- * kill和raise
- *      kill函数将信号发送给进程或进程组。raise函数则允许进程向自身发送信号。
+ *      （1）信号集合
+ *      （2）向进程发送信号，向线程发送信号
+ *       (3) 屏蔽线程信号集。新创建的线程继承调用线程的屏蔽信号集合。
+ *      （4）返回线程阻塞的信号集合。（产生但是被阻塞的信号集合）
+ *      （4）设置信号响应函数。
+ *      （5）阻塞等待指定的信号集合中的信号发生。
  * 
  * 
  * sigset_t
@@ -70,9 +73,18 @@
  *      int sigismember(const sigset_t *set, int signo);
  * 
  * 
+ * kill和raise
+ *      kill函数将信号发送给进程或进程组。raise函数则允许进程向自身发送信号。
+ * 
+ * 
+ * pthread_kill
+ *      int pthread_kill(pthread_t thread, int signo);
+ *      向指定的线程发送信号
+ * 
+ * 
  * sigprocmask
+ *      sigprocmask是仅为单线程进程定义的。处理多线程进程中信号的屏蔽使用pthread_sigmask。
  *      可以检测或更改，或同时进行检测和更改进程的信号屏蔽字。
- *      sigprocmask是仅为单线程进程定义的。处理多线程进程中信号的屏蔽使用另一个函数
  *      int sigprocmask(int how, const sigset_t *restrict set, sigset_t *restrict oset);
  *      how:
  *          SIG_BLOCK   : set包含了希望阻塞的附加信号
@@ -80,7 +92,18 @@
  *          SIG_SETMASK ：set指向该进程新的信号屏蔽字
  * 
  * 
- * sigpending
+ * pthread_sigmask
+ *      int pthread_sigmask(int how, const sigset_t *restrict set, sigset_t *restrict oset);
+ *          pthread_sigmask工作在线程中，而且失败时返回错误码。
+ * 
+ * 
+ * sigaction
+ *      int sigaction(int signo, const struct sigaction *restrict act, struct sigaction *restrict oact);
+ *          sigaction函数的功能是检查或修改或检查并修改与指定信号相关联的处理动作。
+ *          此函数取代了UNIX早期版本使用的signal函数。用sigaction函数可以实现signal函数。
+ * 
+ * 
+ * sigpending：线程阻塞信号集合
  *      int sigpending(sigset_t *set);
  *          sigpending() returns the set of signals that are pending for delivery to the calling thread.
  * 
@@ -90,13 +113,7 @@
  *          The set of signals that is pending for a thread is the union of the set of signals  that  is  pending  for 
  *          that thread and the set of signals that is pending for the process as a whole; see signal(7).
  * 
- * 
- * sigaction
- *      sigaction函数的功能是检查或修改或检查并修改与指定信号相关联的处理动作。此函数取代了UNIX早期版本使用
- * 的signal函数。用sigaction函数可以实现signal函数。
- *      int sigaction(int signo, const struct sigaction *restrict act, struct sigaction *restrict oact);
- * 
- * 
+ *
  * sigsuspend
  *      int sigsuspend(const sigset_t *sigmask);    在一个原子操作中先恢复信号屏蔽字，然后使进程休眠。
  * 
@@ -113,7 +130,10 @@
  * the signal mask that was returned by sigprocmask(2) (in the oldset argument).
  * 
  * 
+ * int sigwait(const sigset_t *restrict set, int *restrict signop);
+ *      set指定了线程等待的信号集。返回时signop指向触发返回的信号编号。
  *  
+ * 
  * abort
  *      #include <stdlib.h>
  *      void abort(void);   
@@ -125,8 +145,6 @@
  * POSIX.1的要求则更进一步，它要求如果abort调用终止进程，则它对所有打开标准I/O流的效果应当与进程终止前对每个流调用
  * fclose相同。
  * 
- * 
- * system
 */
 
 
@@ -137,6 +155,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/wait.h>
 
 using namespace std;
 
@@ -255,7 +274,7 @@ Sigfunc * signal_restart(int signo, Sigfunc* func){
             act.sa_flags |= SA_INTERRUPT;   //不自动启动由SIGALRM信号中断的系统调用
         #endif
     }else{
-        act.sa_flags |= SA_RESTART; //自动启动由该信号中断的系统调用
+        act.sa_flags |= SA_RESTART; //自动启动由该信号中断的其它系统调用
     }
 
     if(sigaction(signo, &act, &oact) == -1){
@@ -300,7 +319,10 @@ void sigpending_test(){
         exit(-1);
     }
 
-    //将SIGQUIT加入屏蔽信号集，并保存当前信号集合，用于后面恢复
+    /**
+     * 阻塞SIGQUIT
+     * 将SIGQUIT加入屏蔽信号集，并保存当前信号集合，用于后面恢复
+    */
     sigset_t newmask, oldmask;
     sigemptyset(&newmask);
     sigaddset(&newmask, SIGQUIT);
@@ -309,6 +331,7 @@ void sigpending_test(){
         exit(-1);
     }
 
+/*------------在SIGQUIT被阻塞情况下，执行代码逻辑------------*/
     std::cout << "SIGQUIT is blocked now, start to signal a SIGQUIT ..." << std::endl;
     sleep(10);
 
@@ -321,9 +344,12 @@ void sigpending_test(){
     if(sigismember(&pendmask, SIGQUIT)){
         printf("\nSIGQUIT pending\n");
     }
+ /*------------在SIGQUIT被阻塞情况下，执行代码逻辑------------*/
 
-    //恢复当前进程的屏蔽信号集合 （解除SIGQUIT信号的阻塞）
-    //如果有信号递送，则在sigprocmask返回前，至少执行其中一个信号处理函数
+    /**
+     * 恢复当前进程的屏蔽信号集合 （解除SIGQUIT信号的阻塞）
+     * 如果有信号递送，则在sigprocmask返回前，至少执行其中一个信号处理函数
+    */
     if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) == -1){
         perror("SIG_SETMASK error");
         exit(-1);
@@ -335,8 +361,16 @@ void sigpending_test(){
 }
 
 
-void sigsuspend_handler(int signo){
-    pr_mask("in sigsuspend handler: ");
+void sigsuspend_handler1(int signo){
+    printf("sigsuspend_handler1, pid = %d, received %s\n", getpid(), strsignal(signo));
+    sleep(2);
+    printf("sigsuspend_handler1 end....\n");
+}
+
+void sigsuspend_handler2(int signo){
+    printf("sigsuspend_handler2, pid = %d, received %s\n", getpid(), strsignal(signo));
+    sleep(3);
+    printf("sigsuspend_handler2 end....\n");
 }
 
 /**
@@ -346,52 +380,64 @@ void sigsuspend_handler(int signo){
  * 恢复最初的信号屏蔽字
 */
 void sigsuspend_test1(){
-    sigset_t newmask, oldmask, waitmask;
+    sigset_t newmask, oldmask;
     pr_mask("program start: ");                             //打印进程屏蔽信号集合
-    if(signal(SIGINT, sigsuspend_handler) == SIG_ERR){      //注册信号处理函数
+    
+    /**
+     * 注册信号处理函数
+    */
+    if(signal(SIGINT, sigsuspend_handler1) == SIG_ERR){      //注册信号处理函数
         perror("signal(SIGINT) error");
         exit(-1);
     }
-    if(signal(SIGQUIT, sigsuspend_handler) == SIG_ERR){     //注册信号处理函数
+    if(signal(SIGQUIT, sigsuspend_handler2) == SIG_ERR){     //注册信号处理函数
         perror("signal(SIGINT) error");
         exit(-1);
     }
 
-    //信号集合初始化并赋值
+    /**
+     * 阻塞SIGINT、SIGQUIT
+    */
     sigemptyset(&newmask);
     sigaddset(&newmask, SIGINT);
     sigaddset(&newmask, SIGQUIT);
-    sigemptyset(&waitmask);
-    sigaddset(&waitmask, SIGUSR1);
-
     if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) == -1){   //阻塞SIGINT，SIGQUIT
         perror("SIG_BLOCK error");
         exit(-1);
     }
-    pr_mask("in critical region: ");
 
+
+    pr_mask("in critical region: ");
     sleep(10);  //执行期间阻塞SIGINT,SIGQUIT
     std::cout << "critical region code complete..." << std::endl;
 
+
     /**
+     * 暂时恢复信号集合，并等待信号发生
      * 设置新的信号屏蔽字并等待，这是一个原子操作。并且在结束返回后，自动恢复原先的信号屏蔽字。
      * 以下代码不是原子操作，有时间窗口
-     *      sigprocmask();
+     *      sigprocmask();  //恢复信号屏蔽字
      *      ------信号在这里发生，会导致无法唤醒pause，即信号丢失------
-     *      pause()
+     *      pause()         //阻塞
     */
-    if(sigsuspend(&waitmask) != -1){    //设置新的信号屏蔽字并阻塞等待
+    if(sigsuspend(&oldmask) != -1){    //设置新的信号屏蔽字并阻塞等待
         perror("sigsuspend error");
         exit(-1);
     }
     pr_mask("after return from sigsuspend: ");  //返回时恢复信号屏蔽字
 
-    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) == -1){  //恢复进程开始时的信号屏蔽字
+
+    /**
+     * 恢复进程开始时的信号屏蔽字
+    */
+    if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) == -1){  
         perror("SIG_SETMASK error");
     }
     pr_mask("program exit: ");
+    
     exit(0);
 }
+
 
 /**
  * 程序执行完必要操作后，调用sigsuspend()等待信号发生之前，首先要阻塞该信号。
@@ -411,7 +457,7 @@ void consumeTime(){
 
 volatile sig_atomic_t quitflag = 0;     //可以被原子修改，不会被信号处理程序中断
 
-void sigsuspend_handler2(int signo){
+void sigsuspend_handler3(int signo){
     printf("pid = %d, received %s\n", getpid(), strsignal(signo));
     if(signo == SIGQUIT){
         quitflag = 1;
@@ -422,39 +468,42 @@ void sigsuspend_handler2(int signo){
  * 等待一个信号处理程序设置一个全局变量
 */
 void sigsuspend_test2(){
-    sigset_t newmask, oldmask, zeromask;
-    if(signal(SIGINT, sigsuspend_handler2) == SIG_ERR){     //注册SIGINT信号处理函数
+    /**
+     * 注册信号响应函数
+    */
+    if(signal(SIGINT, sigsuspend_handler3) == SIG_ERR){    
         perror("signal(SIGINT) error"); 
         exit(-1);
     }
-    if(signal(SIGQUIT, sigsuspend_handler2) == SIG_ERR){    //注册SIGQUIT信号处理函数
+    if(signal(SIGQUIT, sigsuspend_handler3) == SIG_ERR){    
         perror("signal(SIGQUIT) error");
         exit(-1);
     }
 
-    consumeTime();
-
+    //进入判断逻辑前，首先阻塞该信号
+    sigset_t newmask, oldmask;
     sigemptyset(&newmask);
     sigaddset(&newmask, SIGQUIT);
-    sigemptyset(&zeromask);
-
-    //进入判断逻辑前，首先阻塞该信号
     if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) == -1){   //阻塞SIGQUIT
         perror("sigprocmask error");
         exit(-1);
     }
+
     /**
      * 这里首先阻塞了SIGQUIT信号，这样在执行sigsuspend()之前SIGQUIT一定不会被递送给进程
      * 如果不首先阻塞该信号的话，在判断语句和sigsuspend()之间留有时间窗口
      * sigsuspend是原子操作，这样保证进程收到信号后，一定会唤醒sigsuspend而不会进入休眠。
     */
+    consumeTime();  //执行逻辑
     printf("wait for SIGQUIT...\n");
     while(quitflag == 0){
         //----------不阻塞信号，这里会有时间窗口----------
-        sigsuspend(&zeromask);
+        sigsuspend(&oldmask);
     }
-
-    quitflag = 0;
+ 
+    /**
+     * 恢复信号屏蔽字
+    */
     if(sigprocmask(SIG_SETMASK, &oldmask, nullptr) == -1){
         perror("SIG_SETMASK error");
         exit(-1);
@@ -478,11 +527,16 @@ static void sig_usr(int signo){
 }
 
 /**
- * 信号实现的一种进程间的同步机制:  
- *      阻塞：进程阻塞等待全局变量被修改
- *      唤醒：收到对方进程发送的信号后，在信号处理函数中修改全局变量，进程跳过阻塞，执行后续步骤
-*/
+ * 信号实现的一种进程间的同步机制:
+ *      阻塞：阻塞特定信号集合  
+ *      等待：调用sigsuspend进行等待，直到全局变量被修改
+ *      唤醒：向指定进程发送信号
+ */
 
+
+/**
+ * 初始化操作：设置信号捕捉函数，屏蔽指定信号集合
+*/
 void TELL_WAIT(){
     if(signal(SIGUSR1, sig_usr) == SIG_ERR){
         perror("signal(SIGUSR1) error");
@@ -507,6 +561,7 @@ void TELL_PARENT(pid_t pid){
     kill(pid, SIGUSR2);
 }
 
+//阻塞等待被唤醒
 void WAIT_PARENT(){
     while(sigflag == 0){
         sigsuspend(&zeromask);
@@ -557,6 +612,10 @@ void process_no_sync(){
 
 void process_sync(){
     pid_t pid;
+    /**
+     * 设置信号屏蔽集合，设置信号处理函数
+     * 子进程继承父进程的信号屏蔽字以及信号处理函数
+    */
     TELL_WAIT();
     if((pid = fork()) < 0){     //父子进程拥有相同的信号屏蔽字
         perror("fork error");
@@ -582,6 +641,7 @@ void printBlockedSet(const char* str, sigset_t set){
     printf("\n");
     fflush(stdout);
 }
+
 
 
 /**
@@ -630,16 +690,32 @@ pthread_cond_t waitloc = PTHREAD_COND_INITIALIZER;
  * 的函数即可。
  * 
  * sigsuspend和sigwait的区别：
- *      sigsuspend中指定线程要屏蔽的信号集合，其可被未指定的信号唤醒。但是不知道是被哪个信号唤醒。
+ *      sigsuspend中指定线程要屏蔽的信号集合，其可被未指定的信号唤醒。但是不知道是被哪个信号唤醒。且在返回前执行
+ * 未决的未被阻塞的所有的信号的处理函数。
  *      sigwait中指定线程要等待的信号的集合，被唤醒后，知道是被哪个信号唤醒的。
  * 
  * 注：
  *      通过阻塞信号以及在专用线程中处理信号，可以解决信号中断带来的问题。
 */
 
+
+/**
+ * 在专用线程里用sigwait等待的信号，就不再使用sigaction指定函数进行捕获。
+ * 否则具体是由线程来处理该信号，还是由信号处理函数来处理该信号，就由操作系统来决定。
+*/
 void* thr_fn(void *arg){
     int err, signo;
     for(; ;){
+        /**
+         * sigwait每返回一次，线程阻塞信号集合中就有一个信号被清除
+        */
+        sigset_t pendmask;
+        if(sigpending(&pendmask) == -1){
+            perror("sigpending error");
+            exit(-1);
+        }
+        printBlockedSet("sigpending: ", pendmask);
+
         //-------调用sigwait之前信号要先被阻塞，否则这里有时间窗口-------
         err = sigwait(&mask, &signo);   //线程阻塞等待信号，直到被信号唤醒。
         if(err != 0){
@@ -652,6 +728,9 @@ void* thr_fn(void *arg){
             case SIGINT:
                 printf("\ninterrupt\n");
                 break;
+            case SIGTSTP:
+                printf("\nsigtstp\n");
+                break;
             case SIGQUIT:
                 pthread_mutex_lock(&lock);  //线程中的共享数据需要加锁保护
                 quitflag1 = 1;
@@ -660,14 +739,15 @@ void* thr_fn(void *arg){
                 return(0);
             default:
                 printf("unexcepted signal %s\n", strsignal(signo));
-                exit(1);
+                break;
         }
     }
 }
 
+
 /**
  * 线程的阻塞信号和进程的阻塞信号：
- *      进程收到一个信号后，会随机发送给任意一个线程。因此sigpending获取到的线程的未决信号集合，
+ *      进程收到一个信号后，会随机发送给任意一个线程。因此sigpending获取到的线程的未决信号集合,
  * 包含明确发送给该线程但被阻塞的信号以及发送给该进程但被阻塞的信号。
  *      sigpending获取到的是线程的未决信号集合。
 */
@@ -679,11 +759,16 @@ void sig_multiThread_process(){
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGQUIT);
+    sigaddset(&mask, SIGTSTP);
     if((err = pthread_sigmask(SIG_BLOCK, &mask, &oldmask)) != 0){   //设置主线程信号屏蔽字
         printf("pthread_sigmask error: %s\n", strerror(err));
         exit(-1);
     }
 
+    printf("wait for 5 seconds....\n");
+    sleep(5);
+
+    //新创建的额线程继承调用线程的信号屏蔽字
     err = pthread_create(&tid, nullptr, thr_fn, nullptr);
     if(err != 0){
         printf("pthread_create error: %s\n", strerror(err));
@@ -696,6 +781,7 @@ void sig_multiThread_process(){
     }
     pthread_mutex_unlock(&lock);
    
+    //恢复线程信号屏蔽字
     if((err = pthread_sigmask(SIG_SETMASK, &oldmask, nullptr)) != 0){
         printf("pthread_sigmask error: %s\n", strerror(err));
         exit(-1);
@@ -705,11 +791,134 @@ void sig_multiThread_process(){
 }
 
 
+void sigAbort_handler(int signo){
+    std::cout << "start to wait for 5 seconds ..." << std::endl;
+    sleep(5);
+    std::cout << "wait complete ..." << std::endl;
+}
+
+/**
+ * abort：SIGABRT
+ *      ISO C要求若捕捉到此信号而且相应信号处理程序返回，abort仍不会返回到其调用者。
+ *      POSIX.1也说明abort并不理会进程对此信号的阻塞和忽略。
+ *      让进程捕捉SIGABRT的意图是：在进程终止之前由其执行所需的清理操作。如果进程并不在信号处理程序中终止自己，POSIX.1声明
+ *      当信号处理程序返回时，abort终止该进程。
+*/
+void abort_own(){
+    struct sigaction action;
+
+    //获取之前的设置,，如果SIGABRT被忽略，则恢复为默认。（忽略进程对SIGABRT的忽略）
+    sigaction(SIGABRT, nullptr, &action);
+    if(action.sa_handler == SIG_IGN){
+        action.sa_handler = SIG_DFL;
+        sigaction(SIGABRT, &action, nullptr);
+    }
+
+    //如果SIGABRT是默认操作，则刷新标准库缓冲区
+    if(action.sa_handler == SIG_DFL){
+        fflush(nullptr);
+    }
+
+    //阻塞除SIGABRT之外的所有信号（忽略进程对SIGABRT的阻塞）
+    sigset_t mask;
+    sigfillset(&mask);
+    sigdelset(&mask, SIGABRT);
+    sigprocmask(SIG_SETMASK, &mask, nullptr);
+    
+    //向调用进程自身发送信号
+    /**
+     * 如果调用kill使其为调用者产生信号，并且如果该信号是不被阻塞的，则在Kill返回前该信号(或某个未决、未阻塞的信号)
+     * 就被传送给了该进程。我们阻塞了SIGABRT外的所有信号，这样就可知如果对Kill的调用返回了，则该进程一定已捕捉到该信号，
+     * 并且也从该信号处理程序返回。
+    */
+    kill(getpid(), SIGABRT);
+    printf("return from kill ...\n");
+
+    /**
+     * 对于捕获SIGABRT但是返回的handler，控制流会到达这里
+     * 设置SIGABRT信号handler为默认，再次发送，终止进程
+    */
+    fflush(nullptr);
+    action.sa_handler = SIG_DFL;
+    sigaction(SIGABRT, &action, nullptr);
+    sigprocmask(SIGABRT, &mask, nullptr);   /* just in case ... */
+    kill(getpid(), SIGABRT);
+
+    exit(1);    /* this should never be executed ... */
+}
+
+
+void abort_test(){
+    struct sigaction newSigAction, oldSigAction;
+    newSigAction.sa_handler = sigAbort_handler;
+    sigemptyset(&newSigAction.sa_mask);
+    newSigAction.sa_flags = 0;
+    sigaction(SIGABRT, &newSigAction, &oldSigAction);
+    abort_own();
+    while(true){
+        sleep(10);
+    }
+}
+
+
+void waitpid_handler(int signo){
+    int saveErrno = errno;
+    printf("waitpid_handler, pid = %d, received %s\n", getpid(), strsignal(signo));
+    if(signo == SIGCHLD){
+        int status;
+        pid_t pid;
+        if(pid = wait(&status) != -1){
+            std::cout << "waitpid_handler: " << status << std::endl;
+            pr_exit(status);
+        }else{
+            perror("wait error: ");
+        }
+    }
+    errno = saveErrno;
+}
+
+
+/**
+ * 没有捕获信号的system函数的一个实现版本
+*/
+int system_nosignal(const char *cmdstring){
+    if(cmdstring == nullptr){
+        return 1;
+    }
+    pid_t pid;
+    int status = -1;
+    if((pid = fork()) < 0){
+        status = -1;
+    }else if(pid == 0){
+        std::cout << "child process: " << getpid() << std::endl;
+        execl("/usr/bin/bash", "sh", "-c", cmdstring, nullptr);
+        _exit(127);
+    }
+
+    sleep(20);
+    while(waitpid(pid, &status, 0) < 0){
+        perror("system_nosignal waitpid error");
+        if(errno != EINTR){
+            status = -1;
+            break;
+        }
+    }
+    return status;
+}
+
+
+void system_nosignal_test(){
+    signal(SIGINT, sig_handler);
+    signal(SIGQUIT, sig_handler);
+    signal(SIGCHLD, waitpid_handler);
+    int status = system_nosignal("/usr/bin/ed");
+    std::cout << "status: " << status << std::endl;
+    exit(0);
+}
 
 int main(int argc, char* argv[]){
 
-   sig_multiThread_process();
-
+    system_nosignal_test();
 
     return 0;
 }
