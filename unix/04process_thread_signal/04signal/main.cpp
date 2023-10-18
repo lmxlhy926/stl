@@ -155,6 +155,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <sys/wait.h>
 
 using namespace std;
@@ -868,10 +869,9 @@ void waitpid_handler(int signo){
         int status;
         pid_t pid;
         if(pid = wait(&status) != -1){
-            std::cout << "waitpid_handler: " << status << std::endl;
             pr_exit(status);
         }else{
-            perror("wait error: ");
+            perror("waitpid_handler wait error: ");
         }
     }
     errno = saveErrno;
@@ -880,6 +880,13 @@ void waitpid_handler(int signo){
 
 /**
  * 没有捕获信号的system函数的一个实现版本
+ *      当system运行另一程序时，不应使父、子进程两者都捕捉终端产生的2个信号：中断和退出。这2个信号只应该发送
+ * 给正在运行的程序：子进程。因为由system执行的命令可能是交互式命令，以及因为system的调用者在程序执行时放弃了
+ * 控制，等待该执行程序的结束，所以system的调用者就不应该接收这2个终端产生的信号。
+ *      但是若父进程正捕捉SIGCHLD信号，那么正在执行system函数时，应当阻塞对父进程递送SIGCHLD信号。实际上，这
+ * 就是POSIX.1所说明的。否则，当system创建的子进程结束时，system的调用者可能错误的认为，它自己的一个子进程结束
+ * 了。于是，调用者将会调用一种wait函数以获得子进程的终止状态，这样就阻止了system函数获得子进程的终止状态，并将
+ * 其作为它的返回值。
 */
 int system_nosignal(const char *cmdstring){
     if(cmdstring == nullptr){
@@ -907,19 +914,172 @@ int system_nosignal(const char *cmdstring){
 }
 
 
-void system_nosignal_test(){
+int system_signal(const char* cmdstring){
+    if(cmdstring == nullptr){   //unix总是支持命令行处理
+        return 1;
+    }
+
+    /* 父进程忽略终端产生的SIGINT、SIGINT， 父进程屏蔽SIGCHLD */
+    struct sigaction ignore, saveintr, savequit;
+    ignore.sa_handler = SIG_IGN;
+    sigemptyset(&ignore.sa_mask);
+    ignore.sa_flags = 0;
+
+    if(sigaction(SIGINT, &ignore, &saveintr) < 0){
+        return -1;
+    }
+    if(sigaction(SIGQUIT, &ignore, &savequit) < 0){
+        return -1;
+    }
+
+    sigset_t chldmask, savemask;
+    sigemptyset(&chldmask);
+    sigaddset(&chldmask, SIGCHLD);
+    if(sigprocmask(SIG_BLOCK, &chldmask, &savemask) < 0){
+        return -1;
+    }
+
+    pid_t pid;
+    int status;
+    if((pid = fork()) < 0){
+        status = -1;
+    }else if(pid == 0){
+        sigaction(SIGINT, &saveintr, nullptr);          //恢复信号的处理方式
+        sigaction(SIGQUIT, &savequit, nullptr);
+        sigprocmask(SIG_SETMASK, &savemask, nullptr);   //恢复之前的阻塞信合集合
+        execl("/usr/bin/bash", "bash", "-c", cmdstring, nullptr);
+        _exit(127);
+    }
+    //父进程等待回收子进程
+    while(waitpid(pid, &status, 0) < 0){
+        if(errno != EINTR){
+            status = -1;
+            break;
+        }
+    }
+    
+    if(sigaction(SIGINT, &saveintr, nullptr) < 0)
+        return -1;
+    if(sigaction(SIGQUIT, &savequit, nullptr) < 0)
+        return -1;
+    if(sigprocmask(SIG_SETMASK, &savemask, nullptr) < 0)
+        return -1;
+
+    return status;
+}
+
+void system_test(){
     signal(SIGINT, sig_handler);
     signal(SIGQUIT, sig_handler);
     signal(SIGCHLD, waitpid_handler);
-    int status = system_nosignal("/usr/bin/ed");
+    int status = system_signal("/usr/bin/ed");
     std::cout << "status: " << status << std::endl;
     exit(0);
 }
 
-int main(int argc, char* argv[]){
 
-    system_nosignal_test();
+/**
+ * SIGTSTP SIGCONT
+ * 仅当某个进程向该进程发送一个SIGCONT信号时，该进程才继续。我们不捕捉SIGCONT信号。该信号的默认配是继续运行停止的进程。
+ * 仅当SIGTSTP信号的配置是SIG_DFL才安排捕捉该信号，其理由是：当此程序由不支持作业控制的shell启动时，
+ * 此信号的配置应当设置为SIG_IGN。只有作业控制shell才应将这3个信号重新设置为SIG_DFL。
+*/
+
+void sigtstop_test(){
+    std::cout << "pid: " << getpid() << std::endl;
+    while(true){
+        std::cout << "hello world" << std::endl;
+        sleep(1);
+    }
+    
+    exit(0);
+}
+
+/**
+ * 打印信号
+*/
+void signal_print_test(){
+    psignal(SIGABRT, "print");
+    char* ptr = strsignal(SIGABRT);
+    printf("strsignal: %s\n", ptr);
+}
+
+
+
+/**
+ * 用alarm实现sleep
+ *      * 阻塞SIGALRM，设定闹钟
+ *      * 用sigsuspend进行等待
+ *      * 恢复等待之前的进程的屏蔽信号集合和信号处理函数
+ *      * 返回剩余的等待时间
+*/
+unsigned int sleep_signal(unsigned int seconds){
+    //设置捕获到SIGALRM信号时的信号处理动作
+    struct sigaction newact, oldact;
+    newact.sa_handler = sig_handler;  //信号处理函数
+    sigemptyset(&newact.sa_mask);   //执行信号处理函数时，要额外屏蔽的信号集合
+    newact.sa_flags = 0;            //设定信号相关特性
+    sigaction(SIGALRM, &newact, &oldact);   //设置信号处理函数，并返回之前的信号处理函数
+
+    //阻塞SIGALRM，记录此时的进程信号屏蔽集合
+    sigset_t newmask, oldmask, suspmask;
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGALRM);
+    sigprocmask(SIG_BLOCK, &newmask, &oldmask); //设置进程屏蔽信号集合
+
+    //设置定时闹铃
+    alarm(seconds);
+
+    //阻塞等待信号发生，可以为之前系统未屏蔽的任何信号以及SIGALRM信号中断
+    suspmask = oldmask;
+    sigdelset(&suspmask, SIGALRM);
+    sigsuspend(&suspmask);  //设置屏蔽信号集合并阻塞在这里，返回时恢复原屏蔽信号集合
+
+    /**
+     * 返回到这里意味着已经捕捉到某个信号。sigsuspend会恢复之前的进程屏蔽信号集合，SIGALRM现在被阻塞。
+    */
+
+    int unslept = alarm(0); //返回剩余的时间
+
+    //恢复SIGALRM的信号处理程序，恢复之前的进程信号屏蔽字
+    sigaction(SIGALRM, &oldact, nullptr);
+    sigprocmask(SIG_SETMASK, &oldmask, nullptr);
+
+    return unslept;
+}
+
+
+/**
+ * sleep是由alarm实现的，同时使用alarm和sleep时不会受影响。
+*/
+void sleep_test(){
+    std::cout << "alarm in 3 seconds ... " << std::endl;
+    signal(SIGALRM, sig_handler);
+    alarm(2);
+    sleep(1);   //1秒后唤醒
+    std::cout << "wake up 1 ..." << std::endl;
+    sleep(100); //再过1秒后被闹钟唤醒
+     std::cout << "wake up 2 ..." << std::endl;
+}
+
+
+/**
+ * 更精确的延时
+*/
+void nanosleep_test(){
+    struct timespec sleeptime, unsleeptime{};
+    sleeptime.tv_sec = 15;  //秒
+    sleeptime.tv_nsec = 1000 * 1000 * 1000;  //纳秒
+    nanosleep(&sleeptime, &unsleeptime);
+    std::cout << "unsleeptime.tv_sec: " << unsleeptime.tv_sec
+              << " , unsleeptime.tv_nsec: " << unsleeptime.tv_nsec << std::endl;
+}
+
+
+int main(int argc, char* argv[]){
+    sleep_test();
 
     return 0;
 }
+
 

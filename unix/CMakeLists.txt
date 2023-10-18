@@ -1,7 +1,7 @@
 add_subdirectory(01basic)
 add_subdirectory(02file)
 add_subdirectory(03fileProperty)
-add_subdirectory(04process_signal_thread)
+add_subdirectory(04process_thread_signal)
 # add_subdirectory(04processEnv)
 # add_subdirectory(05process)
 # add_subdirectory(06ipc)
