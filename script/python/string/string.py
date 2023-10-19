@@ -5,14 +5,20 @@
 4、Python中的字符串不能改变。
 '''
 str = "0123456789"
+
 print(str)                  #所有字符
 print(str[:])               #所有字符
-print(str[0:-1])            #指定范围，前闭后开
+
 print(str[0])               #第一个字符
 print(str[-1])              #最后一个字符
-print(str[2:5])             #指定范围，前闭后开范围
-print(str[2:])              #指定开头位置
-print(str[:8])              #指定结尾位置
+
+print(str[0:-1])            #指定范围，前闭后开
+print(str[2:5])             #指定范围，前闭后开
+
+print(str[2:])              #指定开头位置，默认延伸到最后
+print(str[:8])              #指定结尾位置，默认延伸到最前
+print(str[:-1])             #指定结尾位置，默认衍生到最前
+
 print(str[1:5:2])           #指定前闭后开范围 + 步长
 print(str * 2)              #用*运算符指定重复次数
 print(str + "你好")          #字符串拼接
