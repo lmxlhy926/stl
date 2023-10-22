@@ -1,27 +1,139 @@
 //
 // Created by 78472 on 2023/4/9.
 //
-
 #include <iostream>
 #include <cstdio>
 #include <unistd.h>
 #include <array>
+#include <thread>
 
-//读取字符
+
+/**
+ * 打开文件，按字节读取文件
+*/
 void readChar(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[1024]{};
-    setvbuf(fp, buffer, _IOFBF, 1024);
+    FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){  //成功打开文件
-        int getC;
-        while((getC = fgetc(fp)) != EOF){   //读取到文件末尾时返回EOF
-            printf("%c", getC);
+        char buffer[1024];
+        setvbuf(fp, buffer, _IOFBF, 1024);
+
+        int charInt;
+        while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾时返回EOF
+            printf("%c", charInt);
         }
+        fprintf(stdout, "\n");
+
         if(ferror(fp) != 0){    //读取文件错误
-            std::cout << "ferror..." << std::endl;
+            fprintf(stdout, "fgetc error ...\n");
         }else if(feof(fp) != 0){    //读取到文件末尾
-            std::cout << "feof...." << std::endl;
+            fprintf(stdout, "end of file ....\n");
         }
+    }
+}
+
+
+/**
+ * 行缓冲读取：
+ *      1. 尝试读满整个缓冲区
+ *      2. fgets从缓冲区读取数据，当从缓冲区读取了所有数据但是没有读取到换行符且读取字符数少于最大字符数，
+ *         则再次读取数据到缓冲区。
+ *      3. 重复上述流程
+*/
+void read_Linebuf(){
+    FILE* fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buffer[1024]{};
+        if(setvbuf(fp, buffer, _IOLBF, 1024) == 0){
+            printf("---setvbuf successfully---\n");
+        }
+
+        char buf[1024];
+        if(fgets(buf, 1024, fp) != nullptr){
+            printf("readStr: %s", buf);
+            fflush(stdout);
+            for(int i = 0; i < 25; ++i){
+                printf("%c", buffer[i]);
+            }
+        }
+        fclose(fp);
+    }
+}
+
+
+/**
+ * 行缓冲下输出时机：
+ *      1. 当I/O缓冲区被填满，当下一个字符到来时，冲洗缓冲区。
+ *      2. 当遇到换行符时，冲洗缓冲区 
+*/
+void write_linebuf(){
+#define BUFFER_SIZE 8
+    char buffer[BUFFER_SIZE];
+    if(setvbuf(stdout, buffer, _IOLBF, BUFFER_SIZE) == 0){
+        printf("---缓冲区设置成功---\n");
+    }
+    while(true){
+        for(int i = 0; i < BUFFER_SIZE; ++i){
+            fputc('a', stdout);
+        }
+        fputc('-', stdout);     //写入此字符，导致缓冲区被刷新，缓冲区被刷新后填入'_'
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        fputc('b',  stdout);
+        fputc('\n', stdout) ;
+    }
+}
+
+
+/**
+ * 全缓冲读取过程：
+ *      1. 标准库尝试从文件读取内容填满I/O缓冲区buffer，如果读取到文件末尾则返回。
+ *      2. fgets函数从buffer中读取内容，如果读到换行符或者超过fgets缓冲区大小，则fgets函数返回。
+ *      3. 否则继续上述读取操作
+*/
+void read_Fullbuf(){
+    FILE* fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buffer[5]{};
+        setvbuf(fp, buffer, _IOFBF, 5); //设置全缓冲测试缓冲区
+        while(true){
+            char buf[1024];
+            if(fgets(buf, 1024, fp) != nullptr){  //由于I/O缓冲区设置的比较小，fgets函数会导致底层对文件进行多次读取
+                printf("readStr: %s", buf);
+            }else{
+                if(ferror(fp) != 0){
+                    printf("---ferror----\n");
+                }else if(feof(fp) != 0){
+                    printf("---feof----\n");
+                }
+                break;
+            }
+        }
+        fclose(fp);
+    }
+}
+
+
+/**
+ * 全缓冲区输出：
+ *    1. 当输出字符填满标准I/O缓冲区后，下一个输入字符会触发缓冲区内容写入文件
+ *    2. fflush函数主动冲刷缓冲区
+*/
+void write2fullbuf(){
+    FILE* fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buffer[100]{};
+        setvbuf(fp, buffer, _IOFBF, 100);
+        //输出100个字符到缓冲区中，由于缓冲区没有被填满，所以输出内容没有被写入到文件中
+        for(int i = 0; i < 99; ++i){
+            fprintf(fp, "a");
+        }
+        fputc('\n', fp);
+        sleep(2);
+        fputc('*', fp);
+        fprintf(stdout, "---------------\n");
+        sleep(2);
+        //关闭文件时会冲洗缓冲区，此时缓冲区内容才会被写入到文件中。
+        fflush(fp);
+        fclose(fp);
     }
 }
 
@@ -112,52 +224,9 @@ void filePosWithUngetc(){
 }
 
 
-/*
-    行缓冲下输出时机：
-        1. 当I/O缓冲区被填满，当下一个字符到来时，冲洗缓冲区。
-        2. 当遇到换行符时，冲洗缓冲区
-*/
-void write2linebuf(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[3]{};
-    if(setvbuf(fp, buffer, _IOLBF, 3) == 0){
-        printf("---缓冲区设置成功---\n");
-    }
-    if(fp != nullptr){
-        fputc('a', fp);
-        fputc('\n', fp);
-        fputc('b', fp);
-        fputc('c', fp);
-        fputc('d', fp);
-        fputc('e', fp);
-        fputc('f', fp);
-        fputc('g', fp);
-        fputc('a', fp);
-        fputc('\n', fp);
-    }
-}
 
 
-//行缓冲：还是试图读满缓冲区
-void readFromLinebuf(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[3]{};
-    if(setvbuf(fp, buffer, _IOLBF, 3) == 0){
-        printf("---setvbuf successfully---\n");
-    }
-    if(fp != nullptr){
-        char buf[1024];
-        while(true){
-            if(fgets(buf, 1024, fp) != nullptr){
-                printf("readStr: %s", buf);
-                fflush(stdout);
-            }else{
-                break;
-            }
-        }
-    }
-    fclose(fp);
-}
+
 
 
 //输入换行符后，才会进行读取
@@ -190,60 +259,6 @@ void readWriteFromLineBuf(){
         }
     }
 }
-
-
-//全缓冲区输出：
-//      1. 当输出字符填满标准I/O缓冲区后，下一个输入字符会触发缓冲区内容写入文件
-//      2. fflush函数主动冲刷缓冲区
-void write2fullbuf(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[100]{};
-    setvbuf(fp, buffer, _IOFBF, 100);
-    if(fp != nullptr){
-        //输出100个字符到缓冲区中，由于缓冲区没有被填满，所以输出内容没有被写入到文件中
-        for(int i = 0; i < 100; ++i){
-            if(i < 99){
-                fputc('a', fp);
-            }else if(i == 99){
-                fputc('a', fp);
-            }
-        }
-        fputc('\n', fp);
-    }
-    //关闭文件时会冲洗缓冲区，此时缓冲区内容才会被写入到文件中。
-    fflush(fp);
-    fclose(fp);
-}
-
-
-/*
-    读取过程：
-        标准库尝试从文件读取内容填满I/O缓冲区buffer，如果读取到文件末尾则返回。
-        fgets函数从buffer中读取内容，如果读到换行符或者超过fgets缓冲区大小，则fgets函数返回。
-        否则继续上述读取操作
-*/
-void readFromFullbuf(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[5]{};
-    setvbuf(fp, buffer, _IOFBF, 5); //设置全缓冲测试缓冲区
-    if(fp != nullptr){
-        while(true){
-            char buf[1024];
-            if(fgets(buf, 1024, fp) != nullptr){  //由于I/O缓冲区设置的比较小，fgets函数会导致底层对文件进行多次读取
-                printf("readStr: %s", buf);
-            }else{
-                if(ferror(fp) != 0){
-                    printf("---ferror----\n");
-                }else if(feof(fp) != 0){
-                    printf("---feof----\n");
-                }
-                break;
-            }
-        }
-    }
-    fclose(fp);
-}
-
 
 /*
     缓冲区内容<---->文件实际内容
@@ -384,7 +399,7 @@ void scanfTest(){
 }
 
 int main(int argc, char* argv[]){
-    scanfTest();
+    write2fullbuf();
 
     return 0;
 }
