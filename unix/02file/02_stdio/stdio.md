@@ -18,39 +18,22 @@
 
 ## 缓冲
 
-标准I/O库提供缓冲的目的是尽可能减少read和write调用的次数。
-
-**全缓冲**：在填满标准I/O缓冲区后才进行实际I/O操作。
-
-**行缓冲**：当输入和输出中遇到换行符时，标准I/O库执行I/O操作。
-
-**不带缓冲**：标准I/O库不对字符进行缓冲存储。
-
-很多系统默认使用下列类型的缓冲：
-
-​	标准错误是不带缓冲的。
-
-​	若是指向终端设备的流，则是行缓冲的；否则是全缓冲的。
-
 ```c
 #include <stdio.h>
 int setvbuf(FILE* fp, char* buf, int mode, size_t size);
 	返回值：若成功，返回0；若出错，返回非0。
 mode参数：
-	_IOFBF：全缓冲
-    _IOLBF：行缓冲
-    _IONBF：不带缓冲
+	_IOFBF：全缓冲，在填满标准I/O缓冲区后才进行实际I/O操作
+    _IOLBF：行缓冲，当输入和输出中遇到换行符时，标准I/O库执行I/O操作
+    _IONBF：无缓冲，标准I/O库不对字符进行缓冲存储
+        
+标准I/O库提供缓冲的目的是尽可能减少read和write调用的次数。
+很多系统默认使用下列类型的缓冲：
+	标准错误是不带缓冲的。
+	若是指向终端设备的流，则是行缓冲的；否则是全缓冲的。
 ```
 
 一般而言，应由系统选择缓冲区的长度，并自动分配缓冲区。在这种情况下关闭此流时，标准I/O库将自动释放缓冲区。
-
-```c
-#include <stdio.h>
-int fflush(FILE* fp);
-		返回值：若成功，返回0；若出错，返回EOF。
-```
-
-此函数使该流所有未写的数据都被传送至内核。作为一种特殊情形，如果fp是nullptr，则此函数将导致所有输出流被冲洗。
 
 ## 打开流
 
@@ -60,21 +43,96 @@ FILE* fopen(const char* pathname, const char* type);
 FILE* freopen(const char* pathname, const char* type, FILE* fp);
 FILE* fdopen(int fd, const char* type);
 	返回值：若成功，返回文件指针；若出错，返回nullptr。
+        
+这3个函数的区别：
+	*fopen：以指定的打开方式打开指定的文件。
+	freopen：在指定的流上打开一个指定的文件，如若该流已经打开，则先关闭该流。若该流已经定向，则使用freopen清除该定向。此函数一般用于将一个指定的文件打开为一个预定义的流：标准输入、标准输出、标准错误。
+	fdopen函数取一个已有的文件描述符，并使一个标准的I/O流与该描述符相结合。
+
 ```
 
-这3个函数的区别：
+## 关闭流
 
-​	**fopen**：以指定的打开方式打开指定的文件。
+```c
+#include<stdio.h>
+int fflush(FILE* fp);
+		返回值：若成功，返回0；若出错，返回EOF。
+此函数使该流所有未写的数据都被传送至内核。作为一种特殊情形，如果fp是nullptr，则此函数将导致所有输出流被冲洗。
+            
+int fclose(FILE *fp);
+	返回值： 若成功，返回0；若出错，返回EOF
+```
 
-​	**freopen**：在指定的流上打开一个指定的文件，如若该流已经打开，则先关闭该流。若该流已经定向，则使用freopen清除该定向。此函数一般用于将一个指定的文件打开为一个预定义的流：标准输入、标准输出、标准错误。
+## 结束、出错
 
+```c
+#include <stdio.h>
+int ferror(FILE *fp);
+int feof(FILE *fp);
+	返回值：若条件为真，返回非0；否则，返回0；
+void clearerr(FILE *fp);
+```
 
+## 读写流
 
+### 字符
 
+```c
+#include <stdio.h>
+int fgetc(FILE *fp);
+int getchar(void);
+	返回值：若成功，返回下一个字符；若到达文件尾端或出错，返回EOF。
+        
+int fputc(int c, FILE *fp);
+int putchar(int c);
+	返回值：若成功，返回c；若出错，返回EOF
+```
 
+### 行
 
+```c
+#include <stdio.h>
+char *fgets(char *restrict buf, int n, FILE *restrict fp);
+	返回值：若成功，返回buf；若已到达文件尾端或出错，返回nullptr
 
+int fputs(const char *restrict str, FILE *restrict fp);
+	返回值：若成功，返回非负值；若出错，返回EOF
+```
 
+### 二进制I/O
+
+```c
+#include <stdio.h>
+size_t fread(void *ptr, size_t size, size_t nobj, FILE *fp);
+size_t fwrite(const void *ptr, size_t size, size_t nobj, FILE *fp);
+	返回值：读或写的对象数
+```
+
+## 定位流
+
+```c
+#include <stdio.h>
+long ftell(FILE *fp);
+	返回值：若成功，返回当前文件位置指示；若出错，返回-1L.
+int fseek(FILE *fp, long offset, int whence);
+	返回值：若成功，返回0；若出错，返回-1.
+void rewind(FILE *fp);
+```
+
+## 格式化I/O
+
+```c
+#include <stdio.h>
+int printf(const char *format, ...);
+int fprintf(FILE *fp, const char *format, ...);
+int dprintf(int fd, const char* format, ...);
+	3个函数返回值：若成功，返回输出字节数；若输出出错，返回负值；
+        
+int sprintf(char* buf, const char* format, ...);
+	返回值：若成功，返回存入数组的字符数；若编码出错，返回负值；
+int snprintf(char* buf, size_t n, const char* format, ...);
+	返回值：若缓冲区足够大，返回将要存入数组的字符数；若编码出错，返回负值。
+```
 
 
 

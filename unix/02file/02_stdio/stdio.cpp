@@ -3,9 +3,19 @@
 //
 #include <iostream>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <unistd.h>
 #include <array>
 #include <thread>
+
+
+/**
+ * 常用操作
+*/
+
+
+
 
 
 /**
@@ -27,6 +37,7 @@ void readChar(){
             fprintf(stdout, "fgetc error ...\n");
         }else if(feof(fp) != 0){    //读取到文件末尾
             fprintf(stdout, "end of file ....\n");
+            fclose(fp);
         }
     }
 }
@@ -43,18 +54,47 @@ void read_Linebuf(){
     FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){
         char buffer[1024]{};
+        memset(buffer, 0, 1024);
         if(setvbuf(fp, buffer, _IOLBF, 1024) == 0){
             printf("---setvbuf successfully---\n");
         }
 
-        char buf[1024];
-        if(fgets(buf, 1024, fp) != nullptr){
+        char buf[10];
+        if(fgets(buf, 10, fp) != nullptr){
             printf("readStr: %s", buf);
+            printf("-------------\n");
             fflush(stdout);
-            for(int i = 0; i < 25; ++i){
+            for(int i = 0; i < 1024; ++i){
                 printf("%c", buffer[i]);
             }
         }
+
+        /**
+         * 以读写方式打开文件时，在切换读写方式时，需要调用定位函数
+         * 从文件读取内容，是把文件内容读取到缓冲区中。
+         * 如果文件内容发生改变，但是此时并没有读取文件内容到缓冲区中，则缓冲区中还是以前的内容。
+         * 只有再次读取文件内容，缓冲区内容才能反映文件内容变化。
+        */
+        fseek(fp, 0, SEEK_CUR);
+        fputs("aaaaa", fp);
+        printf("-------------\n");
+        for(int i = 0; i < 1024; ++i){
+            printf("%c", buffer[i]);
+        }
+
+        // fseek(fp, 0, SEEK_SET);     //读写转换时要加定位操作，定位操作会刷新缓冲区
+        // printf("-------------\n");
+        // sleep(3);
+
+        // if(fgets(buf, 10, fp) != nullptr){
+        //     printf("readStr: %s", buf);
+        //     printf("-------------\n");
+        //     fflush(stdout);
+        //     for(int i = 0; i < 1024; ++i){
+        //         printf("%c", buffer[i]);
+        //     }
+        // }
+
         fclose(fp);
     }
 }
@@ -92,8 +132,8 @@ void write_linebuf(){
 void read_Fullbuf(){
     FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){
-        char buffer[5]{};
-        setvbuf(fp, buffer, _IOFBF, 5); //设置全缓冲测试缓冲区
+        char buffer[2]{};
+        setvbuf(fp, buffer, _IOFBF, 2); //设置全缓冲测试缓冲区
         while(true){
             char buf[1024];
             if(fgets(buf, 1024, fp) != nullptr){  //由于I/O缓冲区设置的比较小，fgets函数会导致底层对文件进行多次读取
@@ -124,18 +164,22 @@ void write2fullbuf(){
         setvbuf(fp, buffer, _IOFBF, 100);
         //输出100个字符到缓冲区中，由于缓冲区没有被填满，所以输出内容没有被写入到文件中
         for(int i = 0; i < 99; ++i){
-            fprintf(fp, "a");
+            fputc('a', fp);
         }
         fputc('\n', fp);
         sleep(2);
         fputc('*', fp);
-        fprintf(stdout, "---------------\n");
         sleep(2);
         //关闭文件时会冲洗缓冲区，此时缓冲区内容才会被写入到文件中。
         fflush(fp);
         fclose(fp);
     }
 }
+
+
+/**
+ * 定位函数和缓冲区刷新
+*/
 
 
 //压送字符
@@ -225,117 +269,15 @@ void filePosWithUngetc(){
 
 
 
-
-
-
-
-//输入换行符后，才会进行读取
-void readFromLineBufStdin(){
-    char buffer[1024]{};
-    setvbuf(stdin, buffer, _IOLBF, 1024);
-    char buf[1024]{};
-    while(fgets(buf, 1024, stdin) != nullptr){
-        printf("readStr: %s\n", buf);
-        fflush(stdout);
-    }
-}
-
-//读写转换时要加定位操作
-void readWriteFromLineBuf(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[1024]{};
-    setvbuf(fp, buffer, _IOLBF, 1024);
-    if(fp != nullptr){
-        fputc('a', fp);
-        fputc('b', fp);
-        fputc('c', fp);
-        fprintf(stdout, "filePosition: %ld\n", ftell(fp));
-        fseek(fp, 0, SEEK_CUR);     //读取转换时要加定位操作，定位操作会刷新缓冲区
-        fprintf(stdout, "filePosition: %ld\n", ftell(fp));
-        char buf[1024]{};
-        if(fgets(buf, 1024, fp) != nullptr){
-            fprintf(stdout, "readStr: %s", buf);
-            fflush(stdout);
-        }
-    }
-}
-
-/*
-    缓冲区内容<---->文件实际内容
+/**
+ * freopen：在一个指定的流上打开一个指定的文件
+ *      若该流已经打开，则先关闭该流。若该流已经定向，则使用freopen清除该定向。
+ *      此函数一般用于将一个指定的文件打开为一个预定义的流：stdin, stdout, stderr。
+ *      可以用于I/O重定向
 */
-void readWriteFromFullbuf(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    char buffer[1024]{};
-    setvbuf(fp, buffer, _IOFBF, 1024);
-    if(fp != nullptr){
-        char buf[1024]{};
-        if(fgets(buf, 1024, fp) != nullptr){
-            printf("readStr: %s", buf);
-            fflush(stdout);
-        }
-
-        fseek(fp, 3, SEEK_SET);
-        if(fgets(buf, 1024, fp) != nullptr){
-            printf("readStr: %s", buf);
-            fflush(stdout);
-        }
-
-        fseek(fp, 5, SEEK_SET);
-        if(fgets(buf, 1024, fp) != nullptr){
-            printf("readStr: %s", buf);
-            fflush(stdout);
-        }
-        
-        long nowPosition = ftell(fp);
-        rewind(fp);
-        fputc('a', fp);
-        fputc('b', fp);
-        fputc('c', fp);
-        fseek(fp, nowPosition, SEEK_SET);
-        fputc('a', fp);
-        fputc('b', fp);
-        fputc('c', fp);
-        fflush(fp);
-
-        /*
-            从文件读取内容，是把文件内容读取到缓冲区中。
-            如果文件内容发生改变，但是此时并没有读取文件内容到缓冲区中，则缓冲区中还是以前的内容。
-            只有再次读取文件内容，缓冲区内容才能反映文件内容变化。
-        */
-        rewind(fp);
-        while(true){
-            if(fgets(buf, 1024, fp) != nullptr){
-                printf("readStr: %s", buf);
-                fflush(stdout);
-                fseek(fp, 0, SEEK_CUR);
-            }else{
-                break;
-            }
-        }
-
-        rewind(fp);
-        while(true){
-            if(fgets(buf, 1024, fp) != nullptr){
-                printf("readStr: %s", buf);
-                fflush(stdout);
-                fseek(fp, 0, SEEK_CUR);
-            }else{
-                break;
-            }
-        }
-        fclose(fp);
-    }
-}
-
-
-/*
-    freopen函数在一个指定的流上打开一个指定的文件，若该流已经打开，则先关闭该流。
-    若该流已经定向，则使用freopen清除该定向。
-    此函数一般用于将一个指定的文件打开为一个预定义的流：stdin, stdout, stderr
-    可以用于I/O重定向
-*/
-void freopenTest(){
-    FILE* fp = freopen("/home/lhy/project/stl/unix/02file/a.txt", "w+", stdout);
+void freopen_test(){
+    FILE* fp = freopen("./a.txt", "w+", stdout);
+    setvbuf(stdout, nullptr, _IOLBF, 1024);
     if(fp != nullptr){
         while(true){
             char buf[1024]{};
@@ -349,12 +291,13 @@ void freopenTest(){
     }
 }
 
-/*
-    fdopen函数取一个已有的文件描述符，并使一个标准的I/O流与该描述符相结合。
-    对于fdopen, type参数的意义稍有区别，因为该描述符已经被打开。
+
+/**
+ * fdopen函数取一个已有的文件描述符，并使一个标准的I/O流与该描述符相结合。
+ * 对于fdopen, type参数的意义稍有区别，因为该描述符已经被打开。
 */
-void fdopenTest(){
-    FILE* stdinfp = fdopen(0, "w+");
+void fdopen_test(){
+    FILE* stdinfp = fdopen(0, "r");
     FILE* stdoutfp = fdopen(1, "w+");
     while(true){
         char buf[1024]{};
@@ -399,7 +342,7 @@ void scanfTest(){
 }
 
 int main(int argc, char* argv[]){
-    write2fullbuf();
+    fdopen_test();
 
     return 0;
 }
