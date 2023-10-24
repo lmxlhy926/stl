@@ -125,31 +125,68 @@ void write_linebuf(){
 
 /**
  * 全缓冲读取过程：
- *      1. 标准库尝试从文件读取内容填满I/O缓冲区buffer，如果读取到文件末尾则返回。
- *      2. fgets函数从buffer中读取内容，如果读到换行符或者超过fgets缓冲区大小，则fgets函数返回。
- *      3. 否则继续上述读取操作
+ *      底层读取时，尝试读满整个缓冲区
 */
-void read_Fullbuf(){
+void read_fullbuf1(){
     FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){
-        char buffer[2]{};
-        setvbuf(fp, buffer, _IOFBF, 2); //设置全缓冲测试缓冲区
-        while(true){
-            char buf[1024];
-            if(fgets(buf, 1024, fp) != nullptr){  //由于I/O缓冲区设置的比较小，fgets函数会导致底层对文件进行多次读取
-                printf("readStr: %s", buf);
-            }else{
-                if(ferror(fp) != 0){
-                    printf("---ferror----\n");
-                }else if(feof(fp) != 0){
-                    printf("---feof----\n");
-                }
-                break;
+        char buffer[1024]{};
+        setvbuf(fp, buffer, _IOFBF, 1024);  //设置全缓冲测试缓冲区
+        char buf[5];
+
+        if(fgets(buf, 5, fp) != nullptr){  
+            printf("readStr: %s", buf);
+            printf("-------------\n");
+            for(int i = 0; i < 1024; ++i){
+                printf("%c", buffer[i]);
+            }
+            fflush(stdout);
+        }else{
+            if(ferror(fp) != 0){
+                printf("---ferror----\n");
+            }else if(feof(fp) != 0){
+                printf("---feof----\n");
             }
         }
         fclose(fp);
     }
 }
+
+
+
+/**
+ * 全缓冲读取过程：
+ *      1. 标准库尝试从文件读取内容填满I/O缓冲区buffer，如果读取到文件末尾则返回。
+ *      2. fgets函数从buffer中读取内容，如果读到换行符或者超过fgets缓冲区大小，则fgets函数返回。
+ *      3. 否则继续上述读取操作
+*/
+void read_fullbuf2(){
+    FILE* fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buffer[2]{};
+        setvbuf(fp, buffer, _IOFBF, 2);  
+        /**
+         * 由于I/O缓冲区设置的比较小，fgets函数会导致底层对文件进行多次读取
+        */
+       char buf[100];
+        if(fgets(buf, 100, fp) != nullptr){  
+            printf("readStr: %s", buf);
+            printf("-------------\n");
+            for(int i = 0; i < 2; ++i){
+                printf("%c", buffer[i]);
+            }
+            fflush(stdout);
+        }else{
+            if(ferror(fp) != 0){
+                printf("---ferror----\n");
+            }else if(feof(fp) != 0){
+                printf("---feof----\n");
+            }
+        }
+        fclose(fp);
+    }
+}
+
 
 
 /**
@@ -342,7 +379,7 @@ void scanfTest(){
 }
 
 int main(int argc, char* argv[]){
-    fdopen_test();
+    read_fullbuf2();
 
     return 0;
 }

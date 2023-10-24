@@ -63,16 +63,6 @@ int fclose(FILE *fp);
 	返回值： 若成功，返回0；若出错，返回EOF
 ```
 
-## 结束、出错
-
-```c
-#include <stdio.h>
-int ferror(FILE *fp);
-int feof(FILE *fp);
-	返回值：若条件为真，返回非0；否则，返回0；
-void clearerr(FILE *fp);
-```
-
 ## 读写流
 
 ### 字符
@@ -106,6 +96,16 @@ int fputs(const char *restrict str, FILE *restrict fp);
 size_t fread(void *ptr, size_t size, size_t nobj, FILE *fp);
 size_t fwrite(const void *ptr, size_t size, size_t nobj, FILE *fp);
 	返回值：读或写的对象数
+```
+
+## 结束、出错
+
+```c
+#include <stdio.h>
+int ferror(FILE *fp);
+int feof(FILE *fp);
+	返回值：若条件为真，返回非0；否则，返回0；
+void clearerr(FILE *fp);
 ```
 
 ## 定位流
