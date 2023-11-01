@@ -12,45 +12,211 @@
 
 /**
  * 常用操作
+ *      设置缓冲区类型
+ *          int setvbuf(FILE *fp, char *buf, int mode, size_t size);
+ *              返回值：成功返回0；出错返回非0；
+ * 
+ *      打开流：
+ *          FILE *fopen(const char *pathname, const char *type);
+ *          FILE *freopen(const char *pathname, const char *type, FILE *fp);
+ *          FILE *fdopen(int fd, const char *type);
+ *              返回值：若成功返回文件指针；若失败返回nullptr;
+ * 
+ *      读取字符
+ *          int fgetc(FILE *fp);
+ *              返回值：若成功，返回下一个字符；若已到达文件尾端或出错，返回EOF。
+ *      
+ *       输出字符
+ *           int fputc(int c, FILE *fp);
+ *              返回值：若成功，返回c；若出错，返回EOF。
+ * 
+ *       出错函数：
+ *            int ferror(FILE *fp);
+ *            int feof(FILE *fp);
+ *                  2个函数返回值：若条件为真，返回非0(真)；否则，返回0(假)；
+ *             void clearerr(FILE *fp);
+ *                  每个流在FILE对象中维护了2个标志：出错标志、文件结束标志。clearerr可以清除这2个标志。
+ * 
+ *       读取一行：最多读取n-1个字符，一定以nullptr结尾。
+ *             char *fgets(char *buf, int n, FILE *fp);
+ *                  返回值：若成功，返回buf；若已到达文件尾端或出错，返回nullptr.
+ * 
+ *       输出一行：其实是输出以nullptr结尾的字符串
+ *             int fputs(const char *str, FILE *fp);
+ *                  返回值：若成功，返回非负值；若出错，返回EOF。
+ * 
+ *       读写任意数据
+ *             size_t fread(void *ptr, size_t size, size_t nobj, FILE *fp);
+ *             size_t fwrite(const void *ptr, size_t size, size_t nobj, FILE *fp);
+ *                      返回值：读或写的对象数
+ * 
+ *       定位流：
+ *          long ftell(FILE *fp);
+ *                  返回值：若成功，返回当前文件位置指示；若出错，返回-1L.
+ *          int fseek(FILE* fp, long offset, int whence);
+ *                  返回值：若成功，返回0; 若出错，返回-1.
+ *          void rewind(FILE *fp);
+ * 
+ *       格式化输出：
+ *          int printf(const char *format, ...);
+ *          int fprintf(FILE *fp, const char *format, ...);
+ *          int dprintf(int fd, const char *format, ...);
+ *          int snprintf(char *buf, size_t n, const char *format, ...);             
 */
-
-
 
 
 
 /**
- * 打开文件，按字节读取文件
+ * 按字符读取
+ *      读取字符
+ *          int fgetc(FILE *fp);
+ *              返回值：若成功，返回下一个字符；若已到达文件尾端或出错，返回EOF。
+ *       输出字符
+ *           int fputc(int c, FILE *fp);
+ *              返回值：若成功，返回c；若出错，返回EOF。
+ * 
 */
 void readChar(){
     FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){  //成功打开文件
-        char buffer[1024];
-        setvbuf(fp, buffer, _IOFBF, 1024);
-
         int charInt;
-        while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾时返回EOF
-            printf("%c", charInt);
+        while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾或出错返回EOF
+           fputc(charInt, stdout);
         }
-        fprintf(stdout, "\n");
 
         if(ferror(fp) != 0){    //读取文件错误
             fprintf(stdout, "fgetc error ...\n");
         }else if(feof(fp) != 0){    //读取到文件末尾
             fprintf(stdout, "end of file ....\n");
-            fclose(fp);
         }
+        fclose(fp);
     }
 }
 
 
 /**
- * 行缓冲读取：
- *      1. 尝试读满整个缓冲区
- *      2. fgets从缓冲区读取数据，当从缓冲区读取了所有数据但是没有读取到换行符且读取字符数少于最大字符数，
- *         则再次读取数据到缓冲区。
- *      3. 重复上述流程
+ * 按行读取: 
+ *      读取一行：读取到换行符或读取到n-1个字符，一定以nullptr结尾。
+ *             char *fgets(char *buf, int n, FILE *fp);
+ *                  返回值：若成功，返回buf；若已到达文件尾端或出错，返回nullptr.
+ * 
+ *      输出一行：其实是输出以nullptr结尾的字符串。
+ *             int fputs(const char *str, FILE *fp);
+ *                  返回值：若成功，返回非负值；若出错，返回EOF。
 */
-void read_Linebuf(){
+void readLine(){
+    FILE* fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){  //成功打开文件
+        char buf[1024];
+        while(fgets(buf, 1024, fp) != nullptr){
+            fputs(buf, stdout);
+        }
+        if(ferror(fp) != 0){    //读取文件错误
+            fprintf(stdout, "fgets error ...\n");
+        }else if(feof(fp) != 0){    //读取到文件末尾
+            fprintf(stdout, "end of file ....\n");
+        }
+        fclose(fp);
+    }
+}
+
+
+/**
+ * 读取任意字节数
+ *      读写任意数据
+ *             size_t fread(void *ptr, size_t size, size_t nobj, FILE *fp);
+ *             size_t fwrite(const void *ptr, size_t size, size_t nobj, FILE *fp);
+ *                      返回值：读或写的对象数
+ * 
+ * 注：
+ *      fread函数尝试读取nobj个对象，每个对象的大小为size字节，返回实际读取到的对象数(可能小于期望数)。
+ *      
+*/
+void readNumChar(void){
+    FILE *fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buf[1024];
+        while(true){
+            size_t nRead = fread(buf, 7, 7, fp);
+            fputs("---buf content---\n", stdout);
+            for(int i = 0; i < 100; ++i){
+                fprintf(stdout, "buf[%d] == %c\n", i, buf[i]);
+            }
+            fputs("---buf content---\n", stdout);
+
+            if(nRead > 0){
+                buf[7 * nRead] = 0;
+                fputs(buf, stdout);
+                fputs("***", stdout);
+                if(ferror(fp) != 0){    //读取文件错误
+                    fprintf(stdout, "fgets error ...\n");
+                }else if(feof(fp) != 0){    //读取到文件末尾
+                    fprintf(stdout, "end of file ....\n");
+                }
+
+            }else if(nRead == 0){   //读取到0个对象，
+                fputs("---read == 0---", stdout);
+                break;
+            }
+        }
+        if(ferror(fp) != 0){    //读取文件错误
+            fprintf(stdout, "fgets error ...\n");
+        }else if(feof(fp) != 0){    //读取到文件末尾
+            fprintf(stdout, "end of file ....\n");
+        }
+        fclose(fp);
+    }
+}
+
+
+/**
+ * 当缓冲区无数据时，从文件读取数据到缓冲区。如果从文件读取不到任何数据到缓冲区，则为读到文件末尾；
+ *      1. 设置流为行缓冲读取
+ *      2. 调用fgetc读取一个字符时，会尝试读满整个行缓冲区。如果本次读取读取不到数据，则对流设置文件结束标志
+ *      3. 再次调用fetc时，从缓冲区读取数据。
+ *      4. 当缓冲区无数据时，再尝试从文件读取数据，如果读取不到数据，则对流设置文件结束标志      
+*/
+void readChar_linebuf(){
+    FILE* fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buffer[1024]{};
+        if(setvbuf(fp, buffer, _IOLBF, 1024) == 0){
+            printf("---setvbuf successfully---\n");
+        }
+
+        fprintf(stdout, "---start loc: %ld---\n", ftell(fp));
+        fprintf(stdout, "---current file loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR));
+        int charInt = fgetc(fp);
+
+        fputs("--buf content start--\n", stdout);
+        for(int i = 0; i < 100; ++i){
+            fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
+        }
+        fputs("--buf content end--\n", stdout);
+
+        fprintf(stdout, "loc: %ld, readChar: %c\n", ftell(fp), charInt);
+        while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾或出错返回EOF
+           fprintf(stdout, "fileLocation: %ld, FILELocation: %ld, readChar: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
+        }
+        fprintf(stdout, "---end loc: %ld---\n", ftell(fp));
+
+        if(ferror(fp) != 0){    //读取文件错误
+            fprintf(stdout, "fgetc error ...\n");
+        }else if(feof(fp) != 0){    //读取到文件末尾
+            fprintf(stdout, "end of file ....\n");
+        }
+        fclose(fp);
+    }
+}
+
+
+/**
+ *  1. 设置为行缓冲读取
+ *  2. 第一次调用fgets时，尝试读满整个缓冲区。如果第一次读取遇到文件末尾，则返回nullptr并设置流结束标志。
+ *  3. 再次调用fgets时，尝试从缓冲区读取数据。如果缓冲区数据不够，则再尝试从文件读取数据到缓冲区。
+ *     如果读取到文件末尾，但是没有读取到换行符或者足够的数据，本次读取依然是成功的。下一次读取返回nulllptr，设置流结束标志。
+*/
+void readLine_Linebuf(){
     FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){
         char buffer[1024]{};
@@ -58,46 +224,29 @@ void read_Linebuf(){
         if(setvbuf(fp, buffer, _IOLBF, 1024) == 0){
             printf("---setvbuf successfully---\n");
         }
+        char readBuf[10];
+        fgets(readBuf, 10, fp);
+        fputs("--buf content start--\n", stdout);
+        for(int i = 0; i < 100; ++i){
+            fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
+        }
+        fputs("--buf content end--\n", stdout);
 
-        char buf[10];
-        if(fgets(buf, 10, fp) != nullptr){
-            printf("readStr: %s", buf);
-            printf("-------------\n");
-            fflush(stdout);
-            for(int i = 0; i < 1024; ++i){
-                printf("%c", buffer[i]);
-            }
+        fputs(readBuf, stdout);
+        while(fgets(readBuf, 10, fp) != nullptr){
+            fputs(readBuf, stdout);
+            fputs("***", stdout);
         }
 
-        /**
-         * 以读写方式打开文件时，在切换读写方式时，需要调用定位函数
-         * 从文件读取内容，是把文件内容读取到缓冲区中。
-         * 如果文件内容发生改变，但是此时并没有读取文件内容到缓冲区中，则缓冲区中还是以前的内容。
-         * 只有再次读取文件内容，缓冲区内容才能反映文件内容变化。
-        */
-        fseek(fp, 0, SEEK_CUR);
-        fputs("aaaaa", fp);
-        printf("-------------\n");
-        for(int i = 0; i < 1024; ++i){
-            printf("%c", buffer[i]);
+        if(ferror(fp) != 0){    //读取文件错误
+            fprintf(stdout, "fgetc error ...\n");
+        }else if(feof(fp) != 0){    //读取到文件末尾
+            fprintf(stdout, "end of file ....\n");
         }
-
-        // fseek(fp, 0, SEEK_SET);     //读写转换时要加定位操作，定位操作会刷新缓冲区
-        // printf("-------------\n");
-        // sleep(3);
-
-        // if(fgets(buf, 10, fp) != nullptr){
-        //     printf("readStr: %s", buf);
-        //     printf("-------------\n");
-        //     fflush(stdout);
-        //     for(int i = 0; i < 1024; ++i){
-        //         printf("%c", buffer[i]);
-        //     }
-        // }
-
         fclose(fp);
     }
 }
+
 
 
 /**
@@ -106,13 +255,12 @@ void read_Linebuf(){
  *      2. 当遇到换行符时，冲洗缓冲区 
 */
 void write_linebuf(){
-#define BUFFER_SIZE 8
-    char buffer[BUFFER_SIZE];
-    if(setvbuf(stdout, buffer, _IOLBF, BUFFER_SIZE) == 0){
+    char buffer[8];
+    if(setvbuf(stdout, buffer, _IOLBF, 8) == 0){
         printf("---缓冲区设置成功---\n");
     }
     while(true){
-        for(int i = 0; i < BUFFER_SIZE; ++i){
+        for(int i = 0; i < 8; ++i){
             fputc('a', stdout);
         }
         fputc('-', stdout);     //写入此字符，导致缓冲区被刷新，缓冲区被刷新后填入'_'
@@ -214,9 +362,7 @@ void write2fullbuf(){
 }
 
 
-/**
- * 定位函数和缓冲区刷新
-*/
+
 
 
 //压送字符
@@ -379,7 +525,7 @@ void scanfTest(){
 }
 
 int main(int argc, char* argv[]){
-    read_fullbuf2();
+    readChar_linebuf();
 
     return 0;
 }
