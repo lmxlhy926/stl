@@ -184,17 +184,17 @@ void readChar_linebuf(){
             printf("---setvbuf successfully---\n");
         }
 
-        fprintf(stdout, "---start loc: %ld---\n", ftell(fp));
-        fprintf(stdout, "---current file loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR));
+        fprintf(stdout, "---current FILE loc: %ld---\n", ftell(fp));
+        fprintf(stdout, "---current file loc: %ld---\n", lseek(fileno(fp), 0, SEEK_CUR));
         int charInt = fgetc(fp);
 
-        fputs("--buf content start--\n", stdout);
+        fputs("--buffer content start--\n", stdout);
         for(int i = 0; i < 100; ++i){
             fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
         }
-        fputs("--buf content end--\n", stdout);
+        fputs("--buffer content end--\n", stdout);
 
-        fprintf(stdout, "loc: %ld, readChar: %c\n", ftell(fp), charInt);
+        fprintf(stdout, "fileLocation: %ld, FILELocation: %ld, readChar: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
         while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾或出错返回EOF
            fprintf(stdout, "fileLocation: %ld, FILELocation: %ld, readChar: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
         }
@@ -224,28 +224,29 @@ void readLine_Linebuf(){
         if(setvbuf(fp, buffer, _IOLBF, 1024) == 0){
             printf("---setvbuf successfully---\n");
         }
+
         char readBuf[10];
         fgets(readBuf, 10, fp);
-        fputs("--buf content start--\n", stdout);
+        fputs("--buffer content start--\n", stdout);
         for(int i = 0; i < 100; ++i){
             fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
         }
-        fputs("--buf content end--\n", stdout);
+        fputs("--buffer content end--\n", stdout);
 
-        fputs(readBuf, stdout);
+        fprintf(stdout, "fileLocation: %ld, FILELocation: %ld, readBuf: %s", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), readBuf);
         while(fgets(readBuf, 10, fp) != nullptr){
-            fputs(readBuf, stdout);
-            fputs("***", stdout);
+             fprintf(stdout, "fileLocation: %ld, FILELocation: %ld, readBuf: %s", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), readBuf);
         }
-
-        if(ferror(fp) != 0){    //读取文件错误
-            fprintf(stdout, "fgetc error ...\n");
-        }else if(feof(fp) != 0){    //读取到文件末尾
-            fprintf(stdout, "end of file ....\n");
-        }
-        fclose(fp);
     }
+
+    if(ferror(fp) != 0){    //读取文件错误
+        fprintf(stdout, ">fgetc error ...\n");
+    }else if(feof(fp) != 0){    //读取到文件末尾
+        fprintf(stdout, ">end of file ....\n");
+    }
+    fclose(fp);
 }
+
 
 
 
@@ -273,68 +274,40 @@ void write_linebuf(){
 
 /**
  * 全缓冲读取过程：
- *      底层读取时，尝试读满整个缓冲区
-*/
-void read_fullbuf1(){
-    FILE* fp = fopen("./a.txt", "r+");
-    if(fp != nullptr){
-        char buffer[1024]{};
-        setvbuf(fp, buffer, _IOFBF, 1024);  //设置全缓冲测试缓冲区
-        char buf[5];
-
-        if(fgets(buf, 5, fp) != nullptr){  
-            printf("readStr: %s", buf);
-            printf("-------------\n");
-            for(int i = 0; i < 1024; ++i){
-                printf("%c", buffer[i]);
-            }
-            fflush(stdout);
-        }else{
-            if(ferror(fp) != 0){
-                printf("---ferror----\n");
-            }else if(feof(fp) != 0){
-                printf("---feof----\n");
-            }
-        }
-        fclose(fp);
-    }
-}
-
-
-
-/**
- * 全缓冲读取过程：
  *      1. 标准库尝试从文件读取内容填满I/O缓冲区buffer，如果读取到文件末尾则返回。
- *      2. fgets函数从buffer中读取内容，如果读到换行符或者超过fgets缓冲区大小，则fgets函数返回。
+ *      2. fgets函数从buffer中读取内容，如果读到换行符或者超过fgets缓冲区大小或者读到文件末尾，则fgets函数返回。
  *      3. 否则继续上述读取操作
 */
-void read_fullbuf2(){
+void read_fullbuf(){
     FILE* fp = fopen("./a.txt", "r+");
     if(fp != nullptr){
-        char buffer[2]{};
-        setvbuf(fp, buffer, _IOFBF, 2);  
+        char buffer[5]{};
+        setvbuf(fp, buffer, _IOFBF, 5);  
         /**
          * 由于I/O缓冲区设置的比较小，fgets函数会导致底层对文件进行多次读取
+         * 每次读取都尝试填满缓冲区
+         * 只有缓冲区没有数据时才会触发读取数据到缓冲区
         */
        char buf[100];
         if(fgets(buf, 100, fp) != nullptr){  
             printf("readStr: %s", buf);
-            printf("-------------\n");
-            for(int i = 0; i < 2; ++i){
+            printf("--buffer content start--\n");
+            for(int i = 0; i < 5; ++i){
                 printf("%c", buffer[i]);
             }
+            printf("--buffer content end--\n");
+            printf("file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
             fflush(stdout);
         }else{
             if(ferror(fp) != 0){
-                printf("---ferror----\n");
+                printf(">---ferror----\n");
             }else if(feof(fp) != 0){
-                printf("---feof----\n");
+                printf(">---feof----\n");
             }
         }
         fclose(fp);
     }
 }
-
 
 
 /**
@@ -362,94 +335,135 @@ void write2fullbuf(){
 }
 
 
+/**
+ *  1. 读取和写入使用同一个缓冲区？
+ *  2. 以读写方式打开文件时，读写之间要使用fseek，重新定位位置。
+*/
+void seek_test(){
+    FILE *fp = fopen("./a.txt", "r+");
+    if(fp != nullptr){
+        char buffer[1024];
+        setvbuf(fp, buffer, _IOLBF, 1024);
+
+        fgetc(fp);  //触发读取，读满整个换冲过去
+        printf("--1buffer content start--\n");
+        for(int i = 0; i < 50; ++i){
+            printf("buf[%d]: %c\n", i, buffer[i]);
+        }
+        printf("--1buffer content end--\n");
+
+        for(int i = 0; i < 5; ++i){
+            printf("readChar: %c\n", fgetc(fp));
+        }
+
+        /**
+         * 如果上次读取到缓冲区的内容足够多，读取5个字节，不会触发重新读取缓冲区
+        */
+        printf("--2buffer content start--\n");
+        for(int i = 0; i < 50; ++i){
+            printf("buf[%d]: %c\n", i, buffer[i]);
+        }
+        printf("--2buffer content end--\n");
+        
+        /**
+         * 转换读写方式时调用fseek，定位到当前位置
+        */
+        fseek(fp, 0, SEEK_SET);
+        fputs("hello", fp);
+        printf("--3buffer content start--\n");
+        for(int i = 0; i < 50; ++i){
+            printf("buf[%d]: %c\n", i, buffer[i]);
+        }
+        printf("--3buffer content end--\n");
+        sleep(15);
+
+        fseek(fp, 0, SEEK_CUR);
+        fgetc(fp);
+        printf("--4buffer content start--\n");
+        for(int i = 0; i < 50; ++i){
+            printf("buf[%d]: %c\n", i, buffer[i]);
+        }
+        printf("--4buffer content end--\n");
+        for(int i = 0; i < 5; ++i){
+            printf("readChar: %c\n", fgetc(fp));
+        }
+    }
+}
 
 
-
-//压送字符
-void putbackChar(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
+/**
+ * 读取到文件末尾后，压送字符后，可以再次读取
+ * 一次成功的ungetc调用会清除该流的文件结束标志。
+*/
+void putCharTest(){
+    FILE* fp = fopen("./a.txt", "r+");
     char buffer[1024]{};
     setvbuf(fp, buffer, _IOFBF, 1024);
     if(fp != nullptr){
-        int getC = fgetc(fp);
-        if(getC == EOF){    
+        int charInt = fgetc(fp);
+        if(charInt == EOF){    
             printf("---end of file---\n");
-            //读取到文件末尾后，压送字符后，可以再次读取
-            //一次成功的ungetc调用会清除该流的文件结束标志。
-            ungetc('\n', fp);
+            ungetc('a', fp);
+            if(ferror(fp) != 0){    
+                fprintf(stdout, "fgets error ...\n");
+            }else if(feof(fp) != 0){    
+                fprintf(stdout, "end of file ....\n");
+            }
         }
-        //ungetc压送回字符时，并没有将它们写到底层文件或设备上，只是将它们写回标准I/O库的流缓冲区中。
-        //ungetc压送回的字符，存储在单独的缓冲区中
-        ungetc('\n', fp);
-        ungetc('a', fp);
-        ungetc('b', fp);
-        ungetc('c', fp);
-        ungetc('\n', fp);
+        charInt = fgetc(fp);
+        printf("charInt: %c\n", charInt);
+        if(ferror(fp) != 0){    //读取文件错误
+            fprintf(stdout, "fgets error ...\n");
+        }else if(feof(fp) != 0){    //读取到文件末尾
+            fprintf(stdout, "end of file ....\n");
+        }
+        fclose(fp);
+    }
+}
+
+
+/**
+ * 
+*/
+void putCharTest1(){
+    FILE* fp = fopen("./a.txt", "r+");
+    char buffer[1024]{};
+    setvbuf(fp, buffer, _IOFBF, 1024);
+    if(fp != nullptr){
+        int charInt = fgetc(fp);
+        printf("FILE loc: %ld, file loc: %ld, charInt: %c\n", ftell(fp), lseek(fileno(fp), 0, SEEK_CUR), charInt);
+
+        fputs("--buffer content start--\n", stdout);
+        for(int i = 0; i < 15; ++i){
+            fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
+        }
+        fputs("--buffer content end--\n", stdout);
+
+        /**
+         * ungetc压送回字符时，并没有将它们写到底层文件或设备上，只是将它们写回标准I/O库的流缓冲区中。
+         * ungetc压送回的字符，存储在单独的缓冲区中
+        */
         ungetc('d', fp);
         ungetc('e', fp);
-        ungetc('f', fp);
+        printf("FILE loc: %ld, file loc: %ld\n", ftell(fp), lseek(fileno(fp), 0, SEEK_CUR));
 
-        //定位操作，会导致不读取压送字符所在的缓冲区。
-        //如果没有定位操作，先读取压送字符所在的缓冲区，后读取I/O缓冲区
-        rewind(fp); 
-        while(true){
-            char buf[1024]{};
-            if(fgets(buf, 1024, fp) != nullptr){
-                printf("readStr: %s", buf);
-                fflush(stdout);
-            }else{
-                break;
-            }
+        fputs("--buffer content start--\n", stdout);
+        for(int i = 0; i < 15; ++i){
+            fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
         }
+        fputs("--buffer content end--\n", stdout);
 
-        //回到文件开头
-        rewind(fp);
-        while(true){
-            char buf[1024]{};
-            if(fgets(buf, 1024, fp) != nullptr){
-                printf("readStr: %s", buf);
-                fflush(stdout);
-            }else{
-                break;
-            }
+        /**
+         * 定位操作，会导致不读取压送字符所在的缓冲区。
+         * 如果没有定位操作，先读取压送字符所在的缓冲区，后读取I/O缓冲区
+        */
+        fseek(fp, 0, SEEK_CUR);
+        while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾或出错返回EOF
+           printf("FILE loc: %ld, file loc: %ld, charInt: %c\n", ftell(fp), lseek(fileno(fp), 0, SEEK_CUR), charInt);
         }
     }
     fclose(fp);
 }
-
-
-//押送字符回压送字符缓冲区并不改变当前位置位置。
-void filePosWithUngetc(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    if(setvbuf(fp, nullptr, _IOFBF, 0) == 0){
-        printf("--->缓冲设置成功....\n");
-    }
-    if(fp != nullptr){
-        int i = 0;
-        char buf[1024];
-        printf("filePosition: %ld\n", ftell(fp));
-        while(fgets(buf, 1024, fp) != nullptr){
-            printf("filePosition now: %ld\n", ftell(fp));
-            printf("-->readStr: %s", buf);
-            if(i == 0){
-                //压送字符到压送字符缓冲区，并不会影响当前文件指示位置
-                ungetc('\n', fp);
-                ungetc('a', fp);
-                ungetc('b', fp);
-                ++i;
-            }
-        }
-        printf("-------------------\n");
-        rewind(fp); //定位到文件开头
-        printf("filePosition: %ld\n", ftell(fp));
-        while(fgets(buf, 1024, fp) != nullptr){
-            printf("filePosition: %ld\n", ftell(fp));
-            printf("-->readStr: %s", buf);
-        }
-    }
-    fclose(fp);
-}
-
 
 
 /**
@@ -459,17 +473,21 @@ void filePosWithUngetc(){
  *      可以用于I/O重定向
 */
 void freopen_test(){
-    FILE* fp = freopen("./a.txt", "w+", stdout);
-    setvbuf(stdout, nullptr, _IOLBF, 1024);
-    if(fp != nullptr){
-        while(true){
-            char buf[1024]{};
-            if(fgets(buf, 1024, stdin) != nullptr){
-                fprintf(stdout, "readStr: %s", buf);
-                fflush(stdout);
-            }else{
-                break;
-            }
+    //在./b.txt上打开
+    FILE *fpb = fopen("./b.txt", "r+");
+    char bufb[1024];
+    fgets(bufb, 1024, fpb);
+    fputs(bufb, stdout);
+
+    //在./a.txt上重新打开
+    freopen("./a.txt", "r+", fpb);
+    while(true){
+        char buf[1024]{};
+        if(fgets(buf, 1024, stdin) != nullptr){
+            fprintf(fpb, "readStr: %s", buf);
+            fflush(fpb);
+        }else{
+            break;
         }
     }
 }
@@ -499,33 +517,19 @@ void fdopen_test(){
         多余的输出字符被丢弃
 */
 void snprintfTest(){
-    char buf[5]{};
-    snprintf(buf, 5, "hello");
-    sleep(1);
+    char buf[1024]{};
+    snprintf(buf, 1024, "%d:%d", 1, 2);
+    fputs(buf, stdout);
 }
  
 
 
-/*
-    格式化输入：
-        0. 接收的内容是文本字符
-        1. 格式化字符串内指定解释的类型
-        2. 读取文本字符内容，依序将文本字符转换为相应的解释类型
-*/
-void scanfTest(){
-    FILE* fp = fopen("/home/lhy/project/stl/unix/02file/a.txt", "r+");
-    int a, b;
-    char buf[100]{};
-    fscanf(fp, "%d %d %s", &a, &b, buf);
-    fprintf(stdout, "a==%d, b==%d, c==%s\n", a, b, buf);
-
-    std::array<char, 10> Array{'1', '2', ' ', '3', '4', ' ', '5', '6', '7'};
-    sscanf(Array.data(), "%d %d %s", &a, &b, buf);
-    fprintf(stdout, "a==%d, b==%d, c==%s\n", a, b, buf);
-}
-
 int main(int argc, char* argv[]){
-    readChar_linebuf();
+
+    snprintfTest();
 
     return 0;
 }
+
+
+

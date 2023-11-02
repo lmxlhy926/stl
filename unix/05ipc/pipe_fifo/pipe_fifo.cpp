@@ -42,13 +42,14 @@
  *      读管道：
  *          1.管道中有数据, read返回实际读到的字节数。
  *          2.管道中无数据：
- *              .管道写端被全部关闭, read返回0(好像读到文件结尾)
+ *              .管道写端被全部关闭, read返回0(读到文件结尾)
  *              .写端没有全部关闭, read阻塞等待
 *        写管道：
  *          1.管道读端全部被关闭, 进程异常终止(也可捕捉SIGPIPE信号，使进程不终止)
  *          2.管道读端没有全部关闭：
- *              管道已满, write阻塞。
  *              管道未满, write将数据写入，并返回实际写入的字节数
+ *              管道已满, write阻塞。
+ *              
  * 
  * 当管道的一端被关闭后，下列2条规则起作用。
  *      （1）当读一个写端已被关闭的管道时，在所有数据都被读取后，read返回0，表示文件结束。  
@@ -77,12 +78,13 @@
 /**
  * 建立父进程到子进程的管道
  * 子进程接收到父进程的数据后，将数据输出到标准输出
+ * 注：
+ *      fork后有2个文件描述符指向管道的读端，有2个文件描述符指向管道的写端
 */
 void pipe1(){
     int fd[2]{};
     pid_t pid;
     char line[1024]{};
-
     /**
      * fork之前调用pipe，这样父子进程才能都拥有管道的控制端
     */
@@ -98,6 +100,7 @@ void pipe1(){
     }else if(pid > 0){
         close(fd[0]);
         write(fd[1], "helloworld\n", 11);   //写管道
+        dprintf(fd[1], "%d:%d\n", 1, 2);
     }else{
         close(fd[1]);
         int n = read(fd[0], line, 1024);    //读管道
@@ -107,20 +110,16 @@ void pipe1(){
 }
 
 
+/**
+ * execl执行程序前，指定程序的标准输入、标准输出、标准错误
+*/
 void pipe2(int argc, char* argv[]){
-
-    int fd[2];
-    pid_t pid;
-    FILE *fp;
-
     if(argc != 2){
         printf("usage: a.out <pathname>\n");
         exit(-1);
     }
-    if((fp = fopen(argv[1], "r")) == nullptr){  //打开要读取的文件
-        printf("cant no open %s\n", argv[1]);
-        exit(-1);
-    }
+    int fd[2];
+    pid_t pid;
     if(pipe(fd) < 0){   //管道创建失败
         perror("pipe error");
         exit(-1);
@@ -155,14 +154,17 @@ void pipe2(int argc, char* argv[]){
         }
     }
 
-    close(fd[0]);
+    close(fd[0]);   //关闭管道读端
+    FILE *fp;
+    if((fp = fopen(argv[1], "r")) == nullptr){  //打开要读取的文件
+        printf("cant no open %s\n", argv[1]);
+        exit(-1);
+    }
+
+    FILE * fdw = fdopen(fd[1], "w");    
     char line[1024]{};
     while(fgets(line, 1024, fp) != nullptr){
-        int length = strlen(line);
-        if(write(fd[1], line, length) != length){
-            perror("write error");
-            exit(-1);
-        }
+        fputs(line, fdw);
     }
 
     if(ferror(fp)){
@@ -171,7 +173,7 @@ void pipe2(int argc, char* argv[]){
     }else if(feof(fp)){
         printf("fgets end normal ... \n");
     }
-    close(fd[1]);   //关闭写端。这样管道的读端可以知道写端已结束
+    fclose(fdw);   //关闭写端。这样管道的读端可以知道写端已结束
 
     if(waitpid(pid, nullptr, 0) < 0){
         perror("waitpid error");
@@ -202,10 +204,6 @@ void pipe3(int argc, char* argv[]){
         printf("usage: a.out <pathname>");
         exit(-1);
     }
-    if((fpin = fopen(argv[1], "r")) == nullptr){    //打开要读取的文件
-        printf("cant open %s\n", argv[1]);
-        exit(-1);
-    }
     if((fpout = popen("less", "w")) == nullptr){    //创建通信标准流
         perror("popen error");
         exit(-1);
@@ -214,6 +212,10 @@ void pipe3(int argc, char* argv[]){
     /**
      * 从文件读取数据，将数据写入通信管道
     */
+    if((fpin = fopen(argv[1], "r")) == nullptr){    //打开要读取的文件
+        printf("cant open %s\n", argv[1]);
+        exit(-1);
+    }
     while(fgets(line, 1024, fpin) != nullptr){
         if(fputs(line, fpout) == EOF){
             perror("fputs error to pipe");
@@ -238,6 +240,7 @@ void sig_handler(int signo){
     printf("caught sig %s\n", strsignal(signo));
 }
 
+
 /**
  *      FIFO有时候被称为命名管道。未命名的管道只能在2个相关的进程之间使用，而且这2个相关的进程
  * 还要有一个共同的创建了它们的祖先进程。但是通过FIFO，不相关的进程也能交换数据。
@@ -246,7 +249,7 @@ void sig_handler(int signo){
  *          在一般情况下(没有指定O_NONBLOCK)，只读open要阻塞到某个其它进程为写而打开这个FIFO为止。
  *      类似地，只写open要阻塞到某个其它进程为读而打开它为止。     
  * 
- * 类似管道，若write一个尚无进程为读而打开的FIFO，则产生信号SIGPIPE。若某个FIFO的最后一个写进程关闭了
+ *      类似管道，若write一个尚无进程为读而打开的FIFO，则产生信号SIGPIPE。若某个FIFO的最后一个写进程关闭了
  * 该FIFO，则将为该FIFO的读进程产生一个文件结束标志。
 */
 void fifo(int argc, char* argv[]){
@@ -264,17 +267,17 @@ void fifo(int argc, char* argv[]){
                 printf("child process end, pid = %d\n", getpid());
                 exit(0);
             }
-            fputs(line, stdout);
+            fprintf(stdout, "childRead: %s", line);
         }
         printf("child process end, pid = %d\n", getpid());
         exit(0);
     }
     
     char buffer[1024];
-    int fd = open("./cfifo", O_WRONLY);
+    int fifoFd = open("./cfifo", O_WRONLY);
     while(fgets(buffer, 1024, stdin) != nullptr){
         int length = strlen(buffer);
-        write(fd, buffer, length);
+        write(fifoFd, buffer, length);
     }
     printf("parent process end, pid = %d\n", getpid());
 }
@@ -287,7 +290,4 @@ int main(int argc, char* argv[]){
 
     return 0;
 }
-
-
-
 
