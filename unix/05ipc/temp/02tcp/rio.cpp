@@ -1,12 +1,16 @@
 #include "rio.hpp"
 #include <iostream>
+#include <algorithm>
 
 
 /*
- * 不带缓冲区的读
- * 阻塞读取，并且屏蔽信号中断的影响； 如果系统函数是自启动的则无此必要
- * 返回：读取出错返回-1；未读取到任何字符返回0；返回实际读取到的字节数>0
- * 如果连接端点提前关闭，可能会导致实际读取的字节数小于期望的字节数
+ * 不带缓冲区的读：阻塞读取指定数量的字节，直到读取到文件末尾或者读取出错；
+ *      阻塞读取，并且屏蔽信号中断的影响； 如果系统函数是自启动的则无此必要
+ *      返回值：
+ *          读取出错返回-1；
+ *          未读取到任何字符返回0；
+ *          返回实际读取到的字节数>0
+ *      如果连接端点提前关闭，可能会导致实际读取的字节数小于期望的字节数
  */
 ssize_t rio_readn(int fd, void *usrbuf, size_t n){
     size_t nleft = n;   //待读取字节数，初始时为n
@@ -27,7 +31,6 @@ ssize_t rio_readn(int fd, void *usrbuf, size_t n){
         nleft -= nread;   //更新待读字节数
         bufp += nread;    //更新写入地址
     }
-
     return n - nleft;   // 最终实际读取到的字节数（>=0）
 }
 
@@ -39,7 +42,6 @@ ssize_t rio_writen(int fd, char *usrbuf, size_t n){
     size_t nleft = n;       //待写入字符数
     ssize_t nwrite;         //write操作写入的字符数
     char *bufp = usrbuf;    //指向待写入的字符的地址
-
     while(nleft > 0){
         if((nwrite = write(fd, bufp, nleft)) <= 0){     //写失败
             if(errno == EINTR)
@@ -47,11 +49,9 @@ ssize_t rio_writen(int fd, char *usrbuf, size_t n){
             else
                 return -1;
         }
-
         nleft -= nwrite;
         bufp += nwrite;
     }
-
     return n - nleft;
 }
 
@@ -68,27 +68,26 @@ void rio_readinitb(rio_t *rp, int fd){
  * 2. 从缓冲区读取数据
  */
 ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n){
-
-    size_t cnt;
-
-    //缓冲区中无数据时，读取数据到缓冲区中
-    while(rp->rio_cnt <= 0){    //buffer中无可读取数据，进行一次读取，期望一次读满缓冲区
+    /**
+     * 缓冲区中无数据时，触发一次读取，期望一次读满缓冲区
+    */
+    while(rp->rio_cnt <= 0){    
         rp->rio_cnt = read(rp->rio_fd, rp->rio_buf, sizeof(rp->rio_buf));
-
         if(rp->rio_cnt < 0){   //读取失败返回-1
-            if(errno != EINTR)
-                return -1;
+            if(errno != EINTR)  return -1;
         }else if(rp->rio_cnt == 0){  //对端socket节点关闭
             return 0;
         }else{
             rp->rio_bufptr = rp->rio_buf;   //重置bufptr指向buffer的首字节
         }
-    }   //最终读取数据到buffer中（未必读满），否则会直接返回
+    }  
 
-    //从缓冲区中读取数据
-    cnt = n;
-    if(rp->rio_cnt <cnt)    //min(期望读取的字节数，缓冲区中实际有的字节数)
-        cnt = rp->rio_cnt;  //实际可以读取到的字节数
+    /**
+     * 如果缓冲区的数据不够，这里也没有加载新的数据到缓冲区
+    */
+    size_t cnt = n;
+    if(rp->rio_cnt < cnt)    //min(期望读取的字节数，缓冲区中实际有的字节数)
+        cnt = rp->rio_cnt;   //实际可以读取到的字节数
     memcpy(usrbuf, rp->rio_bufptr, cnt);
 
     //更新缓冲区标识
@@ -100,20 +99,41 @@ ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n){
 
 
 /*
- *  最多读取maxlen - 1 个字节
- *  返回实际读取到的字节数
- *  保存读取到的换行符
+ *  1.该函数为带缓冲区的读。
+ *  2. 克服rio_read在临界区读时返回不足值得缺点。
+ */
+ssize_t rio_readnb(rio_t *rp, char *usrbuf, size_t n){
+    size_t nleft = n;       //待读取的字节数
+    char *bufp = usrbuf;    //指向用户缓冲区字符待写入位置
+    while(nleft > 0){
+        ssize_t nread = rio_read(rp, bufp, nleft);
+        if(nread < 0){         //出错返回-1
+            return -1;
+        }else if(nread == 0){  //对端socket节点关闭
+            break;
+        }else {
+            nleft -= nread;
+            bufp += nread;
+        }
+    }
+    return n - nleft;
+}
+
+
+
+/**
+ *  类似fgets():
+ *      返回以nullptr结尾的字符串，最多读取maxlen - 1 个字节
+ *      返回实际读取到的字节数
+ *      保存读取到的换行符
  */
 ssize_t rio_readlineb(rio_t *rp, char *usrbuf, size_t maxlen){
-
-    size_t n, rc;   //n：标记第几次读取，rc：读取结果
-    char c;         //读取到的字符
-    char *bufp = usrbuf;     //指向用户提供的缓冲区的待写入位置
-
+    size_t n;   //n：标记第几次读读取
+    char *bufp = usrbuf;    //指向用户提供的缓冲区的待写入位置
     for(n = 1; n < maxlen; n++){   //读取maxlen -1个字节，最后一个字节为'\0'
-        rc = rio_read(rp, &c, 1);
-
-        if(rc < 0){
+        char c;
+        ssize_t rc = rio_read(rp, &c, 1);
+        if(rc < 0){ //读取错误
             return -1;
         }else if(rc == 0){  //此次读取没有读取到数据
             if(n == 1)      //第一次读取，没有读取到任何数据，对端socket节点关闭
@@ -128,45 +148,9 @@ ssize_t rio_readlineb(rio_t *rp, char *usrbuf, size_t maxlen){
             }
         }
     }
-
     *bufp = 0;      //字符串以'\0'结尾
     return n - 1;
 }
-
-
-/*
- *  1.该函数为带缓冲区的读。
- *  2. 克服rio_read在临界区读时返回不足值得缺点。
- */
-ssize_t rio_readnb(rio_t *rp, char *usrbuf, size_t n){
-
-    size_t nleft = n;       //待读取的字节数
-    ssize_t nread;          //读取操作读取的字节数
-    char *bufp = usrbuf;    //指向用户缓冲区字符待写入位置
-
-    while(nleft > 0){
-        nread = rio_read(rp, bufp, nleft);
-        if(nread < 0){         //出错返回-1
-            return -1;
-        }else if(nread == 0){  //对端socket节点关闭
-            break;
-        }else {
-            nleft -= nread;
-            bufp += nread;
-            std::cout << "nread: " << nread << std::endl;
-            std::cout << "nleft: " << nleft << std::endl;
-        }
-    }
-
-    return n - nleft;
-}
-
-
-
-
-
-
-
 
 
 
