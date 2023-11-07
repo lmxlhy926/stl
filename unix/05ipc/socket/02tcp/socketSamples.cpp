@@ -157,7 +157,7 @@ int open_clientfd_tcp(string& ip, uint16_t port){
     }
 
     int clientfd;
-    for(p =  listp; p != nullptr; p= p->ai_next){
+    for(p =  listp; p != nullptr; p = p->ai_next){
         if((clientfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
             continue;
         }
@@ -180,7 +180,7 @@ int open_clientfd_tcp(string& ip, uint16_t port){
 
 
 int open_listenfd_tcp(uint16_t port){
-    struct addrinfo hint{}, *p, *listp;
+    struct addrinfo hint, *p, *listp;
     memset(&hint, 0, sizeof hint);
     hint.ai_family = AF_INET;           //IPV4
     hint.ai_socktype = SOCK_STREAM;     //用于连接
