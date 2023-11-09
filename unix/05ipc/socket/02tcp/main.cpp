@@ -28,8 +28,6 @@ string getNameInfo(struct sockaddr* ai_addr, socklen_t addrlen){
 
 /**
  *  getaddrinfo：主机名、主机地址、服务名、服务端口号的字符串表示---> 套接字地址
- *  
- *  
  *  host默认是域名或者ip，service默认是服务名或者端口号
  *  通过AI_NUMERICHOST, 或AI_NUMERICSERV可将host限制为点分十进制形式的IP，将service限制为数字端口号
  *  说明：
