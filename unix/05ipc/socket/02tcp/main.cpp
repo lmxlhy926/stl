@@ -2,17 +2,33 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <vector>
+#include <algorithm>
 
 #include <unistd.h>
-#include <netinet/in.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/poll.h>
+#include <sys/epoll.h>
 
 using namespace std;
 
+
+/**
+ * getnameinfo：套接字地址 ---> 主机名、主机地址、服务名、服务端口号
+*/
+string getNameInfo(struct sockaddr* ai_addr, socklen_t addrlen){
+    int flags = NI_NUMERICHOST | NI_NUMERICSERV;  //显示数字字符串而非域名和服务名
+    char hostname[100]{}, port[100]{};
+    getnameinfo(ai_addr, addrlen, hostname, 100, port, 100, flags);
+    return string().append(string(hostname)).append(" : ").append(string(port));
+}
+
+
 /**
  *  getaddrinfo：主机名、主机地址、服务名、服务端口号的字符串表示---> 套接字地址
- *  getnameinfo：套接字地址 ---> 主机名、主机地址、服务名、服务端口号
+ *  
  *  
  *  host默认是域名或者ip，service默认是服务名或者端口号
  *  通过AI_NUMERICHOST, 或AI_NUMERICSERV可将host限制为点分十进制形式的IP，将service限制为数字端口号
@@ -22,28 +38,26 @@ using namespace std;
  *      3. 字符串端口号--> 主机字节序端口号--> 网络字节序端口号
 */
 void domain2decimal(const string& host, const string& service){
-    //过滤ip属性
-    struct addrinfo hints{};
+    //填充过滤属性
+    struct addrinfo hints;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;          //IPv4 only
     hints.ai_socktype = SOCK_STREAM;    //Connections only
 
-    //获取地址
-    int rc, flags;
-    char hostname[100], port[100];
+    //获取地址列表
+    int rc;
     struct addrinfo *p, *listp;
     if((rc = getaddrinfo(host.c_str(), service.c_str(), &hints, &listp)) != 0){
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(rc));
-        exit(-1);
+        return;
     }
-    flags = NI_NUMERICHOST | NI_NUMERICSERV;    //显示数字字符串而非域名和服务名
     for(p = listp; p != nullptr; p = p->ai_next){
-        getnameinfo(p->ai_addr, p->ai_addrlen, hostname, 100, port, 100, flags);
-        printf("hostname: %s, port: %s\n", hostname, port);
+        fprintf(stdout, "%s\n", getNameInfo(p->ai_addr, p->ai_addrlen).c_str());
     }
 
     //释放列表
     freeaddrinfo(listp);
+    return;
 }
 
 
@@ -236,6 +250,320 @@ int open_listenfd_tcp(uint16_t port){
     return listenfd;
 }
 
+
+/*
+ *  要创建一个数组，存储已建立连接的描述符。
+ *  当select返回时：
+ *          1. 如果是到达listenfd的新连接请求，则调用accept函数在服务端创建连接描述符，监听该描述符并将其加入通信描述符集合中
+ *          2. 如果是已建立连接的客户端端点发送的数据请求，则找到对应的服务器通信端点，与之进行交互
+ *             如果读取到的数据长度为0，则表明客户端关闭了连接，服务器也应该关闭该连接，并从数组和监听集合中剔除该描述符。
+ */
+void tcpServer_select(uint16_t port){
+    //1. 创建监听描述符，开始监听
+    int listenfd = open_listenfd_tcp(port);
+    if(listenfd  == -1){
+        std::cout << "open_listenfd Error....";
+        return;
+    }
+
+    //记录数据
+    std::vector<int> connfdVec;     //记录已建立连接的描述符
+    int maxFd = listenfd;           //初始化监听的最大描述符
+
+    //构造初始监听集合，只监听连接请求
+    fd_set readSet, initSet;
+    FD_ZERO(&initSet);
+    FD_SET(listenfd, &initSet);
+
+    std::cout << "Start to Accept connections...." << std::endl;
+    while(true){
+        readSet = initSet;  //每次请求需要重新赋值
+        int nReady = select(maxFd + 1, &readSet, nullptr, nullptr, nullptr);
+        if(nReady == -1){
+            std::cout << "select error...." << std::endl;
+            return;
+        }
+
+        //如果是连接请求，则记录连接描述符
+        if(FD_ISSET(listenfd, &readSet)){
+            struct sockaddr_in cliAddr{};
+            socklen_t clientLenth = sizeof(sockaddr_in);
+            char ipStrBuffer[INET_ADDRSTRLEN];
+
+            int connfd = accept(listenfd, reinterpret_cast<sockaddr *>(&cliAddr), &clientLenth);
+            if(connfd >= 0){    //成功建立连接
+                std::cout << "Request From " << inet_ntop(AF_INET, &cliAddr.sin_addr, ipStrBuffer, INET_ADDRSTRLEN) << "  "
+                          << ntohs(cliAddr.sin_port) << std::endl;
+                FD_SET(connfd, &initSet);       //监听该连接描述符
+                connfdVec.push_back(connfd);   //连接描述符加入遍历列表
+                if(connfd > maxFd)             //更新最大描述符
+                    maxFd = connfd;
+
+            }else
+                std::cout << "accept Error...." << std::endl;
+
+            if(--nReady == 0)
+                continue;
+        }
+
+        //如果是数据请求，则找到相应的描述符，进行交互
+        for(auto pos = connfdVec.begin(); pos != connfdVec.end();){
+            if(FD_ISSET(*pos, &readSet)){   //处理该连接端点收到的数据请求
+                char buf[1024];
+                ssize_t nRead = read(*pos, buf, 1024);
+                if(nRead <= 0){
+                    std::cout << "read Error or Client closed...." << std::endl;
+                    close(*pos);                        //关闭服务器端的连接节点
+                    FD_CLR(*pos, &initSet);                 //停止监听该连接节点
+                    pos = connfdVec.erase(pos);     //删除会返回下一元素的位置
+                    int maxElement = *max_element(connfdVec.begin(), connfdVec.end());
+                    maxFd  = listenfd > maxElement ? listenfd : maxElement;
+                    continue;
+
+                }else{
+                    for(int i = 0; i < nRead; ++i){
+                        buf[i] = static_cast<char>(toupper(buf[i]));
+                    }
+                    write(*pos, buf, nRead);
+                    ++pos;
+                }
+
+                if(--nReady == 0)
+                    break;
+            }
+        }
+    }
+}
+
+
+
+
+/*
+ * struct pollfd:
+ *      1. fd：      指明要监听的端口， -1代表忽略该项，下次返回时把revents设置为0
+ *      2. events：  指明要监听的事件，可以是读、写、或其它事件
+ *      3. revents： poll函数返回的监听事件中已发生的事件
+ *
+ * select和poll对比:
+ *      select的缺点:
+ *          1. select中用三个形参来描述三种不同的事件，针对每种事件传入待监听的描述符集合，因此有三个描述符集合。
+ *          2. select中的参数为传入传出参数，函数每次返回都会覆盖监听集合，所以每次调用需要重新赋值。
+ *      poll的优点:
+ *          poll中用一个属性来指定，可以一次性指定一个描述符监听的所有事件。
+ *          poll中用events, revents将监听事件和返回事件分开，只需进行一次赋值
+ */
+void tcpServer_poll(uint16_t port){
+    int listenfd = open_listenfd_tcp(port);
+    if(listenfd == -1){
+        printf("Create Listenfd Error.....\n");
+        return;
+    }
+
+    //监听连接请求
+    struct pollfd connFdArray[1024];   //监听描述符数组
+    connFdArray[0].fd = listenfd;
+    connFdArray[0].events = POLLRDNORM;
+
+    //fd设置为-1，poll不再监控此pollfd, 下次返回时把revents设置为0.
+    for(int i = 1; i < 1024; ++i){
+        connFdArray[i].fd = -1;
+    }
+
+    int maxIndex = 0;
+
+    while(true){
+        int nReady = poll(connFdArray, maxIndex + 1, -1);
+        if(nReady == -1){
+            std::cout << "poll Error..." << std::endl;
+            return;
+        }
+
+        //如果是连接请求，则在服务器建立通信端点，并监听该端点是否有数据到达
+        if(connFdArray[0].revents & POLLRDNORM){
+            std::cout << "connection request....." << std::endl;
+            struct sockaddr_in cliAddr{};
+            socklen_t cliAddrSize = sizeof(sockaddr_in);
+            int connfd = accept(listenfd, reinterpret_cast<struct sockaddr *>(&cliAddr),&cliAddrSize);
+            if(connfd == -1){
+                printf("Accetp Error.....\n");
+            }else{
+                char ipStringBuffer[INET_ADDRSTRLEN];
+                std::cout << "Request From: " << inet_ntop(AF_INET, &cliAddr.sin_addr.s_addr, ipStringBuffer, INET_ADDRSTRLEN) << " "
+                          << ntohs(cliAddr.sin_port) << std::endl;
+
+                for(int i = 1; i < 1024; ++i){
+                    if(connFdArray[i].fd == -1){    //存储建立的连接描述符，并监听该描述符
+                        connFdArray[i].fd = connfd;
+                        connFdArray[i].events = POLLRDNORM;
+                        maxIndex = std::max(maxIndex, i);
+                        break;
+                    }
+                    if(i == 1024 - 1){
+                        printf("Too many clients, Refused connection.....\n");
+                        close(connfd);
+                    }
+                }
+            }
+
+            if(--nReady == 0)
+                continue;
+        }
+
+        //处理数据请求
+        for(int i = 1; i < 1024; ++i){
+            if(connFdArray[i].fd == -1)
+                continue;
+
+            if(connFdArray[i].revents & POLLRDNORM){    //相对应的客户端有数据到来
+                char buf[1024];
+                ssize_t nRead = read(connFdArray[i].fd, buf, 1024);
+                if(nRead <= 0){   //客户端主动关闭连接
+                    printf("the peer client close the connection....\n");
+                    close(connFdArray[i].fd);
+                    connFdArray[i].fd = -1;     //不再监听该端口
+                }else{  //正常读取到数据
+                    for(int j = 0; j < nRead; ++j){
+                        buf[j] = static_cast<char>(toupper(buf[j]));
+                    }
+                    write(connFdArray[i].fd, buf, nRead);
+                }
+
+                if(--nReady == 0)
+                    continue;
+            }
+        }
+    }
+}
+
+
+/*
+指定监听多少个描述符
+int epoll_create(int size)
+    创建一个句柄，size指明该句柄可监听的最大的描述符数量
+
+指定监听哪些描述符的哪些事件
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+    epfd：epoll_create创建的句柄
+    op：
+        EPOLL_CTL_ADD：	添加监测的描述符，以及该描述符要监测的事件
+        EPOLL_CTL_DEL： 不再监听指定的描述符
+        EPOLL_CTL_MOD：	修改指定的描述符要监测的事件
+    fd： 	描述符
+    event：	指向描述监测事件的结构体
+
+监听描述符，接收返回事件集合
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+    epfd：		创建的句柄
+    events：	存储返回事件数组的首地址
+    maxevents：	存储数组的可容纳数量
+    timeout：	等待时间：
+                    -1：	阻塞；
+                    0：		立马返回;
+                    >0：	阻塞特定的时间
+
+与poll以及select的区别：
+    1. 拆分为3个函数，逻辑更加清晰
+            创建句柄：	指定最大监测数
+            句柄控制：	注册、删除、修改描述符以及对应的事件
+            等待事件：	返回值指示发生的事件的数量，将发生的事件存储到提供的数组中
+
+    2. 	除了返回值指示发生的事件的数量外，内核还将发生的事件加入到提供的数组中，这样只需遍历返回数组集合即可。
+        无需遍历整个被监听的描述符集合，节省了时间。
+ */
+void tcpServer_epoll(uint16_t port){
+    int listenfd = open_listenfd_tcp(port);
+    if(listenfd == -1){
+        printf("Create Listenfd Error.....\n");
+        return;
+    }
+
+    std::vector<int> connfdVec{};		    //存储建立连接的connfd
+    struct epoll_event events{};		    //指定监听事件、用户标识数据
+    struct epoll_event backEvents[1024];	//存储返回的事件
+
+    //创建一个epoll句柄，指定监听的文件描述符的最大个数
+    int efd = epoll_create(1024);
+    if (efd == -1){
+        printf("epoll_create\n");
+        return;
+    }
+
+    //监听listenfd是否有连接请求到达
+    events.events = EPOLLIN;
+    events.data.fd = listenfd;
+
+    int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &events);	//监听listenfd描述符
+    if (res == -1){
+        printf("epoll_ctl\n");
+        return;
+    }
+
+    while (true) {
+        int nready = epoll_wait(efd, backEvents, 1024, -1); 	 //阻塞监听
+        if (nready == -1){
+            printf("epoll_wait\n");
+            return;
+        }
+
+        for (int i = 0; i < nready; i++) {		//只需遍历返回的事件集合即可，无需遍历全部描述符集合
+            if (!(backEvents[i].events & EPOLLIN))
+                continue;
+
+            if (backEvents[i].data.fd == listenfd) {	//连接请求
+                struct sockaddr_in cliaddr{};
+                socklen_t clilen = sizeof(cliaddr);
+                char str[INET_ADDRSTRLEN];
+
+                int connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
+                printf("received from %s at PORT %d\n",
+                       inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
+                       ntohs(cliaddr.sin_port));
+
+                if (connfdVec.size() >= 1024 - 1){
+                    printf("too many clients\n");
+                    return;
+                }
+                connfdVec.push_back(connfd);
+
+                events.events = EPOLLIN;		//将connfd加入监听
+                events.data.fd = connfd;
+                res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &events);
+                if (res == -1){
+                    printf("epoll_ctl\n");
+                    exit(-1);
+                }
+
+            } else {	//普通数据
+                int sockfd = backEvents[i].data.fd;
+                char buf[1024];
+                ssize_t n = read(sockfd, buf, 1024);
+
+                if (n == 0) {
+                    auto pos = find(connfdVec.begin(), connfdVec.end(), sockfd);
+                    if(pos != connfdVec.end()){
+                        connfdVec.erase(pos);
+                    }
+
+                    res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, nullptr);	//不再监听该连接
+                    if (res == -1){
+                        printf("epoll_ctl\n");
+                        exit(-1);
+                    }
+
+                    close(sockfd);
+
+                } else {
+                    for (int j = 0; j < n; j++)
+                        buf[j] = toupper(buf[j]);
+                    write(sockfd, buf, n);
+                }
+            }
+        }
+    }
+
+    close(listenfd);
+    close(efd);
+}
 
 
 
