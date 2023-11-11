@@ -74,29 +74,3 @@ ssize_t rio_readlineb(rio_t *rp, char *usrbuf, size_t maxlen);
 #endif //HTTPTEST_RIO_HPP
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

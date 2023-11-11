@@ -11,8 +11,9 @@
 
 #include <unistd.h>
 #include <netinet/in.h>
-#include <netdb.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+
 
 using namespace std;
 
@@ -91,12 +92,6 @@ void udpClient(string& ip, uint16_t port);
 
 //udp服务器
 void udpServer(uint16_t port);
-
-
-
-
-
-
 
 
 
