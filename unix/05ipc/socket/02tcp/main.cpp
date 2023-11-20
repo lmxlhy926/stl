@@ -100,7 +100,7 @@ void simpleTcpServer(uint16_t port){
     //创建描述符,设置地址可被重复利用
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     int optval = 1;
-    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)(&optval), sizeof(int));
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)(&optval), sizeof(int));   //设置地址重用
 
     //服务器地址
     struct sockaddr_in servaddr{};
@@ -131,14 +131,14 @@ void simpleTcpServer(uint16_t port){
         int connfd = accept(listenfd, reinterpret_cast<sockaddr*>(&cliaddr), &cliaddr_len);
         if(connfd == -1){
             printf("accept failed\n");
-            return;
+            continue;
         }
 
         char receiveBuf[1024], ipBuf[INET_ADDRSTRLEN];
         ssize_t readCount = read(connfd, receiveBuf, 1024);
         if(readCount <= 0){
             close(connfd);
-            return;
+            continue;
         }
         std::cout << "received from " << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ipBuf, sizeof(ipBuf))
                   << " at port " << ntohs(cliaddr.sin_port) << std::endl;
@@ -160,7 +160,7 @@ void simpleTcpServer(uint16_t port){
  * @return          成功返回大于0的文件描述符，失败返回-1
  * 功能：尝试和指定的服务器建立连接，返回建立连接的文件描述符
  */
-int open_clientfd_tcp(string& ip, uint16_t port){
+int open_clientfd_tcp(const string& ip, uint16_t port){
     struct addrinfo hints, *p, *listp;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;           //IPV4
@@ -184,6 +184,7 @@ int open_clientfd_tcp(string& ip, uint16_t port){
 
     //释放地址列表
     freeaddrinfo(listp);
+
     if(p == nullptr){       //列表里没有有效的地址
         return -1;
     }else{
@@ -282,17 +283,17 @@ void tcpServer_select(uint16_t port){
             return;
         }
 
-        //如果是连接请求，则记录连接描述符
+        //如果有连接请求，则记录连接描述符。每次只建立一个数据连接
         if(FD_ISSET(listenfd, &readSet)){
             struct sockaddr_in cliAddr{};
             socklen_t clientLenth = sizeof(sockaddr_in);
             char ipStrBuffer[INET_ADDRSTRLEN];
 
             int connfd = accept(listenfd, reinterpret_cast<sockaddr *>(&cliAddr), &clientLenth);
-            if(connfd >= 0){    //成功建立连接
+            if(connfd > 0){    //成功建立连接
                 std::cout << "Request From " << inet_ntop(AF_INET, &cliAddr.sin_addr, ipStrBuffer, INET_ADDRSTRLEN) << "  "
                           << ntohs(cliAddr.sin_port) << std::endl;
-                FD_SET(connfd, &initSet);       //监听该连接描述符
+                FD_SET(connfd, &initSet);      //监听该新建立的连接描述符
                 connfdVec.push_back(connfd);   //连接描述符加入遍历列表
                 if(connfd > maxFd)             //更新最大描述符
                     maxFd = connfd;
@@ -312,8 +313,8 @@ void tcpServer_select(uint16_t port){
                 if(nRead <= 0){
                     std::cout << "read Error or Client closed...." << std::endl;
                     close(*pos);                        //关闭服务器端的连接节点
-                    FD_CLR(*pos, &initSet);                 //停止监听该连接节点
-                    pos = connfdVec.erase(pos);     //删除会返回下一元素的位置
+                    FD_CLR(*pos, &initSet);             //停止监听该连接节点
+                    pos = connfdVec.erase(pos);         //删除会返回下一元素的位置
                     int maxElement = *max_element(connfdVec.begin(), connfdVec.end());
                     maxFd  = listenfd > maxElement ? listenfd : maxElement;
                     continue;
@@ -396,7 +397,7 @@ void tcpServer_poll(uint16_t port){
                         maxIndex = std::max(maxIndex, i);
                         break;
                     }
-                    if(i == 1024 - 1){
+                    if(i == 1024){
                         printf("Too many clients, Refused connection.....\n");
                         close(connfd);
                     }
@@ -475,24 +476,23 @@ void tcpServer_epoll(uint16_t port){
         return;
     }
 
-    std::vector<int> connfdVec{};		    //存储建立连接的connfd
-    struct epoll_event events{};		    //指定监听事件、用户标识数据
     struct epoll_event backEvents[1024];	//存储返回的事件
+    int connectCount = 0;
 
     //创建一个epoll句柄，指定监听的文件描述符的最大个数
     int efd = epoll_create(1024);
     if (efd == -1){
-        printf("epoll_create\n");
+        printf("epoll_create error...\n");
         return;
     }
 
     //监听listenfd是否有连接请求到达
-    events.events = EPOLLIN;
-    events.data.fd = listenfd;
-
-    int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &events);	//监听listenfd描述符
+    struct epoll_event event;		    //指定监听事件、用户标识数据
+    event.events = EPOLLIN;
+    event.data.fd = listenfd;
+    int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &event);	//监听listenfd描述符
     if (res == -1){
-        printf("epoll_ctl\n");
+        printf("epoll_ctl error\n");
         return;
     }
 
@@ -517,37 +517,32 @@ void tcpServer_epoll(uint16_t port){
                        inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
                        ntohs(cliaddr.sin_port));
 
-                if (connfdVec.size() >= 1024 - 1){
-                    printf("too many clients\n");
-                    return;
+                if (connectCount >= 1024 - 1){
+                    printf("too many clients, reject this connection....\n");
+                    close(connfd);
+                }else{
+                    connectCount++;
+                    struct epoll_event event;
+                    event.events = EPOLLIN;		//将connfd加入监听
+                    event.data.fd = connfd;
+                    res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &event);
+                    if (res == -1){
+                        printf("epoll_ctl\n");
+                        exit(-1);
+                    }
                 }
-                connfdVec.push_back(connfd);
-
-                events.events = EPOLLIN;		//将connfd加入监听
-                events.data.fd = connfd;
-                res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &events);
-                if (res == -1){
-                    printf("epoll_ctl\n");
-                    exit(-1);
-                }
-
+               
             } else {	//普通数据
                 int sockfd = backEvents[i].data.fd;
                 char buf[1024];
                 ssize_t n = read(sockfd, buf, 1024);
-
-                if (n == 0) {
-                    auto pos = find(connfdVec.begin(), connfdVec.end(), sockfd);
-                    if(pos != connfdVec.end()){
-                        connfdVec.erase(pos);
-                    }
-
+                if (n <= 0) {
+                    connectCount--;
                     res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, nullptr);	//不再监听该连接
                     if (res == -1){
                         printf("epoll_ctl\n");
                         exit(-1);
                     }
-
                     close(sockfd);
 
                 } else {
@@ -569,8 +564,7 @@ void tcpServer_epoll(uint16_t port){
 
 int main(int argc, char* argv[]){
 
-    domain2decimal("127.0.0.1", "90");
-
+    tcpServer_poll(9000);
     return 0;
 }
 
