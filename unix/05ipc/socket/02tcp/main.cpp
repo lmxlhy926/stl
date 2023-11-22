@@ -497,13 +497,14 @@ void tcpServer_epoll(uint16_t port){
     }
 
     while (true) {
-        int nready = epoll_wait(efd, backEvents, 1024, -1); 	 //阻塞监听
+        int nready = epoll_wait(efd, backEvents, 1024, -1); 	 //阻塞监听，返回发生的事件集合
         if (nready == -1){
             printf("epoll_wait\n");
             return;
         }
 
-        for (int i = 0; i < nready; i++) {		//只需遍历返回的事件集合即可，无需遍历全部描述符集合
+        //只需遍历返回的事件集合即可，无需遍历全部描述符集合
+        for (int i = 0; i < nready; i++) {		
             if (!(backEvents[i].events & EPOLLIN))
                 continue;
 
@@ -538,6 +539,7 @@ void tcpServer_epoll(uint16_t port){
                 ssize_t n = read(sockfd, buf, 1024);
                 if (n <= 0) {
                     connectCount--;
+                    printf("---disconnect---\n");
                     res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, nullptr);	//不再监听该连接
                     if (res == -1){
                         printf("epoll_ctl\n");
@@ -564,7 +566,7 @@ void tcpServer_epoll(uint16_t port){
 
 int main(int argc, char* argv[]){
 
-    tcpServer_poll(9000);
+    tcpServer_epoll(9000);
     return 0;
 }
 
