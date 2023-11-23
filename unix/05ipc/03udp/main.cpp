@@ -57,6 +57,40 @@ void udpClient(const string &ip, uint16_t port){
 }
 
 
+
+/**
+ * UDP协议可以通过connect()设置对端地址，可以使用send()直接向特定的服务器发送数据，不再需要单独指定服务器地址
+ */
+void udpClient_connnect(const string &ip, uint16_t port){
+    //创建UDP socket客户端
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sockfd == -1){
+        std::cout << "create socket failed....." << std::endl;
+        return;
+    }
+
+    //服务器地址
+    struct sockaddr_in serverAddr{};
+    memset(&serverAddr, 0, sizeof serverAddr);
+    serverAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr.s_addr);
+    serverAddr.sin_port = htons(port);
+
+     //设置默认对端地址
+    connect(sockfd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr));
+
+    /**
+     * 指明服务器的地址，向服务器发送数据
+    */
+    string str = "helloworld";
+    for(int i = 0; i < 10; ++i){
+        send(sockfd, str.c_str(), str.size(), 0);
+    }
+
+    close(sockfd);
+}
+
+
 /*
  *  客户端和服务器之间没有连接
  *  所有的请求都是数据请求，不需要创建专门的连接描述符，直接向对方的地址发送数据即可
@@ -100,9 +134,10 @@ void udpServer(uint16_t port){
                inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
                ntohs(cliaddr.sin_port));
 
-        for (int i = 0; i < nRead; i++)
-            buf[i] = ::toupper(buf[i]);
-
+        for (int i = 0; i < nRead; i++){
+             buf[i] = ::toupper(buf[i]);
+        }
+           
         //向客户端发送数据
         ssize_t nWrite = sendto(sockfd, buf, nRead, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
         if (nWrite == -1)
@@ -116,9 +151,9 @@ void udpServer(uint16_t port){
 
 int main(int argc, char* argv[]){
 
-    // udpClient("10.9.36.15", 9001);
+    udpClient_connnect("10.9.36.15", 9006);
 
-    udpServer(9002);
+    // udpServer(9002);
 
 
     return 0;
