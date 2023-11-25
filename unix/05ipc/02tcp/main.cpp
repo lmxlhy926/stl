@@ -16,10 +16,9 @@ using namespace std;
 
 
 /**
- * 提取socket地址中的ip地址和端口号
  * getnameinfo：套接字地址 ---> 主机名、主机地址、服务名、服务端口号
 */
-string getNameInfoString(struct sockaddr* ai_addr, socklen_t addrlen){
+string getNameInfo(struct sockaddr* ai_addr, socklen_t addrlen){
     int flags = NI_NUMERICHOST | NI_NUMERICSERV;  //显示数字字符串而非域名和服务名
     char hostname[100]{}, port[100]{};
     getnameinfo(ai_addr, addrlen, hostname, 100, port, 100, flags);
@@ -51,7 +50,7 @@ void domain2decimal(const string& host, const string& service){
         return;
     }
     for(p = listp; p != nullptr; p = p->ai_next){
-        fprintf(stdout, "%s\n", getNameInfoString(p->ai_addr, p->ai_addrlen).c_str());
+        fprintf(stdout, "%s\n", getNameInfo(p->ai_addr, p->ai_addrlen).c_str());
     }
 
     //释放列表
@@ -60,12 +59,12 @@ void domain2decimal(const string& host, const string& service){
 }
 
 
-/**
+/*
  *  连接服务器，发送消息，接收一次返回并输出到标准输出中
  */
 void simpleTcpClient(const string& ip, uint16_t port, const string& writeMesage){
     //服务器地址
-    struct sockaddr_in servaddr;        //IPV4地址结构
+    struct sockaddr_in servaddr{};      //IPV4地址结构
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;      //指定为IPV4地址族
     inet_pton(AF_INET, ip.c_str(), &servaddr.sin_addr.s_addr);  //点分十进制ip地址--->网络字节序二进制地址
@@ -73,43 +72,38 @@ void simpleTcpClient(const string& ip, uint16_t port, const string& writeMesage)
 
     //创建套接字描述符
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    std::cout << "sockfd: " << sockfd << std::endl;
 
     //阻塞，一直到连接成功建立或者发生错误
-    //成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
-    if(connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr)) == 0){   
+    int conRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr));
+    if(conRet == 0){    //成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
         write(sockfd, writeMesage.c_str(), writeMesage.size());
+
         char buf[1024];
         ssize_t nRead = read(sockfd, buf,  1024);
-        if(nRead == 0){
-            fprintf(stdout, "server is colsed....\n");
-            close(sockfd);
-            return;
-        }else if(nRead < 0){
-            fprintf(stdout, "client read error: %s\n", strerror(errno));
+        if(nRead <= 0){
             close(sockfd);
             return;
         }
-
         std::cout << "Response from server: ";
         std::cout.flush();
         write(STDOUT_FILENO, buf, nRead);
-        close(sockfd);
-
-    }else{
-        fprintf(stdout, "connect failed...\n");
-        close(sockfd);
     }
+
+    close(sockfd);
 }
 
 
 void simpleTcpServer(uint16_t port){
+    int listenfd, ret;
+    
     //创建描述符,设置地址可被重复利用
-    int listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
     int optval = 1;
-    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)(&optval), sizeof(optval));
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)(&optval), sizeof(int));   //设置地址重用
 
     //服务器地址
-    struct sockaddr_in servaddr;
+    struct sockaddr_in servaddr{};
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;                  //指定为IPV4
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);   //网络字节序的IP地址, 此处为监听本机所有地址
@@ -137,7 +131,7 @@ void simpleTcpServer(uint16_t port){
         int connfd = accept(listenfd, reinterpret_cast<sockaddr*>(&cliaddr), &cliaddr_len);
         if(connfd == -1){
             printf("accept failed\n");
-            continue;;
+            continue;
         }
 
         char receiveBuf[1024], ipBuf[INET_ADDRSTRLEN];
@@ -161,27 +155,23 @@ void simpleTcpServer(uint16_t port){
 
 
 /**
- * 尝试和指定的服务器建立连接，返回建立连接的文件描述符
  * @param ip        服务器IP
  * @param port      服务器端口号
- * @return          成功返回大于0的文件描述符；失败返回-1
+ * @return          成功返回大于0的文件描述符，失败返回-1
+ * 功能：尝试和指定的服务器建立连接，返回建立连接的文件描述符
  */
-int open_clientfd_tcp(string& ip, uint16_t port){
-    //填充限制信息
+int open_clientfd_tcp(const string& ip, uint16_t port){
     struct addrinfo hints, *p, *listp;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;           //IPV4
     hints.ai_socktype = SOCK_STREAM;     //端点用于连接
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;    //限制为数字形式的ip和端口号
 
-    //获取地址信息
     int retCode, clientfd;
     if((retCode = getaddrinfo(ip.c_str(), std::to_string(port).c_str(), &hints, &listp)) != 0){
-        printf("getaddrinfo: %s\n", gai_strerror(retCode));  //打印错误
+        printf("%s\n", gai_strerror(retCode));  //打印错误
         return -1;
     }
-
-    //创建socket描述符并连接
     for(p = listp; p != nullptr; p = p->ai_next){
         if((clientfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
             continue;
@@ -201,6 +191,7 @@ int open_clientfd_tcp(string& ip, uint16_t port){
         return clientfd;    //返回成功建立的文件描述符
     }
 }
+
 
 
 /**
@@ -223,20 +214,20 @@ int open_listenfd_tcp(uint16_t port){
      */
     int retcode;
     if((retcode = getaddrinfo(nullptr, std::to_string(port).c_str(), &hint, &listp)) != 0){
-        printf("getaddrinfo: %s\n", gai_strerror(retcode));
+        printf("%s\n", gai_strerror(retcode));
         return -1;
     }
 
-    int listenfd;
+    int listenfd, optval = 1;
     for(p = listp; p != nullptr; p = p->ai_next){
         if((listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0){
             continue;
         }
+
         /**
          * 使得服务器能够被终止、重启和立即开始接收连接请求
          * 一个重启的服务器默认将在30秒内拒绝客户端的连接请求，这严重地阻碍了调试
         */
-        int optval = 1;
         setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)(&optval), sizeof(int));
 
         if(bind(listenfd, p->ai_addr, p->ai_addrlen) == 0){
@@ -292,17 +283,17 @@ void tcpServer_select(uint16_t port){
             return;
         }
 
-        //如果是连接请求，则记录连接描述符
+        //如果有连接请求，则记录连接描述符。每次只建立一个数据连接
         if(FD_ISSET(listenfd, &readSet)){
             struct sockaddr_in cliAddr{};
             socklen_t clientLenth = sizeof(sockaddr_in);
             char ipStrBuffer[INET_ADDRSTRLEN];
 
             int connfd = accept(listenfd, reinterpret_cast<sockaddr *>(&cliAddr), &clientLenth);
-            if(connfd >= 0){    //成功建立连接
+            if(connfd > 0){    //成功建立连接
                 std::cout << "Request From " << inet_ntop(AF_INET, &cliAddr.sin_addr, ipStrBuffer, INET_ADDRSTRLEN) << "  "
                           << ntohs(cliAddr.sin_port) << std::endl;
-                FD_SET(connfd, &initSet);       //监听该连接描述符
+                FD_SET(connfd, &initSet);      //监听该新建立的连接描述符
                 connfdVec.push_back(connfd);   //连接描述符加入遍历列表
                 if(connfd > maxFd)             //更新最大描述符
                     maxFd = connfd;
@@ -322,8 +313,8 @@ void tcpServer_select(uint16_t port){
                 if(nRead <= 0){
                     std::cout << "read Error or Client closed...." << std::endl;
                     close(*pos);                        //关闭服务器端的连接节点
-                    FD_CLR(*pos, &initSet);                 //停止监听该连接节点
-                    pos = connfdVec.erase(pos);     //删除会返回下一元素的位置
+                    FD_CLR(*pos, &initSet);             //停止监听该连接节点
+                    pos = connfdVec.erase(pos);         //删除会返回下一元素的位置
                     int maxElement = *max_element(connfdVec.begin(), connfdVec.end());
                     maxFd  = listenfd > maxElement ? listenfd : maxElement;
                     continue;
@@ -406,7 +397,7 @@ void tcpServer_poll(uint16_t port){
                         maxIndex = std::max(maxIndex, i);
                         break;
                     }
-                    if(i == 1024 - 1){
+                    if(i == 1024){
                         printf("Too many clients, Refused connection.....\n");
                         close(connfd);
                     }
@@ -485,35 +476,35 @@ void tcpServer_epoll(uint16_t port){
         return;
     }
 
-    std::vector<int> connfdVec{};		    //存储建立连接的connfd
-    struct epoll_event events{};		    //指定监听事件、用户标识数据
     struct epoll_event backEvents[1024];	//存储返回的事件
+    int connectCount = 0;
 
     //创建一个epoll句柄，指定监听的文件描述符的最大个数
     int efd = epoll_create(1024);
     if (efd == -1){
-        printf("epoll_create\n");
+        printf("epoll_create error...\n");
         return;
     }
 
     //监听listenfd是否有连接请求到达
-    events.events = EPOLLIN;
-    events.data.fd = listenfd;
-
-    int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &events);	//监听listenfd描述符
+    struct epoll_event event;		    //指定监听事件、用户标识数据
+    event.events = EPOLLIN;
+    event.data.fd = listenfd;
+    int res = epoll_ctl(efd, EPOLL_CTL_ADD, listenfd, &event);	//监听listenfd描述符
     if (res == -1){
-        printf("epoll_ctl\n");
+        printf("epoll_ctl error\n");
         return;
     }
 
     while (true) {
-        int nready = epoll_wait(efd, backEvents, 1024, -1); 	 //阻塞监听
+        int nready = epoll_wait(efd, backEvents, 1024, -1); 	 //阻塞监听，返回发生的事件集合
         if (nready == -1){
             printf("epoll_wait\n");
             return;
         }
 
-        for (int i = 0; i < nready; i++) {		//只需遍历返回的事件集合即可，无需遍历全部描述符集合
+        //只需遍历返回的事件集合即可，无需遍历全部描述符集合
+        for (int i = 0; i < nready; i++) {		
             if (!(backEvents[i].events & EPOLLIN))
                 continue;
 
@@ -527,37 +518,33 @@ void tcpServer_epoll(uint16_t port){
                        inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
                        ntohs(cliaddr.sin_port));
 
-                if (connfdVec.size() >= 1024 - 1){
-                    printf("too many clients\n");
-                    return;
+                if (connectCount >= 1024 - 1){
+                    printf("too many clients, reject this connection....\n");
+                    close(connfd);
+                }else{
+                    connectCount++;
+                    struct epoll_event event;
+                    event.events = EPOLLIN;		//将connfd加入监听
+                    event.data.fd = connfd;
+                    res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &event);
+                    if (res == -1){
+                        printf("epoll_ctl\n");
+                        exit(-1);
+                    }
                 }
-                connfdVec.push_back(connfd);
-
-                events.events = EPOLLIN;		//将connfd加入监听
-                events.data.fd = connfd;
-                res = epoll_ctl(efd, EPOLL_CTL_ADD, connfd, &events);
-                if (res == -1){
-                    printf("epoll_ctl\n");
-                    exit(-1);
-                }
-
+               
             } else {	//普通数据
                 int sockfd = backEvents[i].data.fd;
                 char buf[1024];
                 ssize_t n = read(sockfd, buf, 1024);
-
-                if (n == 0) {
-                    auto pos = find(connfdVec.begin(), connfdVec.end(), sockfd);
-                    if(pos != connfdVec.end()){
-                        connfdVec.erase(pos);
-                    }
-
+                if (n <= 0) {
+                    connectCount--;
+                    printf("---disconnect---\n");
                     res = epoll_ctl(efd, EPOLL_CTL_DEL, sockfd, nullptr);	//不再监听该连接
                     if (res == -1){
                         printf("epoll_ctl\n");
                         exit(-1);
                     }
-
                     close(sockfd);
 
                 } else {
@@ -579,10 +566,7 @@ void tcpServer_epoll(uint16_t port){
 
 int main(int argc, char* argv[]){
 
-    simpleTcpClient("172.26.16.1", 60000, "helloworld");
-
-    // simpleTcpServer(60001);
-
+    tcpServer_epoll(9000);
     return 0;
 }
 

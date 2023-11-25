@@ -254,7 +254,7 @@ static inline int
 mdns_multiquery_send(int sock, const mdns_query_t* query, size_t count, void* buffer,
                      size_t capacity, uint16_t query_id);
 
-//! Receive unicast responses to a mDNS query sent with mdns_discovery_recv, optionally filtering
+//! Receive unicast responses to a mDNS query sent with mdns_[multi]query_send, optionally filtering
 //! out any responses not matching the given query ID. Set the query ID to 0 to parse all responses,
 //! even if it is not matching the query ID set in a specific query. Any data will be piped to the
 //! given callback for parsing. Buffer must be 32 bit aligned. Parsing is stopped when callback
@@ -409,15 +409,11 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (const char*)&ttl, sizeof(ttl));
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, (const char*)&loopback, sizeof(loopback));
 
-    /*
-     * 客户端：将发送端口加入组播监听组
-     * 服务器：将所有网卡加入组播监听组
-     */
 	memset(&req, 0, sizeof(req));
 	req.imr_multiaddr.s_addr = htonl((((uint32_t)224U) << 24U) | ((uint32_t)251U));
 	if (saddr)
 		req.imr_interface = saddr->sin_addr;
-	if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&req, sizeof(req)))    //将指定网卡加入组播监听组
+	if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&req, sizeof(req)))
 		return -1;
 
 	struct sockaddr_in sock_addr;
@@ -430,7 +426,6 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
 #endif
 	} else {
 		memcpy(&sock_addr, saddr, sizeof(struct sockaddr_in));
-        //指定发送组播报文的端口
 		setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&sock_addr.sin_addr,
 		           sizeof(sock_addr.sin_addr));
 #ifndef _WIN32
@@ -438,8 +433,6 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
 #endif
 	}
 
-    //客户端：地址为通配符，端口号为0
-    //服务器：地址为通配符，端口号为5353
 	if (bind(sock, (struct sockaddr*)&sock_addr, sizeof(struct sockaddr_in)))
 		return -1;
 
@@ -1576,14 +1569,19 @@ mdns_record_parse_txt(const void* buffer, size_t size, size_t offset, size_t len
 		strdata = (const char*)MDNS_POINTER_OFFSET(buffer, offset);
 		size_t sublength = *(const unsigned char*)strdata;
 
+		if (sublength >= (end - offset))
+			break;
+
 		++strdata;
 		offset += sublength + 1;
 
-		size_t separator = 0;
+		size_t separator = sublength;
 		for (size_t c = 0; c < sublength; ++c) {
 			// DNS-SD TXT record keys MUST be printable US-ASCII, [0x20, 0x7E]
-			if ((strdata[c] < 0x20) || (strdata[c] > 0x7E))
+			if ((strdata[c] < 0x20) || (strdata[c] > 0x7E)) {
+				separator = 0;
 				break;
+			}
 			if (strdata[c] == '=') {
 				separator = c;
 				break;
@@ -1601,6 +1599,8 @@ mdns_record_parse_txt(const void* buffer, size_t size, size_t offset, size_t len
 		} else {
 			records[parsed].key.str = strdata;
 			records[parsed].key.length = sublength;
+			records[parsed].value.str = 0;
+			records[parsed].value.length = 0;
 		}
 
 		++parsed;

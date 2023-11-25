@@ -16,6 +16,7 @@
 #include <netdb.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <sys/time.h>
 #endif
 
 // Alias some things to simulate recieving data to fuzz library
@@ -592,7 +593,7 @@ open_client_sockets(int* sockets, int max_sockets, int port) {
 				has_ipv4 = 1;
 				if (num_sockets < max_sockets) {
 					saddr->sin_port = htons(port);
-					int sock = mdns_socket_open_ipv4(saddr);    //打开一个udp客户端，指定了网卡IP地址，端口号为0
+					int sock = mdns_socket_open_ipv4(saddr);
 					if (sock >= 0) {
 						sockets[num_sockets++] = sock;
 						log_addr = 1;
@@ -817,8 +818,8 @@ send_mdns_query(mdns_query_t* query, size_t count) {
 		if (res > 0) {
 			for (int isock = 0; isock < num_sockets; ++isock) {
 				if (FD_ISSET(sockets[isock], &readfs)) {
-					int rec = mdns_query_recv(sockets[isock], buffer, capacity, query_callback,
-					                          user_data, query_id[isock]);
+					size_t rec = mdns_query_recv(sockets[isock], buffer, capacity, query_callback,
+					                             user_data, query_id[isock]);
 					if (rec > 0)
 						records += rec;
 				}
@@ -1248,10 +1249,8 @@ main(int argc, const char* const* argv) {
 	if (mode == 0)
 		ret = send_dns_sd();
 	else if (mode == 1)
-		//发送查询并等待处理查询结果
 		ret = send_mdns_query(query, query_count);
 	else if (mode == 2)
-		//开启服务，响应请求
 		ret = service_mdns(hostname, service, service_port);
 	else if (mode == 3)
 		ret = dump_mdns();

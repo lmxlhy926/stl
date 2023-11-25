@@ -1,12 +1,21 @@
 
+#include <cstring>
+#include <iostream>
 
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+
+using namespace std;
 
 /*
  *  1. 创建socket客户端端点
  *  2. 直接向服务器端点发送数据，发送数据时自动为客户端端点指定ip地址和端口号
  *  3. 接收服务端数据返回
  */
-void udpClient(string& ip, uint16_t port){
+void udpClient(const string &ip, uint16_t port){
     //创建UDP socket客户端
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sockfd == -1){
@@ -16,31 +25,66 @@ void udpClient(string& ip, uint16_t port){
 
     //服务器地址
     struct sockaddr_in serverAddr{};
-    socklen_t serverAddrLength = sizeof serverAddr;
     memset(&serverAddr, 0, sizeof serverAddr);
     serverAddr.sin_family = AF_INET;
     inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr.s_addr);
     serverAddr.sin_port = htons(port);
 
-    //向服务器发送数据
+    /**
+     * 指明服务器的地址，向服务器发送数据
+    */
     string str = "helloworld";
-    sendto(sockfd, str.c_str(), str.size(), 0, reinterpret_cast<sockaddr *>(&serverAddr), serverAddrLength);
+    sendto(sockfd, str.c_str(), str.size(), 0, reinterpret_cast<sockaddr *>(&serverAddr), sizeof serverAddr);
 
     //从服务器接收数据
     char buf[1024];
-    struct sockaddr_in clientAddr{};
-    socklen_t clientAddrLength = sizeof clientAddr;
-    ssize_t nRead = recvfrom(sockfd, buf, 1024, 0, reinterpret_cast<sockaddr *>(&clientAddr), &clientAddrLength);
+    struct sockaddr_in peerEnd{};
+    socklen_t peerEndLength = sizeof peerEnd;
+    ssize_t nRead = recvfrom(sockfd, buf, 1024, 0, reinterpret_cast<sockaddr *>(&peerEnd), &peerEndLength);   //接收数据，并存储来源地址
     if(nRead <= 0){
         std::cout << "receive error....." << std::endl;
     }else{
         char addrBuf[INET_ADDRSTRLEN];
-        std::cout << "Recevie from " << inet_ntop(AF_INET, &clientAddr.sin_addr, addrBuf, INET_ADDRSTRLEN)
-                 << ":" << ntohs(clientAddr.sin_port) << std::endl;
+        std::cout << "Recevie from " << inet_ntop(AF_INET, &peerEnd.sin_addr, addrBuf, INET_ADDRSTRLEN)
+                 << ":" << ntohs(peerEnd.sin_port) << std::endl;
 
         for (int i = 0; i < nRead; i++)
             buf[i] = ::toupper(buf[i]);
-        sendto(sockfd, buf, nRead, 0, reinterpret_cast<sockaddr *>(&clientAddr), clientAddrLength);
+        sendto(sockfd, buf, nRead, 0, reinterpret_cast<sockaddr *>(&peerEnd), peerEndLength);
+    }
+
+    close(sockfd);
+}
+
+
+
+/**
+ * UDP协议可以通过connect()设置对端地址，可以使用send()直接向特定的服务器发送数据，不再需要单独指定服务器地址
+ */
+void udpClient_connnect(const string &ip, uint16_t port){
+    //创建UDP socket客户端
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sockfd == -1){
+        std::cout << "create socket failed....." << std::endl;
+        return;
+    }
+
+    //服务器地址
+    struct sockaddr_in serverAddr{};
+    memset(&serverAddr, 0, sizeof serverAddr);
+    serverAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr.s_addr);
+    serverAddr.sin_port = htons(port);
+
+     //设置默认对端地址
+    connect(sockfd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr));
+
+    /**
+     * 指明服务器的地址，向服务器发送数据
+    */
+    string str = "helloworld";
+    for(int i = 0; i < 10; ++i){
+        send(sockfd, str.c_str(), str.size(), 0);
     }
 
     close(sockfd);
@@ -90,9 +134,10 @@ void udpServer(uint16_t port){
                inet_ntop(AF_INET, &cliaddr.sin_addr, str, sizeof(str)),
                ntohs(cliaddr.sin_port));
 
-        for (int i = 0; i < nRead; i++)
-            buf[i] = ::toupper(buf[i]);
-
+        for (int i = 0; i < nRead; i++){
+             buf[i] = ::toupper(buf[i]);
+        }
+           
         //向客户端发送数据
         ssize_t nWrite = sendto(sockfd, buf, nRead, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
         if (nWrite == -1)
@@ -106,6 +151,9 @@ void udpServer(uint16_t port){
 
 int main(int argc, char* argv[]){
 
+    udpClient_connnect("10.9.36.15", 9006);
+
+    // udpServer(9002);
 
 
     return 0;
