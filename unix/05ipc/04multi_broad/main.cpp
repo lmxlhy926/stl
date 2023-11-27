@@ -6,6 +6,7 @@
 #include <string>
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
@@ -13,206 +14,98 @@
 #include <net/if.h>
 
 using namespace std;
+#define MDNS_PORT 5354
 
-#define MULTICAST_GROUP "224.0.0.251"
-#define PORT 5354
+int mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr){
+    unsigned char ttl = 1;
+	unsigned char loopback = 1;
+	unsigned int reuseaddr = 1;
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddr, sizeof(reuseaddr));
+	setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuseaddr, sizeof(reuseaddr));
+	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (const char*)&ttl, sizeof(ttl));
+	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, (const char*)&loopback, sizeof(loopback));
 
-/*
-    发送组播数据：
-        向特定的组发送数据，和向特定主机发送数据是一样的，只要ip地址为多播地址即可。
- */
-using namespace std;
+    struct ip_mreq req;
+	memset(&req, 0, sizeof(req));
+	req.imr_multiaddr.s_addr = htonl((((uint32_t)224U) << 24U) | ((uint32_t)251U));
+	if (saddr)
+		req.imr_interface = saddr->sin_addr;
+	if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&req, sizeof(req)))
+		return -1;
 
-void client1(){
-    int clientFd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(clientFd == -1){
-        perror("socket");
-        exit(-1);
-    }
+	struct sockaddr_in sock_addr;
+	if (!saddr) {
+		memset(&sock_addr, 0, sizeof(struct sockaddr_in));
+		sock_addr.sin_family = AF_INET;
+		sock_addr.sin_addr.s_addr = INADDR_ANY;
+	} else {
+		memcpy(&sock_addr, saddr, sizeof(struct sockaddr_in));
+		setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&sock_addr.sin_addr, sizeof(sock_addr.sin_addr));
+		sock_addr.sin_addr.s_addr = INADDR_ANY;
+	}
 
-    //组播地址
-    struct sockaddr_in multiAddr{};
-    multiAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, MULTICAST_GROUP, &multiAddr.sin_addr);
-    multiAddr.sin_port = htons(PORT);
-
-    string str = "hello multicast";
-    while(true){
-        sendto(clientFd, str.data(), str.size(), 0,
-               reinterpret_cast<struct sockaddr*>(&multiAddr), sizeof(multiAddr));
-        std::cout << "send....." << std::endl;
-        sleep(3);
-    }
-}
-
-void client2(){
-    struct sockaddr_in localaddr;
-    int confd;
-    ssize_t len;
-    char buf[BUFSIZ];
-
-    struct ip_mreqn group;                                                  /*组播结构体*/
-    confd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    bzero(&localaddr, sizeof(localaddr));                                   /* 初始化*/
-    localaddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "0.0.0.0" , &localaddr.sin_addr.s_addr);
-    localaddr.sin_port = htons(CLIENT_PORT);
-
-    bind(confd, (struct sockaddr *)&localaddr, sizeof(localaddr));
-
-    //指定加入多播组的网卡
-    inet_pton(AF_INET, GROUP, &group.imr_multiaddr);                        /* 设置组播组地址*/
-    inet_pton(AF_INET, "0.0.0.0", &group.imr_address);                      /*使用本地任意IP添加到组播组*/
-    group.imr_ifindex = if_nametoindex("eth0");                                  /* 设置网卡名 编号 ip ad */
-
-    //加入多播组
-    setsockopt(confd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &group, sizeof(group));    /* 将client加入组播组*/
-
-    while (1) {
-        len = recvfrom(confd, buf, sizeof(buf), 0, NULL, 0);
-        write(STDOUT_FILENO, buf, len);
-    }
-
-    close(confd);
+	if (bind(sock, (struct sockaddr*)&sock_addr, sizeof(struct sockaddr_in)))
+		return -1;
+	const int flags = fcntl(sock, F_GETFL, 0);
+	fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+	return 0;
 }
 
 
+int mdns_socket_open_ipv4(const struct sockaddr_in* saddr){
+    int sock = (int)socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (sock < 0)
+		return -1;
+	if (mdns_socket_setup_ipv4(sock, saddr)) {
+		close(sock);
+		return -1;
+	}
+	return sock;
+}
+
+void mdns_server(){
+    struct sockaddr_in sock_addr;
+    memset(&sock_addr, 0, sizeof(struct sockaddr_in));
+    sock_addr.sin_family = AF_INET;
+    sock_addr.sin_addr.s_addr = INADDR_ANY;
+    sock_addr.sin_port = htons(MDNS_PORT);
+    int sock = mdns_socket_open_ipv4(&sock_addr);
+    if (sock < 0)   return;
+    
+    send(sock, "hello", 5, 0);
 
 
-/*
-    1. 服务器套接字地址中ip地址为地址通配符，表示接收发送到本机所有网卡的数据
-    2. 将指定的网卡加入多播组：
-            某个网卡加入多播组，意味着该网卡接收发送到该多播地址的数据
-            多播地址是一个组标识，没有网络号和主机号，整体作为一个标识，标识一个逻辑组
-    3. 通过setsockopt()指定特性协议层的一些属性
- */
+    while (true) {
+		int nfds = sock + 1;
+		fd_set readfs;
+		FD_ZERO(&readfs);
+        FD_SET(sock, &readfs);
+		
+		struct timeval timeout;
+		timeout.tv_sec = 20;
+		timeout.tv_usec = 100000;
 
-void server1(){
-    int servFd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(servFd == -1){
-        perror("creat socket");
-        exit(-1);
-    }
+		if (select(nfds, &readfs, 0, 0, &timeout) >= 0) {
+			struct sockaddr_in6 addr;
+            struct sockaddr* saddr = (struct sockaddr*)&addr;
+            socklen_t addrlen = sizeof(addr);
+            memset(&addr, 0, sizeof(addr));
+            char buffer[1024]{};
+            int ret = recvfrom(sock, (char*)buffer, sizeof buffer, 0, saddr, &addrlen);
+            if (ret <= 0){
+                std::cout << "recvfrom end...." << std::endl;
+                return;
+            }else{
+                std::cout << "received: " << string(buffer) << std::endl;
+            }
 
-    //指定服务器套接字地址
-    struct sockaddr_in serverAddr{};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serverAddr.sin_port = htons(PORT);
-
-    //组播报文发送地址
-    struct sockaddr_in multiAddr{};
-    multiAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, MULTICAST_GROUP, &multiAddr.sin_addr);
-    multiAddr.sin_port = htons(PORT);
-
-    /*
-     * 禁止组播数据回环，即发送组播数据时，本机不接收该数据
-     * 地址复用
-     */
-    int loopback = 0;
-    int reuseaddr = 1;
-    setsockopt(servFd, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback));
-    setsockopt(servFd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
-
-    //指定网卡加入指定的多播组
-    struct ip_mreq mreq{};
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);              //指定网卡
-    mreq.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);     //指定要加入的多播组
-    setsockopt(servFd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-
-    //服务器套接字绑定地址
-    int bindRet = bind(servFd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr));
-    if(bindRet == -1){
-        perror("bind");
-        exit(-1);
-    }
-
-    printf("receiving......\n");
-    while(true){
-        char ipAddr[INET_ADDRSTRLEN];
-        char buf[1024];
-        struct sockaddr_in from{};
-        socklen_t fromLength;
-        ssize_t nReceive = recvfrom(servFd, buf, 1024, 0,
-                                    reinterpret_cast<struct sockaddr*>(&from), &fromLength);
-        if(nReceive == -1){
-            perror("recefrom");
-            exit(-1);
-        }
-
-        printf("receive from [%s] at port[%d]\n",
-               inet_ntop(AF_INET, &from.sin_addr, ipAddr, INET_ADDRSTRLEN),
-               ntohs(from.sin_port)
-        );
-
-        std::cout << "nReceive: " << nReceive << std::endl;
-        printf("    %s\n", string(buf, nReceive).data());
-        sleep(3);
-    }
+		} else {
+			break;
+		}
+	}
 }
 
 
-void server2(){
-    int servFd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(servFd == -1){
-        perror("socket");
-        exit(-1);
-    }
-
-    //加入多播组
-    struct ip_mreq ipMreq{};
-    ipMreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    inet_pton(AF_INET, "224.0.0.251", &ipMreq.imr_multiaddr);
-    setsockopt(servFd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &ipMreq, sizeof(ipMreq));
-
-    while(true){
-        char buf[1024];
-        struct sockaddr_in from{};
-        socklen_t fromLength;
-        ssize_t nReceive = recvfrom(servFd, buf, 1024, 0,
-                                    reinterpret_cast<struct sockaddr*>(&from), &fromLength);
-        std::cout << "nReceive: " << nReceive << std::endl;
-    }
-}
-
-void server3(){
-    int sockfd;
-    struct sockaddr_in serveraddr, clientaddr;
-    char buf[MAXLINE] = "multicast\n";
-    struct ip_mreqn group;
-
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);                /*构造用于UDP通信的套接字*/
-
-    bzero(&serveraddr, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;                        /* IPv4 */
-    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);         /*本地任意IP INADDR_ANY = 0 */
-    serveraddr.sin_port = htons(SERVER_PORT);
-
-    bind(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
-
-    inet_pton(AF_INET, GROUP, &group.imr_multiaddr);        /*设置组播组的地址*/
-    inet_pton(AF_INET, "0.0.0.0", &group.imr_address);      /* 本地任意IP 自动分配有效IP*/
-    group.imr_ifindex = if_nametoindex("eth0");             /* 给出网卡名，转换为对应编号：eth0 --> 编号         ，，  命令:ip ad */
-
-
-    setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_IF, &group, sizeof(group));  /*获取组播权限*/
-
-    bzero(&clientaddr, sizeof(clientaddr));                 /* 构造client 地址 IP+端口号*/
-    clientaddr.sin_family = AF_INET;
-    inet_pton(AF_INET, GROUP, &clientaddr.sin_addr.s_addr); /* IPv4  239.0.0.2+9000 */
-    clientaddr.sin_port = htons(CLIENT_PORT);
-
-    int i = 0;
-    while (1) {
-        sprintf(buf, "multicast %d\n", i++);
-        //fgets(buf, sizeof(buf), stdin);
-        sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
-        sleep(1);
-    }
-    close(sockfd);
-}
 
 
 /*
@@ -289,7 +182,7 @@ int broadcast(){
 
 
 int main(int argc, char* argv[]){
-    server1();
+    mdns_server();
 
     return 0;
 }
