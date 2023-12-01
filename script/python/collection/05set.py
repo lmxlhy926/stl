@@ -22,4 +22,16 @@ set1.pop()
 set1.pop()
 print("set1: {}".format(set1))
 
+# 交集
+
+
+# 并集
+
+
+# 差集
+
+
+# 子集合
+
+
 
