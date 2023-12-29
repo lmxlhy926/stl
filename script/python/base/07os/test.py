@@ -134,6 +134,9 @@ def chroot_test():
     os.read(fd, n): 
         从文件描述符fd中读取最多n个字节, 返回包含读取字节的字符串
         如果读到文件末尾, 则返回一个空字符串
+
+    os.write(fd, str):
+        用于写入字符串到文件描述符fd中, 返回实际写入的字符串长度
             
     os.close(fd)            : 关闭文件描述符
     os.lseek(fd, pos, how)  : 设置文件描述符fd当前位置
@@ -255,6 +258,7 @@ def ftruncate_test():
 
 
 """
+    os.stat(path)   :用于在给定的路径上执行一个系统stat的调用
     os.lstat(path)  : 读取链接文件的信息, 不跳转到链接指向的文件
     os.fstat(fd)    : 返回文件描述符fd的状态, 类似stat()。
         fstat方法返回的结构:
@@ -275,7 +279,8 @@ def ftruncate_test():
 def fstat_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
     info = os.fstat(fd)
-    info1 = os.lstat("foo.txt")
+    info1 = os.stat("foo.txt")
+    info2 = os.lstat("foo.txt")
     print("文件信息: {}"     .format(info))
     print("st_dev: {}"      .format(info.st_dev))
     print("st_ino: {}"      .format(info.st_ino))
@@ -292,6 +297,8 @@ def fstat_test():
     print("st_ctime: {}"    .format(info.st_ctime))
     print("-------------------------------------")
     print("st_ctime: {}".format(info1.st_ctime))
+    print("-------------------------------------")
+    print("st_ctime: {}".format(info2.st_ctime))
 
 
 
@@ -315,7 +322,8 @@ def major_minor_test():
 
 
 """
-    os.fstatvfs():  包含文件描述符fd指定文件的文件系统信息
+    os.statvfs(path): 包含指定路径文件的文件系统的信息  
+    os.fstatvfs(fd):  包含文件描述符fd指定文件的文件系统信息
     unix上可用
         fstatvfs返回的结构
             f_bsize:    文件系统块大小
@@ -345,6 +353,8 @@ def fstatvfs_test():
     print("f_fsid: {}".format(info.f_fsid))
     print("f_flag: {}".format(info.f_flag))
     print("f_namemax: {}".format(info.f_namemax))
+
+
 
 """
     os.isatty():
@@ -440,13 +450,19 @@ def pipe_test():
         bufsize: 缓冲区大小
 """
 def popen_test():
-    file = os.popen("ls -l", 'r', 1)
-    print(file.read(100))
+    file = os.popen("less foo.txt", 'w', 1)
+
 
 
 """
     os.readlink(path):
         返回链接所指向的文件, 可能返回绝对或相对路径
+
+    os.symlink(src, dst, target_is_directory=False):
+        src: 要创建符号链接的目标文件或目录路径
+        dst: 符号链接的路径和名称
+        target_is_directory: 指定src是否是一个目录。如果设置为True, dst将被创建为指向目录的符号链接
+
 """
 def readlink_test():
     os.symlink("foo.txt", "link")
@@ -454,4 +470,87 @@ def readlink_test():
     print(path)
 
 
-readlink_test()
+
+"""
+    os.remove(path):
+        删除指定路径的文件。如果指定的路径是一个目录, 将抛出OSError.
+
+    os.removedirs(path)
+        递归删除目录
+
+    os.rmdir(path)
+        用于删除指定路径的目录。仅当这文件夹是空的才可以，否则, 抛出OSError
+
+"""
+def remove_test():
+    print("目录为： {}".format(os.listdir(os.getcwd())))
+    os.remove("foo.txt")
+    print("目录为： {}".format(os.listdir(os.getcwd())))
+
+
+def removedirs_test():
+    os.removedirs("hello")
+
+def rmdir_test():
+    print("目录为： {}".format(os.listdir(os.getcwd())))
+    os.rmdir("hello")
+
+
+
+"""
+    os.rename(src, dst)
+        src: 要修改的目录名
+        dst: 修改哈的目录名
+    用于命名文件或目录, 从src到dst, 如果dst是一个存在的目录, 将抛出OSError。
+
+"""
+def rename_test():
+    print("目录为：{}".format(os.listdir(os.getcwd())))
+    os.rename("dir", "hello")
+    print("目录为：{}".format(os.listdir(os.getcwd())))
+
+
+
+"""
+    os.tcgetpgrp(fd):
+        用于返回与终端fd(一个由os.open()返回的打开的文件描述符)关联的进程组
+
+    os.tcsetpgrp(fd, pg)
+        用于设置与终端fd关联的进程组pg    
+"""
+def tcgetpgrp_test():
+    print("当前目录为： {}".format(os.getcwd()))
+    fd = os.open("/dev/tty", os.O_RDONLY)
+    f = os.tcgetpgrp(fd)
+    print("相关进程组： {}".format(f))
+    os.close(fd)
+
+
+
+"""
+    os.ttyname():
+        用于返回一个字符串, 它表示与文件描述符fd关联的终端设备。如果fd没有与终端设备关联,则引发一个异常。
+"""
+def ttyname_test():
+        fd = os.open("/dev/tty", os.O_RDONLY)
+        p = os.ttyname(fd)
+        print("关联的终端为：{}".format(p))
+        print("done")
+        os.close(fd)
+
+
+
+
+"""
+    os.unlink(path):
+        用于删除文件, 如果文件是一个目录则返回一个错误
+
+"""
+def unlink_test():
+    print("目录为： {}".format(os.listdir(os.getcwd())))
+    os.unlink("foo.txt")
+
+
+
+
+unlink_test()
