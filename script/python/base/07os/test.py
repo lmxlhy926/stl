@@ -4,64 +4,141 @@ import os
 import sys
 import stat
 
+
 """
+文件基本操作
     os.access(path, mode):
         测试指定访问路径(文件或目录)是否具有以下状态：
             F_OK: 存在
             R_OK: 可读
             W_OK: 可写
             X_OK: 可执行
+
+            
+    os.stat(path)   :用于在给定的路径上执行一个系统stat的调用
+    os.lstat(path)  : 读取链接文件的信息, 不跳转到链接指向的文件
+    os.fstat(fd)    : 返回文件描述符fd的状态, 类似stat()。
+        fstat方法返回的结构:
+            st_dev:     设备信息
+            st_ino:     文件的i-node值
+            st_mode:    文件信息的掩码, 包含文件的权限信息，文件的类型信息
+            st_nlink:   硬链接数
+            st_uid:     用户ID
+            st_gid:     组ID
+            st_rdev:    设备ID
+            st_size:    文件大小, 以byte为单位
+            st_blksize: 系统I/O块大小
+            st_blocks:  文件是由多少个I/O块构成
+            st_atime:   文件最近的访问时间
+            st_mtime:   文件最近的修改时间
+            st_ctime:   文件状态信息的修改时间(不是文件内容的修改时间)
+
+            
+    os.chmod(path, mode)   
+        文件由路径指定
+    os.lchmod(path, mode) :
+        用于修改连接文件权限, 即不跳转到连接文件指向的文件
+    os.fchmod(path, mode)
+        文件由参数fd指定
+
+        
+    os.chown(path, uid, gid):
+        用于修改文件所有者和组所有者, 如果不修改可以设置为-1。
+        只支持在unix中使用
+    os.lchown(path, uid, pid)
+        用于更改文件所有者, 类似chown, 但是不追踪链接
+    os.fchown(fd, uid, gid)
+        文件由文件描述符fd指定
+        在unix上可用
+
+    
+    os.link(src, dst) : 文件名不同, 但是指向的节点是一致的
+        src: 用于创建硬连接的源地址
+        dst: 用于创建硬链接的目的地址
+    
+    os.symlink(src, dst, target_is_directory=False):
+        src: 要创建符号链接的目标文件或目录路径
+        dst: 符号链接的路径和名称
+        target_is_directory: 指定src是否是一个目录。如果设置为True, dst将被创建为指向目录的符号链接
+
+    os.readlink(path):
+        返回链接所指向的文件, 可能返回绝对或相对路径
+
+    os.unlink(path):
+        用于删除文件, 如果文件是一个目录则返回一个错误
+
+
+    os.mkdir(path, mode=0777):  
+        path: 要创建的目录路径
+        mode: 要为目录设置的权限数字模式
+        以数字权限模式创建目录。默认的模式为0777
+        如果目录有多级，则创建最后一级,如果最后一级目录的上级目录有不存在的,则会抛出一个OSError
+
+    os.makedirs(name, mode=511, exist_ok=False):    递归创建多层目录
+        path:       需要递归创建的目录
+        mode:       权限模式, 默认的模式为511
+        exist_ok:   是否在目录存在时触发FileExistsError异常
+
+    os.listdir(path)
+        返回指定的文件夹包含的文件或文件夹的名字的列表。不包括.和..
+
+    os.rmdir(path)
+        用于删除指定路径的目录。仅当这文件夹是空的才可以，否则, 抛出OSError
+
+        
+    os.removedirs(path)
+        递归删除目录
+
+    os.rename(src, dst)
+        src: 要修改的目录名
+        dst: 修改哈的目录名
+        用于命名文件或目录, 从src到dst, 如果dst是一个存在的目录, 将抛出OSError。
+    
+    os.remove(path):
+        删除指定路径的文件。如果指定的路径是一个目录, 将抛出OSError.
 """
 def access_test():
-    filePath = "/home/lhy/ownproject/stl/script/python/base/07os/test.txt"
-    ret = os.access(filePath, os.F_OK)
+    filePath = "test.txt"
+    ret = os.access(filePath, os.F_OK)      #文件是否存在
     print("F_OK, 返回值: {}".format(ret))
 
-    ret = os.access(filePath, os.R_OK)
+    ret = os.access(filePath, os.R_OK)      #可读
     print("R_OK, 返回值: {}".format(ret))
 
-    ret = os.access(filePath, os.W_OK)
+    ret = os.access(filePath, os.W_OK)      #可写
     print("W_OK, 返回值：{}".format(ret))
 
-    ret = os.access(filePath, os.X_OK)
+    ret = os.access(filePath, os.X_OK)      #可执行
     print("X_OK, 返回值: {}".format(ret))
 
 
-
-"""
-    os.getcwd()
-        获取当前工作目录
-
-    os.getcwdb()
-        返回一个字符串(bytestring), 表示当前目录
-    
-    os.chdir(path)
-        修改当前工作目录
-
-    os.fchdir(fd)
-        通过文件描述符改变当前工作目录
-"""
-def chdir_test():
-    path = "/home/lhy/ownproject/stl/script/python/base"
-    print("当前工作目录为：{}".format(os.getcwd()))
-    print("当前目录为: {}".format(os.getcwdb()))
-    os.chdir(path)      #通过路径修改当前工作目录
-    print("目录修改为: {}".format(os.getcwd()))
-    fd = os.open("/home/lhy/ownproject/stl/script/python", os.O_RDONLY) #打开一个目录
-    os.fchdir(fd)       #通过文件描述符修改当前工作目录
-    print("目录被修改为：{}".format(os.getcwd()))
-    filefd = os.open("./base/07os/foo.txt", os.O_RDWR | os.O_CREAT)     #使用相对路径
-    print("读取到的内容：{}".format(os.read(filefd, 100)))
+def stat_test():
+    info =  os.stat("foo.txt")
+    infol = os.lstat("foo.txt")
+    fd =    os.open("foo.txt", os.O_RDWR | os.O_CREAT)
+    infof = os.fstat(fd)
+    print("文件信息: {}"     .format(info))
+    print("st_dev: {}"      .format(info.st_dev))
+    print("st_ino: {}"      .format(info.st_ino))
+    print("st_mode: {}"     .format(info.st_mode))
+    print("st_nlink: {}"    .format(info.st_nlink))
+    print("st_uid: {}"      .format(info.st_uid))
+    print("st_gid: {}"      .format(info.st_gid))
+    print("st_rdev: {}"     .format(info.st_rdev))
+    print("st_size: {}"     .format(info.st_size))
+    print("st_blksize: {}"  .format(info.st_blksize))
+    print("st_blocks: {}"   .format(info.st_blocks))
+    print("st_atime: {}"    .format(info.st_atime))
+    print("st_mtime: {}"    .format(info.st_mtime))
+    print("st_ctime: {}"    .format(info.st_ctime))
+    print("-------------------------------------")
+    print("st_ctime: {}".format(infol.st_ctime))
+    print("-------------------------------------")
+    print("st_ctime: {}".format(infof.st_ctime))
 
 
-
-"""
-    os.chmod(path, mode) :  文件由路径指定
-    os.lchmod(path, mode) : 用于修改连接文件权限, 即不跳转到连接文件指向的文件
-    os.fchmod(path, mode):  文件由参数fd指定
-"""
 def chmod_test():
-    path = "/home/lhy/ownproject/stl/script/python/base/07os/test.txt"
+    path = "test.txt"
     os.chmod(path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)  #所有者
     os.chmod(path, stat.S_IRWXU)
     os.chmod(path, stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP)  #所属组
@@ -78,36 +155,75 @@ def chmod_test():
 
     fd = os.open(path, os.O_RDONLY)
     os.fchmod(fd, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)  #设置所有者权限
-    os.fchmod(fd, stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP)
+    os.fchmod(fd, stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP)   #设置文件组权限
 
 
-
-"""
-    os.chown(path, uid, gid):
-        用于修改文件所有者和组所有者, 如果不修改可以设置为-1。
-        只支持在unix中使用
-
-    os.lchown(path, uid, pid)
-        用于更改文件所有者, 类似chown, 但是不追踪链接
-
-    os.fchown(fd, uid, gid)
-        文件由文件描述符fd指定
-        在unix上可用
-"""
 def chown_test():
-    path = "/home/lhy/ownproject/stl/script/python/base/07os/test.txt"
+    path = "test.txt"
     os.chown(path, 1000, 1000)
     fd = os.open(path, os.O_RDONLY)
     os.fchown(fd, 0, 0)
     os.close(fd)
 
 
+def link_test():
+    os.link("foo.txt", "foo_hardlink.txt")      #创建硬链接：源文件名---目的文件名
+    os.symlink("foo.txt", "foo_softlink.txt")   #创建软链接：源文件名---连接文件名
+    path = os.readlink("foo_softlink.txt")      #读取链接文件指向的源文件名
+    print(path)
+    os.unlink("foo.txt")                        #删除文件
+
+
+def dirs_test():
+    os.makedirs("hello/world", 0o777, True)         #创建上下级目录
+    print("{}".format(os.listdir("hello/world")))   
+    os.mkdir("hello/world/final", 0o777)            #在上级目录存在的情况下创建子目录
+    print("{}".format(os.listdir("hello/world")))
+    os.rmdir("hello/world/final")                   #移除最最下级子目录
+    print("{}".format(os.listdir("hello/world")))
+    os.removedirs("hello/world")                    #移除上下级目录
+    print("{}".format(os.listdir(os.getcwd())))
+
+
+def nameRemove_test():
+    os.rename("foo.txt", "foonew.txt")      #文件重命名
+    os.link("foonew.txt", "foolink.txt")
+    os.remove("foonew.txt")                 #删除指定的文件
+
+
+
 
 """
+    os.getcwd()
+        获取当前工作目录
+
+    os.getcwdb()
+        返回一个字符串(bytestring), 表示当前目录
+    
+    os.chdir(path)
+        修改当前工作目录
+    os.fchdir(fd)
+        通过文件描述符改变当前工作目录
+
     os.chroot(path)
         更改当前进程的目录为指定的目录，使用该函数需要管理员权限
         在unix中有效
+
 """
+
+def chdir_test():
+    path = "/home/lhy/ownproject/stl/script/python/base"
+    print("当前工作目录为：{}".format(os.getcwd()))
+    print("当前目录为: {}".format(os.getcwdb()))
+    os.chdir(path)      #通过路径修改当前工作目录
+    print("目录修改为: {}".format(os.getcwd()))
+    fd = os.open("/home/lhy/ownproject/stl/script/python", os.O_RDONLY) #打开一个目录
+    os.fchdir(fd)       #通过文件描述符修改当前工作目录
+    print("目录被修改为：{}".format(os.getcwd()))
+    filefd = os.open("./base/07os/foo.txt", os.O_RDWR | os.O_CREAT)     #使用相对路径
+    print("读取到的内容：{}".format(os.read(filefd, 100)))
+
+
 def chroot_test():
     print("before chroot, 当前工作目录为：{}".format(os.getcwd()))
     os.chroot("/home/lhy/ownproject/stl/script/python/base/07os")
@@ -115,7 +231,11 @@ def chroot_test():
 
 
 
+
+
+
 """
+文件操作：
     os.open(path, flags, mode=0777)      : 打开文件
         flags:
             os.O_RDONLY     :只读
@@ -130,17 +250,47 @@ def chroot_test():
             os.O_FSYNC      :同步写入
             os.O_SHLOCK     :自动获取共享锁
             os.O_DIRECT     :消除或减少缓存效果
-    
+
     os.read(fd, n): 
         从文件描述符fd中读取最多n个字节, 返回包含读取字节的字符串
         如果读到文件末尾, 则返回一个空字符串
 
     os.write(fd, str):
         用于写入字符串到文件描述符fd中, 返回实际写入的字符串长度
+
+    os.lseek(fd, pos, how)  : 设置文件描述符fd当前位置
             
     os.close(fd)            : 关闭文件描述符
-    os.lseek(fd, pos, how)  : 设置文件描述符fd当前位置
 
+    
+    os.fdatasync():
+        用于强制将文件写入磁盘, 该文件由文件描述符fd指定, 但是不强制更新文件的状态信息。
+        如果你需要刷新缓冲区可以使用该方法
+
+    os.fsync():
+        强制将文件描述符为fd的文件写入硬盘, 在unix中会调用fsync函数, 在windows中调用_commit()函数
+        如果你准备操作一个Python文件对象f: 首先调用f.flush(), 然后调用os.fsync(f.fileno())
+        确保将于f有关的所有内容都写入了硬盘
+
+    os.ftruncate(fd, length): 
+        裁剪文件描述符fd对应的文件, 它最大不能超过文件大小
+
+        
+    os.dup(fd)      : 复制文件描述符
+    
+    os.dup(fd, dd2):  用于将一个文件描述符fd复制到另一个fd2
+        fd:  要被复制的文件描述符
+        fd2: 复制的文件描述符
+
+    os.fdopen(fd, [, mode[, bufsize]]):
+        通过文件描述符fd创建一个文件对象, 并返回这个文件对象
+        bufsize: 指定返回的文件对象是否带缓冲：
+                        0:      不带缓冲
+                        1:      行缓冲
+                        正数：   全缓冲, 正数为缓冲区的大小
+                       -1:      使用系统默认的缓冲设定
+
+   
 """
 def openclose_test():
     # 打开文件
@@ -157,10 +307,6 @@ def openclose_test():
     os.close(fd)
 
 
-
-"""
-    os.dup(fd)      : 复制文件描述符
-"""
 def fd_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
     d_fd = os.dup(fd)
@@ -172,11 +318,6 @@ def fd_test():
 
 
 
-"""
-    os.dup(fd, dd2):  用于将一个文件描述符fd复制到另一个fd2
-        fd:  要被复制的文件描述符
-        fd2: 复制的文件描述符
-"""
 def dup2_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
     os.dup2(fd, 1)  #标准输出指向文件
@@ -186,16 +327,6 @@ def dup2_test():
     print("world")
 
 
-"""
-    os.fdatasync():
-        用于强制将文件写入磁盘, 该文件由文件描述符fd指定, 但是不强制更新文件的状态信息。
-        如果你需要刷新缓冲区可以使用该方法
-
-    os.fsync:
-        强制将文件描述符为fd的文件写入硬盘, 在unix中会调用fsync函数, 在windows中调用_commit()函数
-        如果你准备操作一个Python文件对象f: 首先调用f.flush(), 然后调用os.fsync(f.fileno())
-        确保将于f有关的所有内容都写入了硬盘
-"""
 def fdatasync_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
     os.write(fd, "this is test".encode())
@@ -209,22 +340,21 @@ def fdatasync_test():
     print("文件关闭")
 
 
-
-"""
-    os.fdopen(fd, [, mode[, bufsize]]):
-        通过文件描述符fd创建一个文件对象, 并返回这个文件对象
-        bufsize: 指定返回的文件对象是否带缓冲：
-                        0:      不带缓冲
-                        1:      行缓冲
-                        正数：   全缓冲, 正数为缓冲区的大小
-                       -1:      使用系统默认的缓冲设定
-"""
 def fdopen_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
     fo = os.fdopen(fd, "w+")
     print("current i/o pointer position: {}".format(fo.tell()))
     fo.write("hello")
     fo.close()
+
+
+def ftruncate_test():
+    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
+    os.write(fd, "this is test - this is test".encode())
+    os.ftruncate(fd, 12)
+    os.close(fd)
+
+
 
 
 
@@ -245,60 +375,8 @@ def fpathconf_test():
     print("文件名最大长度为： {}".format(os.pathconf("foo.txt", "PC_NAME_MAX")))
 
 
-"""
-    os.ftruncate(fd, length): 
-        裁剪文件描述符fd对应的文件, 它最大不能超过文件大小
-"""
-def ftruncate_test():
-    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    os.write(fd, "this is test - this is test".encode())
-    os.ftruncate(fd, 12)
-    os.close(fd)
 
 
-
-"""
-    os.stat(path)   :用于在给定的路径上执行一个系统stat的调用
-    os.lstat(path)  : 读取链接文件的信息, 不跳转到链接指向的文件
-    os.fstat(fd)    : 返回文件描述符fd的状态, 类似stat()。
-        fstat方法返回的结构:
-            st_dev:     设备信息
-            st_ino:     文件的i-node值
-            st_mode:    文件信息的掩码, 包含文件的权限信息，文件的类型信息
-            st_nlink:   硬链接数
-            st_uid:     用户ID
-            st_gid:     组ID
-            st_rdev:    设备ID
-            st_size:    文件大小, 以byte为单位
-            st_blksize: 系统I/O块大小
-            st_blocks:  文件是由多少个I/O块构成
-            st_atime:   文件最近的访问时间
-            st_mtime:   文件最近的修改时间
-            st_ctime:   文件状态信息的修改时间(不是文件内容的修改时间)
-"""
-def fstat_test():
-    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    info = os.fstat(fd)
-    info1 = os.stat("foo.txt")
-    info2 = os.lstat("foo.txt")
-    print("文件信息: {}"     .format(info))
-    print("st_dev: {}"      .format(info.st_dev))
-    print("st_ino: {}"      .format(info.st_ino))
-    print("st_mode: {}"     .format(info.st_mode))
-    print("st_nlink: {}"    .format(info.st_nlink))
-    print("st_uid: {}"      .format(info.st_uid))
-    print("st_gid: {}"      .format(info.st_gid))
-    print("st_rdev: {}"     .format(info.st_rdev))
-    print("st_size: {}"     .format(info.st_size))
-    print("st_blksize: {}"  .format(info.st_blksize))
-    print("st_blocks: {}"   .format(info.st_blocks))
-    print("st_atime: {}"    .format(info.st_atime))
-    print("st_mtime: {}"    .format(info.st_mtime))
-    print("st_ctime: {}"    .format(info.st_ctime))
-    print("-------------------------------------")
-    print("st_ctime: {}".format(info1.st_ctime))
-    print("-------------------------------------")
-    print("st_ctime: {}".format(info2.st_ctime))
 
 
 
@@ -367,53 +445,11 @@ def isatty_test():
     print("ttyUSB: {}".format(os.isatty(fd2)))
 
 
-
-"""
-    os.link(src, dst) : 文件名不同, 但是指向的节点是一致的
-        src: 用于创建硬连接的源地址
-        dst: 用于创建硬链接的目的地址
-
-"""
-def link_test():
-    os.link("foo.txt", "foobak.txt")
-
-
-"""
-    os.listdir(path)
-        返回指定的文件夹包含的文件或文件夹的名字的列表。不包括.和..
-"""
-def listidr_test():
-    path = "/home/lhy/ownproject/stl/script/python/base/07os/"
-    dirs = os.listdir(path)
-    for file in dirs:
-        print(file)
-
-
-"""
-    os.mkdir(path, mode=0777):  
-        path: 要创建的目录路径
-        mode: 要为目录设置的权限数字模式
-    以数字权限模式创建目录。默认的模式为0777
-    如果目录有多级，则创建最后一级,如果最后一级目录的上级目录有不存在的,则会抛出一个OSError
-
-    os.makedirs(name, mode=511, exist_ok=False):    递归创建多层目录
-        path:       需要递归创建的目录
-        mode:       权限模式, 默认的模式为511
-        exist_ok:   是否在目录存在时触发FileExistsError异常
-"""
-def makedirs_test():
-    os.makedirs("./hello/world", 0o777, True)
-    os.mkdir("./hello/world/nihao", 0o777)
-
-
-
 """
     os.mkfifo(path, mode=066): 创建管道, 并设置权限模式。默认的模式为0666。
 """
 def mkfifo_test():
     os.mkfifo("testfifo", 0o644)
-
-
 
 
 """
@@ -442,7 +478,6 @@ def pipe_test():
 
 
 
-
 """
     os.popen(command[, mode[, bufsize]])
         command: 使用命令
@@ -451,64 +486,6 @@ def pipe_test():
 """
 def popen_test():
     file = os.popen("less foo.txt", 'w', 1)
-
-
-
-"""
-    os.readlink(path):
-        返回链接所指向的文件, 可能返回绝对或相对路径
-
-    os.symlink(src, dst, target_is_directory=False):
-        src: 要创建符号链接的目标文件或目录路径
-        dst: 符号链接的路径和名称
-        target_is_directory: 指定src是否是一个目录。如果设置为True, dst将被创建为指向目录的符号链接
-
-"""
-def readlink_test():
-    os.symlink("foo.txt", "link")
-    path = os.readlink("link")
-    print(path)
-
-
-
-"""
-    os.remove(path):
-        删除指定路径的文件。如果指定的路径是一个目录, 将抛出OSError.
-
-    os.removedirs(path)
-        递归删除目录
-
-    os.rmdir(path)
-        用于删除指定路径的目录。仅当这文件夹是空的才可以，否则, 抛出OSError
-
-"""
-def remove_test():
-    print("目录为： {}".format(os.listdir(os.getcwd())))
-    os.remove("foo.txt")
-    print("目录为： {}".format(os.listdir(os.getcwd())))
-
-
-def removedirs_test():
-    os.removedirs("hello")
-
-def rmdir_test():
-    print("目录为： {}".format(os.listdir(os.getcwd())))
-    os.rmdir("hello")
-
-
-
-"""
-    os.rename(src, dst)
-        src: 要修改的目录名
-        dst: 修改哈的目录名
-    用于命名文件或目录, 从src到dst, 如果dst是一个存在的目录, 将抛出OSError。
-
-"""
-def rename_test():
-    print("目录为：{}".format(os.listdir(os.getcwd())))
-    os.rename("dir", "hello")
-    print("目录为：{}".format(os.listdir(os.getcwd())))
-
 
 
 """
@@ -540,17 +517,4 @@ def ttyname_test():
 
 
 
-
-"""
-    os.unlink(path):
-        用于删除文件, 如果文件是一个目录则返回一个错误
-
-"""
-def unlink_test():
-    print("目录为： {}".format(os.listdir(os.getcwd())))
-    os.unlink("foo.txt")
-
-
-
-
-unlink_test()
+nameRemove_test()
