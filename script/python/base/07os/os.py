@@ -7,6 +7,8 @@ import stat
 
 """
 文件基本操作
+
+测试文件权限
     os.access(path, mode):
         测试指定访问路径(文件或目录)是否具有以下状态：
             F_OK: 存在
@@ -15,9 +17,10 @@ import stat
             X_OK: 可执行
 
             
-    os.stat(path)   :用于在给定的路径上执行一个系统stat的调用
-    os.lstat(path)  : 读取链接文件的信息, 不跳转到链接指向的文件
-    os.fstat(fd)    : 返回文件描述符fd的状态, 类似stat()。
+获取文件属性
+    os.stat(path)   :   用于在给定的路径上执行一个系统stat的调用
+    os.lstat(path)  :   读取链接文件的信息, 不跳转到链接指向的文件
+    os.fstat(fd)    :   返回文件描述符fd的状态, 类似stat()。
         fstat方法返回的结构:
             st_dev:     设备信息
             st_ino:     文件的i-node值
@@ -34,40 +37,42 @@ import stat
             st_ctime:   文件状态信息的修改时间(不是文件内容的修改时间)
 
             
-    os.chmod(path, mode)   
-        文件由路径指定
-    os.lchmod(path, mode) :
-        用于修改连接文件权限, 即不跳转到连接文件指向的文件
-    os.fchmod(path, mode)
-        文件由参数fd指定
-
-        
-    os.chown(path, uid, gid):
-        用于修改文件所有者和组所有者, 如果不修改可以设置为-1。
-        只支持在unix中使用
-    os.lchown(path, uid, pid)
-        用于更改文件所有者, 类似chown, 但是不追踪链接
-    os.fchown(fd, uid, gid)
-        文件由文件描述符fd指定
-        在unix上可用
+修改文件权限           
+    os.chmod(path, mode)    :  文件由路径指定
+    os.lchmod(path, mode)   :  用于修改连接文件权限, 即不跳转到连接文件指向的文件
+    os.fchmod(path, mode)   :  文件由参数fd指定
 
     
+修改文件所有者
+    os.chown(path, uid, gid)  :  用于修改文件所有者和组所有者, 如果不修改可以设置为-1。只支持在unix中使用
+    os.lchown(path, uid, pid) :  用于更改文件所有者, 类似chown, 但是不追踪链接
+    os.fchown(fd, uid, gid)   :  文件由文件描述符fd指定.在unix上可用
+
+    
+创建、读取、删除链接
     os.link(src, dst) : 文件名不同, 但是指向的节点是一致的
         src: 用于创建硬连接的源地址
         dst: 用于创建硬链接的目的地址
-    
+
     os.symlink(src, dst, target_is_directory=False):
         src: 要创建符号链接的目标文件或目录路径
         dst: 符号链接的路径和名称
         target_is_directory: 指定src是否是一个目录。如果设置为True, dst将被创建为指向目录的符号链接
 
-    os.readlink(path):
-        返回链接所指向的文件, 可能返回绝对或相对路径
+    os.readlink(path):  返回链接所指向的文件, 可能返回绝对或相对路径
 
-    os.unlink(path):
-        用于删除文件, 如果文件是一个目录则返回一个错误
+    os.unlink(path):    用于删除文件, 如果文件是一个目录则返回一个错误
 
+    os.remove(path):
+        删除指定路径的文件。如果指定的路径是一个目录, 将抛出OSError.
 
+    os.rename(src, dst)
+        src: 要修改的目录名
+        dst: 修改哈的目录名
+        用于命名文件或目录, 从src到dst, 如果dst是一个存在的目录, 将抛出OSError。
+   
+
+创建、读取、删除文件夹
     os.mkdir(path, mode=0777):  
         path: 要创建的目录路径
         mode: 要为目录设置的权限数字模式
@@ -85,38 +90,26 @@ import stat
     os.rmdir(path)
         用于删除指定路径的目录。仅当这文件夹是空的才可以，否则, 抛出OSError
 
-        
     os.removedirs(path)
         递归删除目录
-
-    os.rename(src, dst)
-        src: 要修改的目录名
-        dst: 修改哈的目录名
-        用于命名文件或目录, 从src到dst, 如果dst是一个存在的目录, 将抛出OSError。
-    
-    os.remove(path):
-        删除指定路径的文件。如果指定的路径是一个目录, 将抛出OSError.
 """
+
+# 测试文件权限
 def access_test():
-    filePath = "test.txt"
-    ret = os.access(filePath, os.F_OK)      #文件是否存在
-    print("F_OK, 返回值: {}".format(ret))
-
-    ret = os.access(filePath, os.R_OK)      #可读
-    print("R_OK, 返回值: {}".format(ret))
-
-    ret = os.access(filePath, os.W_OK)      #可写
-    print("W_OK, 返回值：{}".format(ret))
-
-    ret = os.access(filePath, os.X_OK)      #可执行
-    print("X_OK, 返回值: {}".format(ret))
+    filePath = "test.txt" 
+    print("F_OK, 返回值: {}".format(os.access(filePath, os.F_OK)))  #文件是否存在
+    print("R_OK, 返回值: {}".format(os.access(filePath, os.R_OK)))  #可读
+    print("W_OK, 返回值：{}".format(os.access(filePath, os.W_OK)))  #可写
+    print("X_OK, 返回值: {}".format(os.access(filePath, os.X_OK)))  #可执行
 
 
+#获取文件属性
 def stat_test():
-    info =  os.stat("foo.txt")
-    infol = os.lstat("foo.txt")
-    fd =    os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    infof = os.fstat(fd)
+    path = "test.txt"
+    info =  os.stat(path)
+    infol = os.lstat(path)
+    infof = os.fstat(os.open(path, os.O_RDWR))
+
     print("文件信息: {}"     .format(info))
     print("st_dev: {}"      .format(info.st_dev))
     print("st_ino: {}"      .format(info.st_ino))
@@ -131,12 +124,14 @@ def stat_test():
     print("st_atime: {}"    .format(info.st_atime))
     print("st_mtime: {}"    .format(info.st_mtime))
     print("st_ctime: {}"    .format(info.st_ctime))
+
     print("-------------------------------------")
     print("st_ctime: {}".format(infol.st_ctime))
     print("-------------------------------------")
     print("st_ctime: {}".format(infof.st_ctime))
 
 
+#修改文件权限
 def chmod_test():
     path = "test.txt"
     os.chmod(path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)  #所有者
@@ -146,35 +141,40 @@ def chmod_test():
     os.chmod(path, stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)  #其它
     os.chmod(path, stat.S_IRWXO)
 
-    #执行此文件其进程有效用户ID为文件所有者ID
+    # #执行此文件其进程有效用户ID为文件所有者ID
     os.chmod(path, stat.S_ISUID)
-    #执行此文件其进程有效组ID为文件所属组ID
+    # #执行此文件其进程有效组ID为文件所属组ID
     os.chmod(path, stat.S_ISGID)
-    #设置文件粘滞位
+    # #设置文件粘滞位
     os.chmod(path, stat.S_ISVTX)
 
     fd = os.open(path, os.O_RDONLY)
-    os.fchmod(fd, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)  #设置所有者权限
+    os.fchmod(fd, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)  #设置所有者权限(同义词)
     os.fchmod(fd, stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP)   #设置文件组权限
 
 
+#修改文件所有者
 def chown_test():
     path = "test.txt"
     os.chown(path, 1000, 1000)
+    os.lchown(path, 1000, 1000)
     fd = os.open(path, os.O_RDONLY)
     os.fchown(fd, 0, 0)
     os.close(fd)
 
 
+#创建、读取、删除链接
 def link_test():
-    os.link("foo.txt", "foo_hardlink.txt")      #创建硬链接：源文件名---目的文件名
-    os.symlink("foo.txt", "foo_softlink.txt")   #创建软链接：源文件名---连接文件名
-    path = os.readlink("foo_softlink.txt")      #读取链接文件指向的源文件名
-    print(path)
-    os.unlink("foo.txt")                        #删除文件
+    path = "test.txt"
+    os.link(path, path + "_hardlink")           #创建硬链接：源文件名---目的文件名
+    os.symlink(path, path + "_softlink")        #创建软链接：源文件名---连接文件名
+    print(os.readlink(path + "_softlink"))      #读取链接文件指向的源文件名
+    os.unlink(path + "_hardlink")               #删除文件
 
 
+#创建、读取、删除文件夹
 def dirs_test():
+    print("{}".format(os.listdir(os.getcwd())))
     os.makedirs("hello/world", 0o777, True)         #创建上下级目录
     print("{}".format(os.listdir("hello/world")))   
     os.mkdir("hello/world/final", 0o777)            #在上级目录存在的情况下创建子目录
@@ -185,32 +185,49 @@ def dirs_test():
     print("{}".format(os.listdir(os.getcwd())))
 
 
+#重命名、删除文件
 def nameRemove_test():
-    os.rename("foo.txt", "foonew.txt")      #文件重命名
-    os.link("foonew.txt", "foolink.txt")
-    os.remove("foonew.txt")                 #删除指定的文件
+    path = "foo.txt"
+    os.link(path, path + "_link")       #创建硬连接
+    os.remove(path )            #删除指定的文件
+    os.unlink(path + "_link")           #删除指定文件
 
 
 
 
 """
-    os.getcwd()
-        获取当前工作目录
+    os.getcwd():        获取当前工作目录
+    os.getcwdb():       返回一个字符串(bytestring), 表示当前目录
+    os.chdir(path):     修改当前工作目录
+    os.fchdir(fd):      通过文件描述符改变当前工作目录
+    os.chroot(path):    更改当前进程的目录为指定的目录, 使用该函数需要管理员权限.在unix中有效
 
-    os.getcwdb()
-        返回一个字符串(bytestring), 表示当前目录
+    os.pathconf(path, name):    返回一个打开的文件的系统配置信息.   unix上可用
+    os.fpathconf(fd, name)
+        fd:     打开的文件描述符
+        name:   属性名
     
-    os.chdir(path)
-        修改当前工作目录
-    os.fchdir(fd)
-        通过文件描述符改变当前工作目录
 
-    os.chroot(path)
-        更改当前进程的目录为指定的目录，使用该函数需要管理员权限
-        在unix中有效
+    os.statvfs(path): 包含指定路径文件的文件系统的信息  
+    os.fstatvfs(fd):  包含文件描述符fd指定文件的文件系统信息. unix上可用
+        fstatvfs返回的结构
+            f_bsize:    文件系统块大小
+            f_frsize:   分栈大小
+            f_blocks:   文件系统数据块总数
+            f_bfree:    可用块数
+            f_bavail:   非超级用户可获取的块数
+            f_files:    文件节点总数
+            f_ffree:    可用文件节点数
+            f_favail:   非超级用户的可用文件节点数
+            f_fsid:     文件系统标识ID
+            f_flag:     挂载标记
+            f_namemax:  最大文件长度
+
+    os.major(device)
+    os.makedev(major, minor)
+    os.minor(device)
 
 """
-
 def chdir_test():
     path = "/home/lhy/ownproject/stl/script/python/base"
     print("当前工作目录为：{}".format(os.getcwd()))
@@ -229,6 +246,41 @@ def chroot_test():
     os.chroot("/home/lhy/ownproject/stl/script/python/base/07os")
     print("after chroot, 当前工作目录为：{}".format(os.getcwd()))
 
+def fpathconf_test():
+    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
+    print("fpathconf names: {}".format(os.pathconf_names))  #属性名集合
+    print("文件最大连接数为: {}".format(os.fpathconf(fd, "PC_LINK_MAX")))
+    print("文件名最大长度为：{}".format(os.fpathconf(fd, "PC_NAME_MAX")))
+    print("-------------------------------")
+    print("文件名最大长度为： {}".format(os.pathconf("foo.txt", "PC_NAME_MAX")))
+
+def fstatvfs_test():
+    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
+    info = os.fstatvfs(fd)
+    print("文件信息： {}".format(info))
+    print("f_bsize: {}".format(info.f_bsize))
+    print("f_frsize: {}".format(info.f_frsize))
+    print("f_blocks: {}".format(info.f_blocks))
+    print("f_bfree: {}".format(info.f_bfree))
+    print("f_bavail: {}".format(info.f_bavail))
+    print("f_files: {}".format(info.f_files))
+    print("f_ffree: {}".format(info.f_bfree))
+    print("f_favail: {}".format(info.f_favail))
+    print("f_fsid: {}".format(info.f_fsid))
+    print("f_flag: {}".format(info.f_flag))
+    print("f_namemax: {}".format(info.f_namemax))
+
+
+def major_minor_test():
+    info = os.lstat("./foo.txt")
+    print("info.st_dev: {}".format(info.st_dev))
+    major_dnum = os.major(info.st_dev)
+    minor_dnum = os.minor(info.st_dev)
+    print("major 设备号：{}".format(major_dnum))
+    print("minor 设备号：{}".format(minor_dnum))
+    # 生成设备号
+    dev_num = os.makedev(major_dnum, minor_dnum)
+    print("设备号：{}".format(dev_num))
 
 
 
@@ -290,7 +342,18 @@ def chroot_test():
                         正数：   全缓冲, 正数为缓冲区的大小
                        -1:      使用系统默认的缓冲设定
 
-   
+    os.isatty():
+        用于判断如果文件描述符fd是打开的并且同时和tty-like设备相连, 则返回true, 否则返回false。
+
+    os.ttyname():
+        用于返回一个字符串, 它表示与文件描述符fd关联的终端设备。如果fd没有与终端设备关联,则引发一个异常。
+
+    os.tcgetpgrp(fd):
+        用于返回与终端fd(一个由os.open()返回的打开的文件描述符)关联的进程组
+
+    os.tcsetpgrp(fd, pg)
+        用于设置与终端fd关联的进程组pg  
+
 """
 def openclose_test():
     # 打开文件
@@ -355,89 +418,6 @@ def ftruncate_test():
     os.close(fd)
 
 
-
-
-
-"""
-    os.pathconf(path, name)
-    os.fpathconf(fd, name): 返回一个打开的文件的系统配置信息
-        fd:     打开的文件描述符
-        name:   属性名
-    unix上可用
-
-"""
-def fpathconf_test():
-    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    print("fpathconf names: {}".format(os.pathconf_names))  #属性名集合
-    print("文件最大连接数为: {}".format(os.fpathconf(fd, "PC_LINK_MAX")))
-    print("文件名最大长度为：{}".format(os.fpathconf(fd, "PC_NAME_MAX")))
-    print("-------------------------------")
-    print("文件名最大长度为： {}".format(os.pathconf("foo.txt", "PC_NAME_MAX")))
-
-
-
-
-
-
-
-"""
-    os.major(device)
-    os.makedev(major, minor)
-    os.minor(device)
-
-"""
-def major_minor_test():
-    info = os.lstat("./foo.txt")
-    print("info.st_dev: {}".format(info.st_dev))
-    major_dnum = os.major(info.st_dev)
-    minor_dnum = os.minor(info.st_dev)
-    print("major 设备号：{}".format(major_dnum))
-    print("minor 设备号：{}".format(minor_dnum))
-    # 生成设备号
-    dev_num = os.makedev(major_dnum, minor_dnum)
-    print("设备号：{}".format(dev_num))
-
-
-
-"""
-    os.statvfs(path): 包含指定路径文件的文件系统的信息  
-    os.fstatvfs(fd):  包含文件描述符fd指定文件的文件系统信息
-    unix上可用
-        fstatvfs返回的结构
-            f_bsize:    文件系统块大小
-            f_frsize:   分栈大小
-            f_blocks:   文件系统数据块总数
-            f_bfree:    可用块数
-            f_bavail:   非超级用户可获取的块数
-            f_files:    文件节点总数
-            f_ffree:    可用文件节点数
-            f_favail:   非超级用户的可用文件节点数
-            f_fsid:     文件系统标识ID
-            f_flag:     挂载标记
-            f_namemax:  最大文件长度
-"""
-def fstatvfs_test():
-    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    info = os.fstatvfs(fd)
-    print("文件信息： {}".format(info))
-    print("f_bsize: {}".format(info.f_bsize))
-    print("f_frsize: {}".format(info.f_frsize))
-    print("f_blocks: {}".format(info.f_blocks))
-    print("f_bfree: {}".format(info.f_bfree))
-    print("f_bavail: {}".format(info.f_bavail))
-    print("f_files: {}".format(info.f_files))
-    print("f_ffree: {}".format(info.f_bfree))
-    print("f_favail: {}".format(info.f_favail))
-    print("f_fsid: {}".format(info.f_fsid))
-    print("f_flag: {}".format(info.f_flag))
-    print("f_namemax: {}".format(info.f_namemax))
-
-
-
-"""
-    os.isatty():
-        用于判断如果文件描述符fd是打开的并且同时和tty-like设备相连, 则返回true, 否则返回false。
-"""
 def isatty_test():
     fd1 = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
     fd2 = os.open("/dev/ttyUSB0", os.O_RDWR)
@@ -445,16 +425,39 @@ def isatty_test():
     print("ttyUSB: {}".format(os.isatty(fd2)))
 
 
+def ttyname_test():
+        fd = os.open("/dev/tty", os.O_RDONLY)
+        p = os.ttyname(fd)
+        print("关联的终端为：{}".format(p))
+        print("done")
+        os.close(fd)
+
+
+def tcgetpgrp_test():
+    print("当前目录为： {}".format(os.getcwd()))
+    fd = os.open("/dev/tty", os.O_RDONLY)
+    f = os.tcgetpgrp(fd)
+    print("相关进程组： {}".format(f))
+    os.close(fd)
+
+
+
+
+
 """
     os.mkfifo(path, mode=066): 创建管道, 并设置权限模式。默认的模式为0666。
+
+     os.pipe(): 用于创建一个管道, 返回一对文件描述符(r,w)分别为读和写
+
+     os.popen(command[, mode[, bufsize]])
+        command: 使用命令
+        mode:    模式权限， 可以是"r"(默认)或"w"
+        bufsize: 缓冲区大小
 """
 def mkfifo_test():
     os.mkfifo("testfifo", 0o644)
 
 
-"""
-    os.pipe(): 用于创建一个管道, 返回一对文件描述符(r,w)分别为读和写
-"""
 def pipe_test():
     print("the child will write text to pipe")
     print("the parent will read the text written by child")
@@ -476,44 +479,8 @@ def pipe_test():
         print("child closing")
         sys.exit(0)
 
-
-
-"""
-    os.popen(command[, mode[, bufsize]])
-        command: 使用命令
-        mode:    模式权限， 可以是"r"(默认)或"w"
-        bufsize: 缓冲区大小
-"""
 def popen_test():
     file = os.popen("less foo.txt", 'w', 1)
-
-
-"""
-    os.tcgetpgrp(fd):
-        用于返回与终端fd(一个由os.open()返回的打开的文件描述符)关联的进程组
-
-    os.tcsetpgrp(fd, pg)
-        用于设置与终端fd关联的进程组pg    
-"""
-def tcgetpgrp_test():
-    print("当前目录为： {}".format(os.getcwd()))
-    fd = os.open("/dev/tty", os.O_RDONLY)
-    f = os.tcgetpgrp(fd)
-    print("相关进程组： {}".format(f))
-    os.close(fd)
-
-
-
-"""
-    os.ttyname():
-        用于返回一个字符串, 它表示与文件描述符fd关联的终端设备。如果fd没有与终端设备关联,则引发一个异常。
-"""
-def ttyname_test():
-        fd = os.open("/dev/tty", os.O_RDONLY)
-        p = os.ttyname(fd)
-        print("关联的终端为：{}".format(p))
-        print("done")
-        os.close(fd)
 
 
 
