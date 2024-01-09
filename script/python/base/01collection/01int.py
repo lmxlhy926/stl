@@ -4,28 +4,38 @@
 # 以下实例在变量赋值时Number对象将被创建
 # 整型(int), 浮点型(float)，负数(complex)
 
-number_a = 0xFF     #16进制
-number_b = 0o37     #8进制
-print(number_a)
-print(number_b)
+number_bin = 0b11111111     #2进制
+number_oct = 0o377          #8进制
+number_hex = 0xFF           #16进制
+print(number_bin)
+print(number_oct)
+print(number_hex)
+print("---------------------")
+
 
 # 显式转换
-number = int("0xFF", 16)
-print(number)
+numberbin = int("0b11111111", 2)
+numberoct = int("0o377", 8)
+numberhex = int("0xFF", 16)
+print(numberbin)
+print(numberoct)
+print(numberhex)
+print("---------------------")
+
 
 # 整除
 print(7 // 2)
 print(7.0 // 2)
 print(7 // 2.0)
-print(3.0 == 3)
+print("---------------------")
+
 
 # 乘方
 print(2 ** 5)
+print("---------------------")
 
 
 # 数学函数
 print(max(1, 2, 3))
 print(min(1, 2, 3))
-
-
 

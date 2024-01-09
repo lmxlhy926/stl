@@ -200,14 +200,13 @@ def nameRemove_test():
     os.getcwdb():       返回一个字符串(bytestring), 表示当前目录
     os.chdir(path):     修改当前工作目录
     os.fchdir(fd):      通过文件描述符改变当前工作目录
-    os.chroot(path):    更改当前进程的目录为指定的目录, 使用该函数需要管理员权限.在unix中有效
+    os.chroot(path):    更改当前进程根目录为指定的目录, 使用该函数需要管理员权限.在unix中有效
 
-    os.pathconf(path, name):    返回一个打开的文件的系统配置信息.   unix上可用
+    os.pathconf(path, name):    返回一个打开的文件所属于的系统的配置信息.   unix上可用
     os.fpathconf(fd, name)
         fd:     打开的文件描述符
         name:   属性名
     
-
     os.statvfs(path): 包含指定路径文件的文件系统的信息  
     os.fstatvfs(fd):  包含文件描述符fd指定文件的文件系统信息. unix上可用
         fstatvfs返回的结构
@@ -228,31 +227,35 @@ def nameRemove_test():
     os.minor(device)
 
 """
+# 修改、读取当前工作目录
 def chdir_test():
-    path = "/home/lhy/ownproject/stl/script/python/base"
     print("当前工作目录为：{}".format(os.getcwd()))
-    print("当前目录为: {}".format(os.getcwdb()))
-    os.chdir(path)      #通过路径修改当前工作目录
-    print("目录修改为: {}".format(os.getcwd()))
-    fd = os.open("/home/lhy/ownproject/stl/script/python", os.O_RDONLY) #打开一个目录
+    print("当前工作目录为: {}".format(os.getcwdb()))
+    os.chdir("/home/lhy/ownproject/stl/script/python/base")     #通过路径修改当前工作目录
+    print("1目录修改为: {}".format(os.getcwd()))
+    fd = os.open("/home/lhy/ownproject/stl/script/python", os.O_RDONLY)   #打开一个目录
     os.fchdir(fd)       #通过文件描述符修改当前工作目录
-    print("目录被修改为：{}".format(os.getcwd()))
+    print("2目录被修改为:{}".format(os.getcwd()))
     filefd = os.open("./base/07os/foo.txt", os.O_RDWR | os.O_CREAT)     #使用相对路径
     print("读取到的内容：{}".format(os.read(filefd, 100)))
+    chroot_test()
 
 
+#修改当前进程的根目录为指定目录
 def chroot_test():
     print("before chroot, 当前工作目录为：{}".format(os.getcwd()))
     os.chroot("/home/lhy/ownproject/stl/script/python/base/07os")
     print("after chroot, 当前工作目录为：{}".format(os.getcwd()))
 
-def fpathconf_test():
+
+def pathconf_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    print("fpathconf names: {}".format(os.pathconf_names))  #属性名集合
-    print("文件最大连接数为: {}".format(os.fpathconf(fd, "PC_LINK_MAX")))
-    print("文件名最大长度为：{}".format(os.fpathconf(fd, "PC_NAME_MAX")))
-    print("-------------------------------")
+    print("fpathconf names:")
+    for name in os.pathconf_names:
+        print("     " + name + ":   {}".format(os.fpathconf(fd, name)))
+    print("--------------------")
     print("文件名最大长度为： {}".format(os.pathconf("foo.txt", "PC_NAME_MAX")))
+
 
 def fstatvfs_test():
     fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
@@ -284,11 +287,9 @@ def major_minor_test():
 
 
 
-
-
 """
 文件操作：
-    os.open(path, flags, mode=0777)      : 打开文件
+    os.open(path, flags, mode=0777): 打开文件
         flags:
             os.O_RDONLY     :只读
             os.O_WRONLY     :只写
@@ -304,17 +305,20 @@ def major_minor_test():
             os.O_DIRECT     :消除或减少缓存效果
 
     os.read(fd, n): 
-        从文件描述符fd中读取最多n个字节, 返回包含读取字节的字符串
-        如果读到文件末尾, 则返回一个空字符串
+        从文件描述符fd中读取最多n个字节, 返回包含读取字节的字符串.如果读到文件末尾, 则返回一个空字符串
 
     os.write(fd, str):
         用于写入字符串到文件描述符fd中, 返回实际写入的字符串长度
 
-    os.lseek(fd, pos, how)  : 设置文件描述符fd当前位置
-            
-    os.close(fd)            : 关闭文件描述符
+    os.lseek(fd, pos, how): 
+        设置文件描述符fd当前位置
 
-    
+    os.ftruncate(fd, length): 
+        裁剪文件描述符fd对应的文件, 它最大不能超过文件大小
+            
+    os.close(fd): 
+        关闭文件描述符
+
     os.fdatasync():
         用于强制将文件写入磁盘, 该文件由文件描述符fd指定, 但是不强制更新文件的状态信息。
         如果你需要刷新缓冲区可以使用该方法
@@ -322,17 +326,19 @@ def major_minor_test():
     os.fsync():
         强制将文件描述符为fd的文件写入硬盘, 在unix中会调用fsync函数, 在windows中调用_commit()函数
         如果你准备操作一个Python文件对象f: 首先调用f.flush(), 然后调用os.fsync(f.fileno())
-        确保将于f有关的所有内容都写入了硬盘
+        确保将与f有关的所有内容都写入了硬盘
 
-    os.ftruncate(fd, length): 
-        裁剪文件描述符fd对应的文件, 它最大不能超过文件大小
-
-        
-    os.dup(fd)      : 复制文件描述符
+    os.dup(fd): 复制文件描述符
     
     os.dup(fd, dd2):  用于将一个文件描述符fd复制到另一个fd2
         fd:  要被复制的文件描述符
         fd2: 复制的文件描述符
+
+    os.isatty():
+        用于判断如果文件描述符fd是打开的并且同时和tty-like设备相连, 则返回true, 否则返回false。
+
+    os.ttyname():
+        用于返回一个字符串, 它表示与文件描述符fd关联的终端设备。如果fd没有与终端设备关联,则引发一个异常。
 
     os.fdopen(fd, [, mode[, bufsize]]):
         通过文件描述符fd创建一个文件对象, 并返回这个文件对象
@@ -342,18 +348,11 @@ def major_minor_test():
                         正数：   全缓冲, 正数为缓冲区的大小
                        -1:      使用系统默认的缓冲设定
 
-    os.isatty():
-        用于判断如果文件描述符fd是打开的并且同时和tty-like设备相连, 则返回true, 否则返回false。
-
-    os.ttyname():
-        用于返回一个字符串, 它表示与文件描述符fd关联的终端设备。如果fd没有与终端设备关联,则引发一个异常。
-
     os.tcgetpgrp(fd):
         用于返回与终端fd(一个由os.open()返回的打开的文件描述符)关联的进程组
 
     os.tcsetpgrp(fd, pg)
         用于设置与终端fd关联的进程组pg  
-
 """
 def openclose_test():
     # 打开文件
@@ -388,19 +387,6 @@ def dup2_test():
     #输出定向到文件中
     print("hello")
     print("world")
-
-
-def fdatasync_test():
-    fd = os.open("foo.txt", os.O_RDWR | os.O_CREAT)
-    os.write(fd, "this is test".encode())
-    os.fdatasync(fd)    # 将缓存的文件内容写入磁盘
-    os.fsync(fd)
-
-    os.lseek(fd, 0, 0)
-    str = os.read(fd, 100)
-    print("读取的字符串是：{}".format(str))
-    os.close(fd)
-    print("文件关闭")
 
 
 def fdopen_test():
@@ -439,8 +425,6 @@ def tcgetpgrp_test():
     f = os.tcgetpgrp(fd)
     print("相关进程组： {}".format(f))
     os.close(fd)
-
-
 
 
 
@@ -484,4 +468,4 @@ def popen_test():
 
 
 
-nameRemove_test()
+fdopen_test()
