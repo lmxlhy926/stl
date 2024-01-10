@@ -4,7 +4,7 @@
     3、注意构造包含 0 或 1 个元素的元组的特殊语法规则。
     4、元组也可以使用'+'操作符进行拼接。
 '''
-#构建元组
+#创建元组
 tup1 = ()                   #0个元素
 tup2 = (20,)                #1个元素
 tup3 = (1, 2, 3, 4, 5, 6)   #多个元素
@@ -15,42 +15,63 @@ print(tup3)
 print('----------------------------------------')
 
 
-#访问元组元素
-print("tup3[0]: {}".format(tup3[0]))
-print("tup3[1]: {}".format(tup3[1]))
-print("tup3[0:2]: {}".format(tup3[0:2]))
-print("tup3[1:]: {}".format(tup3[1:]))
-print('----------------------------------------')
-
-
-# 元组运算符
-a = (1, 2, 3)
-b = (4, 5, 6, 7)
-c = a + b
-#遍历元素
-for x in c:
-    print(x, end=" ")
-print('\n----------------------------------------')
-
-
-# 元组内置函数
-print("len: {}".format(len((1, 2, 3))))
-print("max: {}".format(max((1, 2, 3))))
-print("min: {}".format(min(1, 2, 3)))
-print('----------------------------------------')
-
-
-# 将可迭代系列转换为元组
-list1 = [1, 2, 3, 4]
-tuple1 = tuple(list1)
-print(type(tuple1))
-print("tuple1: {}".format(tuple1))
-print('----------------------------------------')
-
-
 # 元组是不可以变类型
 # 给元组重新赋值后，元组指向的变量发生变化。
 tuple1 = (1, 2, 3)
 print("id(tuple1): {}".format(id(tuple1)))
 tuple1 = (2, 3, 4)
 print("id(tuple1): {}".format(id(tuple1)))
+print('----------------------------------------')
+
+
+#索引元组元素
+print("tup3[0]: {}".format(tup3[0]))
+print("tup3[1]: {}".format(tup3[1]))
+print('----------------------------------------')
+
+
+#子元组
+print("tup3[0:2]: {}".format(tup3[0:2]))
+print("tup3[1:]: {}".format(tup3[1:]))
+print('----------------------------------------')
+
+
+#元组拼接
+a = (1, 2, 3)
+b = (4, 5, 6, 7)
+print("a * 2: {}".format(a * 2))
+print("a + b: {}".format(a + b))
+print('----------------------------------------')
+
+
+#成员运算符
+if( 1 in a):
+    print(" 1 in a ...")
+if(0 not in a):
+    print(" 0 not in a ...")
+print('----------------------------------------')
+
+
+#遍历元素
+for x in a:
+    print(x, end=" ")
+print('\n----------------------------------------')
+
+
+# 将可迭代系列转换为元组
+string1 = "hello"
+list2 = [1, 2, 3, 4]
+tuple1 = tuple(string1)
+tuple2 = tuple(list2)
+print("tuple1: {}".format(tuple1))
+print("tuple2: {}".format(tuple2))
+print('----------------------------------------')
+
+
+# 操作元组的函数
+print("len: {}".format(len((1, 2, 3))))
+print("max: {}".format(max((1, 2, 3))))
+print("min: {}".format(min(1, 2, 3)))
+print('----------------------------------------')
+
+

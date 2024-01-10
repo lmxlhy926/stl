@@ -4,10 +4,12 @@
     可以使用大括号{}创建集合，元素之间用','分隔, 或者也可以使用set()函数创建集合
     创建一个空集合必须用set()而不是{}, 因为{}是用来创建一个空字典
 '''
+# 创建空集合
 setempty = set()
 print("空集合: setempty(): {}".format(setempty))
 print("--------------------------")
 
+# 创建集合并初始化
 set1 = {1, 2, 3}
 print("打印元素: set1: {}".format(set1))
 print("--------------------------")
@@ -17,12 +19,14 @@ set2 = set1.copy()
 print("id(set1): {}, id(set2): {}, set2: {}".format(id(set1), id(set2), set2))
 print("--------------------------")
 
+
 # 添加元素
 set1.add(0)                     #添加一个元素，如果添加的元素在集合中已存在，则不进行任何操作。
 set1.update((3, 4), (5, 6))     #参数可以是列表、元组、字典等
-set1.update([7, 8])
+set1.update([7, 8], (9, 10))
 print("添加元素: set1: {}".format(set1))
 print("--------------------------")
+
 
 # 移除元素
 set1.remove(1)      # 如果元素不存在，则会发生错误
@@ -36,10 +40,18 @@ set1.pop()
 print("随机删除: set1: {}".format(set1))
 print("--------------------------")
 
+
 # 成员测试
 if 5 in set1:
     print("成员测试: 5 in set1")
 print("--------------------------")
+
+
+#遍历
+for element in set1:
+    print("     element: {}".format(element))
+print("--------------------------")
+
 
 # 清空集合
 set1.clear()
@@ -49,11 +61,11 @@ print("--------------------------")
 
 """
 集合内置方法：
-    交集
-    并集
-    差集
-    并集 - 交集
-    子集合判断
+    交集:           intersection
+    并集:           union
+    差集:           difference
+    并集 - 交集:    symmetric_difference
+    子集合判断:     issubset、issuperset
 """
 # 交集：多个集合中共有的元素
 x = {1, 2, 3}
@@ -63,6 +75,7 @@ print("x.intersection(y, z): {}".format(x.intersection(y, z)))
 x.intersection_update(y, z)
 print("x: {}".format(x))
 print("--------------------------")
+
 
 # 并集：多个集合的元素的汇总，重复的元素只出现一次
 x = {1, 2, 3}
@@ -102,6 +115,5 @@ print("--------------------------")
 x = {1, 2, 3}
 y = {3, 4, 5}
 print("x.isdisjoint(y): {}".format(x.isdisjoint(y)))
-
 
 
