@@ -116,6 +116,20 @@ namespace container {
 
 int main(int argc, char* argv[]){
 
+    std::map<int, string> ismap;
+    ismap.insert(std::make_pair(1, "hello"));
+    ismap.insert(std::make_pair(2, "world"));
+    ismap.insert(std::make_pair(3, "python"));
+
+    int intMax = ismap.begin()->first;
+    for(auto& elem : ismap){
+        if(elem.first > intMax){
+            intMax = elem.first;
+        }
+    }
+    string s = ismap[intMax];
+    std::cout << s << std::endl;
+
 
     return 0;
 }

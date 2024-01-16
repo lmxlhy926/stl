@@ -30,20 +30,28 @@ import time
 #获取时间戳
 ticks = time.time()
 print("当前时间戳为：{}".format(ticks))
+print("------------------------")
 
-#时间戳转换为本地事件
+
+#时间戳转换为本地时间
 localtime = time.localtime(ticks)
 print("time.localtime(ticks): {}".format(time.localtime(ticks)))
 print("time.localtime(): {}".format(time.localtime()))
+print("------------------------")
+
 
 #转换为特定的时间格式
 print("time.asctime(localtime): {}".format(time.asctime(localtime)))
 print("time.asctime(): {}".format(time.asctime()))
 print("time.ctime(ticks): {}".format(time.ctime(ticks)))
 print("time.ctime(): {}".format(time.ctime()))
+print("------------------------")
+
 
 #指定的时间格式
-print(time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime()))
+print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+print("------------------------")
+
 
 system_time_start = time.perf_counter()
 process_time_start = time.process_time()
