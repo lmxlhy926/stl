@@ -8,39 +8,51 @@
 
 using namespace std;
 
+
 class student{
+    private:
+        int _a;
+        float _b;
     public:
-        //空参构造
+        // 空参构造
         student(){
             std::cout << "empty constructor student ..." << std::endl;
         }
 
-        //拷贝构造函数
+        // 构造函数
+        student(int a, float b) : _a(a), _b(b) {
+            std::cout << "_a: " << _a << std::endl;
+            std::cout << "_b: " << _b << std::endl;
+        }
+
+        // 拷贝构造函数
         student(const student& stu){
             std::cout << "copy constructor student ..." << std::endl;
         }
 
-        //move构造函数
+        // move构造函数
         student(student&& stu){
             std::cout << "move constructor student ..." << std::endl;
         }
 
+        // 析构函数
         ~student(){
             std::cout << "destructor student..." << std::endl;
         }
 
-        //拷贝赋值函数
+        // 拷贝赋值函数
         student& operator=(const student &stu){
             std::cout << "copy operator= student ..." << std::endl;
             return *this;
         }
 
-        //move赋值函数
+        // move赋值函数
         student& operator=(student&& stu){
             std::cout << "move operator= student..." << std::endl;
             return *this;
         }
 
+        // operator+
         student& operator+(const student &stu){
             std::cout << "operaotr+ student ..." << std::endl;
             return *this;
@@ -76,45 +88,84 @@ void student_test(){
 }
 
 
-class functional{
-    public:
-        void operator()(){
-            std::cout << "in functional : " << std::endl; 
-        }
-};
-
-void normalFunc(const string &str){
-    std::cout << "in normalFunc : " << str << std::endl;
+void printVector(const string&& hint, const std::vector<int>& vec){
+    std::cout << "-------" << hint << "------------" <<  std::endl;
+    for(auto& elem : vec){
+        std::cout << elem << " ";
+    }
+    std::cout << std::endl;
 }
-
-std::vector<std::thread> threadVec;
 
 
 int main(int argc, char* argv[]){
 
-   std::vector<int> vec;
-
-//创建
-
-
-//访问
+// 创建
+std::vector<int> vec({1, 2, 3});
+vec.reserve(20);
 
 
 //插入
+vec.insert(vec.end(), 5);
+vec.push_back(4);
+vec.emplace(vec.end(), 6);
+vec.emplace_back(7);
 
 
-//删除、清空
+printVector("vec", vec);
+
+
+//删除
+vec.erase(vec.begin());
+vec.pop_back();
+
+
+//元素访问
+std::cout << vec.front() << " " << vec.back() << " " << vec[0] << " " << vec.at(0) << std::endl;
 
 
 //遍历
+for(auto& elem : vec){
+    std::cout << "elem: " << elem << std::endl;
+}
+
+for(auto pos = vec.begin(); pos != vec.end();){
+    if(*pos % 2 == 0){
+        pos = vec.erase(pos);
+    }else{
+        ++pos;
+    }
+}
+
+printVector("vec", vec);
 
 
-//属性： 大小
+#if 0
+//属性
+std::cout << "size: " << vec.size() << std::endl;
+std::cout << "maxSize: " << vec.max_size() << std::endl;
+std::cout << "capacity: " << vec.capacity() << std::endl;
+std::cout << "empty(): " << vec.empty() << std::endl;
 
 
+
+vec.reserve(100);
+std::cout << "capacity: " << vec.capacity() << std::endl;
+
+vec.resize(20);
+std::cout << "capacity: " << vec.capacity() << std::endl;
+
+
+//赋值
+std::vector<int> vec2(vec);
+vec2.assign({1, 2, 3});
+vec2.assign(vec.begin(), vec.end());
+vec2.assign(2, 1);
+
+#endif
 
     return 0;
 }
+
 
 
 
