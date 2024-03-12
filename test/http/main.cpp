@@ -8,6 +8,9 @@
 
 using namespace std;
 
+void add(int a){
+    std::cout << "normal add : " << a << std::endl;
+}
 
 class student{
     private:
@@ -21,8 +24,8 @@ class student{
 
         // 构造函数
         student(int a, float b) : _a(a), _b(b) {
-            std::cout << "_a: " << _a << std::endl;
-            std::cout << "_b: " << _b << std::endl;
+            std::cout << "_a: " << _a << ", _b: " << b << std::endl;
+            std::cout << "constructor ..." << std::endl;
         }
 
         // 拷贝构造函数
@@ -56,6 +59,17 @@ class student{
         student& operator+(const student &stu){
             std::cout << "operaotr+ student ..." << std::endl;
             return *this;
+        }
+
+        // operator()
+        void operator()(){
+            std::cout << "opeator()() ... " << std::endl;
+        }
+
+        // add
+        void add(int a){
+            this->_a = 100;
+            std::cout << "add ..." << a << std::endl;
         }
 };
 
@@ -96,72 +110,80 @@ void printVector(const string&& hint, const std::vector<int>& vec){
     std::cout << std::endl;
 }
 
+void printVectorProperty(const string& hint, const std::vector<int>& vec){
+    std::cout << "----------" << hint << "----------" << std::endl;
+    std::cout << "capacity: " << vec.capacity() << std::endl;
+    std::cout << "size: " << vec.size() << std::endl;
+    std::cout << "empty: " << vec.empty() << std::endl;
+}
+
+
+void vector_practice(){
+    //创建
+    std::vector<student> vec;
+    vec.reserve(100);
+
+
+    //插入
+    student stu(1, 2);
+    vec.insert(vec.end(), student(3, 4));   //构造、move构造、析构
+    vec.insert(vec.end(), stu);  //拷贝构造
+    vec.emplace(vec.end(), 4, 5);   //构造
+
+
+    //删除
+    vec.erase(vec.end());   //析构
+    std::cout << "-----------" << std::endl;
+
+
+    std::vector<student> vec2 = vec;    //拷贝构造
+    std::cout << "-----------" << std::endl;
+
+    vec2.assign(vec.begin(), vec.end());
+}
+
+
+/**
+ * 普通函数：   指针
+ * 成员函数：   指针
+ * 
+ * 函数对象: 对象拷贝
+ * lamba: 对象拷贝
+ * 
+ * 
+ * 
+*/
+
+
+
 
 int main(int argc, char* argv[]){
 
-// 创建
-std::vector<int> vec({1, 2, 3});
-vec.reserve(20);
+/**
+ * 普通函数
+ * 成员函数
+ * 函数对象
+ * lamba
+ * 
+ * 
+*/
+    student stu;
 
+    void(*normalFunc)(int) = add;
+    normalFunc(100);
 
-//插入
-vec.insert(vec.end(), 5);
-vec.push_back(4);
-vec.emplace(vec.end(), 6);
-vec.emplace_back(7);
+    void(student::*memfunc)(int) = &student::add;
+    (stu.*memfunc)(200);
 
+    std::function<void(student&, int)> func = &student::add;
+    func(stu, 300);
 
-printVector("vec", vec);
+    std::function<void()> func1 = stu;
+    std::cout << "-------" << std::endl;
 
+    func1 = student(1, 2);
+    std::cout << "-----" << std::endl;
 
-//删除
-vec.erase(vec.begin());
-vec.pop_back();
-
-
-//元素访问
-std::cout << vec.front() << " " << vec.back() << " " << vec[0] << " " << vec.at(0) << std::endl;
-
-
-//遍历
-for(auto& elem : vec){
-    std::cout << "elem: " << elem << std::endl;
-}
-
-for(auto pos = vec.begin(); pos != vec.end();){
-    if(*pos % 2 == 0){
-        pos = vec.erase(pos);
-    }else{
-        ++pos;
-    }
-}
-
-printVector("vec", vec);
-
-
-#if 0
-//属性
-std::cout << "size: " << vec.size() << std::endl;
-std::cout << "maxSize: " << vec.max_size() << std::endl;
-std::cout << "capacity: " << vec.capacity() << std::endl;
-std::cout << "empty(): " << vec.empty() << std::endl;
-
-
-
-vec.reserve(100);
-std::cout << "capacity: " << vec.capacity() << std::endl;
-
-vec.resize(20);
-std::cout << "capacity: " << vec.capacity() << std::endl;
-
-
-//赋值
-std::vector<int> vec2(vec);
-vec2.assign({1, 2, 3});
-vec2.assign(vec.begin(), vec.end());
-vec2.assign(2, 1);
-
-#endif
 
     return 0;
 }
