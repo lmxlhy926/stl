@@ -12,6 +12,10 @@ void add(int a){
     std::cout << "normal add : " << a << std::endl;
 }
 
+void sub(int a){
+    std::cout << "normal sub : " << a << std::endl;
+}
+
 class student{
     private:
         int _a;
@@ -64,6 +68,10 @@ class student{
         // operator()
         void operator()(){
             std::cout << "opeator()() ... " << std::endl;
+        }
+
+        void operator()(int a){
+            std::cout << "operator(int a) : " << a << std::endl;
         }
 
         // add
@@ -155,34 +163,35 @@ void vector_practice(){
 */
 
 
-
-
 int main(int argc, char* argv[]){
-
 /**
  * 普通函数
  * 成员函数
  * 函数对象
  * lamba
- * 
- * 
 */
     student stu;
 
-    void(*normalFunc)(int) = add;
-    normalFunc(100);
+    // void(*singleFunc)(int);     //定义一个函数指针变量，指向普通函数名
+   
 
-    void(student::*memfunc)(int) = &student::add;
-    (stu.*memfunc)(200);
+    // void(student::*singleMemFunc)(int); //成员函数指针，指向成员函数
+    // singleMemFunc = &student::add;
+    // (stu.*singleMemFunc)(300);
 
-    std::function<void(student&, int)> func = &student::add;
-    func(stu, 300);
+    typedef void(*singleFuncType)(int);     //定义函数指针类型
+    singleFuncType singleFunc;  //定义函数指针变量
+    singleFunc = add;   //直接赋值函数名
+    singleFunc(100);
+    singleFunc = &sub;  //&函数名，c中2种方式都正确
+    singleFunc(200);
 
-    std::function<void()> func1 = stu;
-    std::cout << "-------" << std::endl;
+    using singleFuncTypeU = void(*)(int);
+    singleFuncTypeU singleFuncU = add;
+    singleFuncU(300);
+    
+   
 
-    func1 = student(1, 2);
-    std::cout << "-----" << std::endl;
 
 
     return 0;
