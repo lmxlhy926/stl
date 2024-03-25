@@ -8,14 +8,6 @@
 
 using namespace std;
 
-void add(int a){
-    std::cout << "normal add : " << a << std::endl;
-}
-
-void sub(int a){
-    std::cout << "normal sub : " << a << std::endl;
-}
-
 class student{
     private:
         int _a;
@@ -74,7 +66,7 @@ class student{
             std::cout << "operator(int a) : " << a << std::endl;
         }
 
-        // add
+        // 成员函数
         void add(int a){
             this->_a = 100;
             std::cout << "add ..." << a << std::endl;
@@ -97,100 +89,51 @@ public:
     }
 };
 
+void add(int a){
+    std::cout << "normal add : " << a << std::endl;
+}
+
+void sub(int a){
+    std::cout << "normal sub : " << a << std::endl;
+}
 
 
 void student_test(){
     student stu;                    //空参构造
     student stu2(stu);              //拷贝构造
     student stu3(std::move(stu));   //move构造
-    stu = stu3;                    //拷贝赋值
-    stu = std::move(stu3);         //move赋值
+    stu = stu3;                     //拷贝赋值
+    stu = std::move(stu3);          //move赋值
     std::cout << "----------" << std::endl;
     person p(stu);
 }
 
 
-void printVector(const string&& hint, const std::vector<int>& vec){
-    std::cout << "-------" << hint << "------------" <<  std::endl;
-    for(auto& elem : vec){
-        std::cout << elem << " ";
-    }
-    std::cout << std::endl;
-}
-
-void printVectorProperty(const string& hint, const std::vector<int>& vec){
-    std::cout << "----------" << hint << "----------" << std::endl;
-    std::cout << "capacity: " << vec.capacity() << std::endl;
-    std::cout << "size: " << vec.size() << std::endl;
-    std::cout << "empty: " << vec.empty() << std::endl;
-}
-
-
-void vector_practice(){
-    //创建
-    std::vector<student> vec;
-    vec.reserve(100);
-
-
-    //插入
-    student stu(1, 2);
-    vec.insert(vec.end(), student(3, 4));   //构造、move构造、析构
-    vec.insert(vec.end(), stu);  //拷贝构造
-    vec.emplace(vec.end(), 4, 5);   //构造
-
-
-    //删除
-    vec.erase(vec.end());   //析构
-    std::cout << "-----------" << std::endl;
-
-
-    std::vector<student> vec2 = vec;    //拷贝构造
-    std::cout << "-----------" << std::endl;
-
-    vec2.assign(vec.begin(), vec.end());
-}
-
-
-/**
- * 普通函数：   指针
- * 成员函数：   指针
- * 
- * 函数对象: 对象拷贝
- * lamba: 对象拷贝
- * 
- * 
- * 
-*/
-
 
 int main(int argc, char* argv[]){
-/**
- * 普通函数
- * 成员函数
- * 函数对象
- * lamba
+/*
+    普通函数
+    成员函数
+
+    函数对象
+    lamba
 */
     student stu;
 
-    // void(*singleFunc)(int);     //定义一个函数指针变量，指向普通函数名
-   
-
-    // void(student::*singleMemFunc)(int); //成员函数指针，指向成员函数
-    // singleMemFunc = &student::add;
-    // (stu.*singleMemFunc)(300);
-
-    typedef void(*singleFuncType)(int);     //定义函数指针类型
-    singleFuncType singleFunc;  //定义函数指针变量
-    singleFunc = add;   //直接赋值函数名
+    std::function<void(int)> singleFunc;
+    singleFunc = &add;
     singleFunc(100);
-    singleFunc = &sub;  //&函数名，c中2种方式都正确
-    singleFunc(200);
 
-    using singleFuncTypeU = void(*)(int);
-    singleFuncTypeU singleFuncU = add;
-    singleFuncU(300);
+    std::function<void(student&, int)> singleMemFunc;
+    singleMemFunc = &student::add;
+    singleMemFunc(stu, 200);
+
+    singleFunc = [stu](int a)mutable{
+        stu.add(a);
+    };
+    singleFunc(300);
     
-   
+
 
 
 
