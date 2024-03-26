@@ -5,6 +5,9 @@
 #include <vector>
 #include <functional>
 #include <thread>
+#include <list>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
@@ -27,11 +30,15 @@ class student{
         // 拷贝构造函数
         student(const student& stu){
             std::cout << "copy constructor student ..." << std::endl;
+            this->_a = stu._a;
+            this->_b = stu._b;
         }
 
         // move构造函数
         student(student&& stu){
             std::cout << "move constructor student ..." << std::endl;
+            this->_a = stu._a;
+            this->_b = stu._b;
         }
 
         // 析构函数
@@ -42,18 +49,24 @@ class student{
         // 拷贝赋值函数
         student& operator=(const student &stu){
             std::cout << "copy operator= student ..." << std::endl;
+            this->_a = stu._a;
+            this->_b = stu._b;
             return *this;
         }
 
         // move赋值函数
         student& operator=(student&& stu){
             std::cout << "move operator= student..." << std::endl;
+            this->_a = stu._a;
+            this->_b = stu._b;
             return *this;
         }
 
         // operator+
         student& operator+(const student &stu){
             std::cout << "operaotr+ student ..." << std::endl;
+            this->_a += stu._a;
+            this->_b += stu._b;
             return *this;
         }
 
@@ -63,13 +76,16 @@ class student{
         }
 
         void operator()(int a){
-            std::cout << "operator(int a) : " << a << std::endl;
+            std::cout << "operator(int a) : " << a  << " this->a: " << this->_a << std::endl;
         }
 
         // 成员函数
         void add(int a){
-            this->_a = 100;
-            std::cout << "add ..." << a << std::endl;
+            std::cout << "add: " << a << "  this->a: " << this->_a << std::endl;
+        }
+
+        void change(int value){
+            this->_a = value;
         }
 };
 
@@ -109,31 +125,66 @@ void student_test(){
 }
 
 
-
-int main(int argc, char* argv[]){
+void function_test(){
 /*
     普通函数
-    成员函数
+    成员函数：本质上都是函数地址
 
-    函数对象
-    lamba
+    函数对象： 拷贝
+    lamba     拷贝，但是可以在内部存放对象的引用
 */
-    student stu;
+    student stu(1, 2);
 
+    //普通函数，存放地址
     std::function<void(int)> singleFunc;
     singleFunc = &add;
     singleFunc(100);
 
+
+    //成员函数，存放地址
     std::function<void(student&, int)> singleMemFunc;
     singleMemFunc = &student::add;
     singleMemFunc(stu, 200);
+    singleMemFunc(stu, 201);
 
-    singleFunc = [stu](int a)mutable{
+    //传递引用
+    singleFunc = [&stu](int a)mutable{
         stu.add(a);
     };
-    singleFunc(300);
-    
 
+    //函数对象，本质是拷贝构造
+    singleFunc = stu;
+    std::cout << "--------" << std::endl;
+    singleFunc(300);
+}
+
+
+class ThreadPool{
+    private:
+        std::vector<thread> threads_;
+        std::list<std::function<void()>> jobs_;
+        std::mutex mutex_;
+        std::condition_variable cond_;
+};
+
+
+
+int main(int argc, char* argv[]){
+
+/**
+ *  std::function   std::thread
+ * 
+ *  复制一个对象、引用一个对象。对象的拷贝
+ * 
+ *  普通函数
+ *  成员函数
+ * 
+ *  函数对象
+ *  lamba
+ * 
+ *  thread不支持拷贝构造，但是支持move构造
+*/
+   
 
 
 
