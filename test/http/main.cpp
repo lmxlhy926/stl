@@ -158,94 +158,19 @@ void function_test(){
     singleFunc(300);
 }
 
-#if 0
-class ThreadPool : public TaskQueue {
-public:
-  explicit ThreadPool(size_t n, size_t mqr = 0)
-      : shutdown_(false), max_queued_requests_(mqr) {
-    while (n) {
-      threads_.emplace_back(worker(*this));
-      n--;
-    }
-  }
-
-  ThreadPool(const ThreadPool &) = delete;
-  ~ThreadPool() override = default;
-
-  bool enqueue(std::function<void()> fn) override {
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      if (max_queued_requests_ > 0 && jobs_.size() >= max_queued_requests_) {
-        return false;
-      }
-      jobs_.push_back(std::move(fn));
-    }
-
-    cond_.notify_one();
-    return true;
-  }
-
-  void shutdown() override {
-    // Stop all worker threads...
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      shutdown_ = true;
-    }
-
-    cond_.notify_all();
-
-    // Join...
-    for (auto &t : threads_) {
-      t.join();
-    }
-  }
-
-private:
-  struct worker {
-    explicit worker(ThreadPool &pool) : pool_(pool) {}
-
-    void operator()() {
-      for (;;) {
-        std::function<void()> fn;
-        {
-          std::unique_lock<std::mutex> lock(pool_.mutex_);
-
-          pool_.cond_.wait(
-              lock, [&] { return !pool_.jobs_.empty() || pool_.shutdown_; });
-
-          if (pool_.shutdown_ && pool_.jobs_.empty()) { break; }
-
-          fn = std::move(pool_.jobs_.front());
-          pool_.jobs_.pop_front();
-        }
-
-        assert(true == static_cast<bool>(fn));
-        fn();
-      }
-    }
-
-    ThreadPool &pool_;
-  };
-  friend struct worker;
-
-  std::vector<std::thread> threads_;
-  std::list<std::function<void()>> jobs_;
-
-  bool shutdown_;
-  size_t max_queued_requests_ = 0;
-
-  std::condition_variable cond_;
-  std::mutex mutex_;
-};
-
-#endif
 
 class ThreadPool{
 public:
-    ThreadPool() = default;
+    ThreadPool(int tasks) : shutdown_(false) {
+        while(tasks > 0){
+            threads_.emplace_back(worker(*this));
+            tasks--;
+        }
+    }
+
     ThreadPool(const ThreadPool&) = delete;
 
-    bool equeue(std::function<void()> fn){
+    bool enqueue(std::function<void()> fn){
         {
             std::lock_guard<std::mutex> lg(mutex_);
             jobs_.push_back(std::move(fn));
@@ -255,37 +180,47 @@ public:
     }
 
     void shutdown(){
+        {
+            std::lock_guard<std::mutex> lg(mutex_);
+            shutdown_ = true;
+        
+        }
+        cond_.notify_all();
 
+        for(auto& thread : threads_){
+            thread.join();
+        }
     }
 
 private:
     friend struct worker;
-
-    struct worker{
-        explicit worker(ThreadPool& pool) : pool_(pool){}
+    struct worker {
+        explicit worker(ThreadPool &pool) : pool_(pool){}
 
         void operator()(){
             for(;;){
                 std::function<void()> fn;
                 {
                     std::unique_lock<std::mutex> lg(pool_.mutex_);
-                    // pool_.cond_.wait(lg, )
+                    pool_.cond_.wait(lg, [&](){ return !pool_.jobs_.empty() || pool_.shutdown_;  });
+                    if(pool_.shutdown_ && pool_.jobs_.empty()){     //没有任务可执行时，
+                        break;
+                    }
+                    fn = std::move(pool_.jobs_.front());
+                    pool_.jobs_.pop_front();
                 }
-
+                fn();
             }
-
         }
-
 
         ThreadPool& pool_;
     };
-
-
 
     std::vector<thread> threads_;
     std::list<std::function<void()>> jobs_;
     std::mutex mutex_;
     std::condition_variable cond_;
+    bool shutdown_;
 };
 
 
@@ -306,7 +241,23 @@ int main(int argc, char* argv[]){
  *  thread不支持拷贝构造，但是支持move构造
 */
 
-    
+    ThreadPool threadPool(10);
+    threadPool.enqueue([](){
+        for(int i = 0; i < 10; ++i){
+            std::cout << "hello" << std::endl;
+        }
+    });
+
+    threadPool.enqueue([](){
+        for(int i = 0; i < 10; ++i){
+            std::cout << "world" << std::endl;
+        }
+    });
+
+    student stu;
+    threadPool.enqueue(stu);
+
+    threadPool.shutdown();
 
 
     return 0;
