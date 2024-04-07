@@ -159,106 +159,120 @@ void function_test(){
 }
 
 
+
+
+/**
+ * 线程池：
+ *      任务列表：存放线程任务、结束线程池时回收任务
+ *      函数列表：存放函数例程
+ *      锁、条件变量：多个线程从函数列表中取得任务执行，要加锁保护
+ *      线程数量：启动的线程数量
+ *      线程池结束标志：当线程执行完函数后，没有新的任务可以执行、线程退出
+ * 
+ * 支持的函数：
+ *      插入任务
+ *      结束线程池
+ * 
+ * 
+*/
+
 class ThreadPool{
-public:
-    ThreadPool(int tasks) : shutdown_(false) {
-        while(tasks > 0){
-            threads_.emplace_back(worker(*this));
-            tasks--;
-        }
-    }
+    private:
+        std::vector<std::thread> threads_;
+        std::list<std::function<void()>> jobs_;
+        std::mutex mutex_;
+        std::condition_variable cond_;
+        bool shutDown_ = false;
 
-    ThreadPool(const ThreadPool&) = delete;
-
-    bool enqueue(std::function<void()> fn){
-        {
-            std::lock_guard<std::mutex> lg(mutex_);
-            jobs_.push_back(std::move(fn));
-        }
-        cond_.notify_one();
-        return true;
-    }
-
-    void shutdown(){
-        {
-            std::lock_guard<std::mutex> lg(mutex_);
-            shutdown_ = true;
-        
-        }
-        cond_.notify_all();
-
-        for(auto& thread : threads_){
-            thread.join();
-        }
-    }
-
-private:
-    friend struct worker;
-    struct worker {
-        explicit worker(ThreadPool &pool) : pool_(pool){}
-
-        void operator()(){
-            for(;;){
-                std::function<void()> fn;
-                {
-                    std::unique_lock<std::mutex> lg(pool_.mutex_);
-                    pool_.cond_.wait(lg, [&](){ return !pool_.jobs_.empty() || pool_.shutdown_;  });
-                    if(pool_.shutdown_ && pool_.jobs_.empty()){     //没有任务可执行时，
-                        break;
-                    }
-                    fn = std::move(pool_.jobs_.front());
-                    pool_.jobs_.pop_front();
-                }
-                fn();
+    public:
+        explicit ThreadPool(int threadNum){
+            //创建线程列表：通过vector来存储thread。这里只能使用emplace_back()，因为thread不支持拷贝构造。
+            while(threadNum > 0){
+                threads_.emplace_back(Worker(*this));
+                threadNum--;
             }
         }
 
-        ThreadPool& pool_;
-    };
+        void enqueue(std::function<void()> fn){
+            {
+                std::lock_guard<std::mutex> lg(mutex_);
+                jobs_.push_back(std::move(fn));
+            }
+            cond_.notify_one();
+        }
 
-    std::vector<thread> threads_;
-    std::list<std::function<void()>> jobs_;
-    std::mutex mutex_;
-    std::condition_variable cond_;
-    bool shutdown_;
+        void shutDown(){    
+            {
+                std::lock_guard<std::mutex> lg(mutex_);
+                shutDown_ = true;
+            }
+            cond_.notify_all();
+
+            for(auto& thread : threads_){
+                thread.join();
+            }
+        }
+
+
+    private:
+        friend struct Worker;
+        struct Worker{
+            ThreadPool &threadPool_;
+
+            Worker(ThreadPool& threadPool) : threadPool_(threadPool){};
+
+            void operator()(){
+                std::function<void()> fn;
+                {
+                     //等待有任务、或者线程池结束
+                    std::unique_lock<std::mutex> ul(threadPool_.mutex_);
+                    threadPool_.cond_.wait(ul, [this](){
+                        return !this->threadPool_.jobs_.empty() || this->threadPool_.shutDown_;
+                    });
+                
+
+                    //如果没有任务、且线程池结束、结束任务执行
+                    if(threadPool_.jobs_.empty() && threadPool_.shutDown_)  return;
+
+                    //从任务列表取出任务
+                    fn = std::move(threadPool_.jobs_.front());
+
+                     //从任务列表删除任务
+                    threadPool_.jobs_.pop_front();
+                }
+
+                //执行任务
+                fn();
+            }
+        };
 };
 
 
 
-int main(int argc, char* argv[]){
 
 /**
- *  std::function   std::thread
+ * 普通函数
  * 
- *  复制一个对象、引用一个对象。对象的拷贝
+ * 成员函数
  * 
- *  普通函数
- *  成员函数
+ * 函数对象
  * 
- *  函数对象
- *  lamba
- * 
- *  thread不支持拷贝构造，但是支持move构造
+ * lambda
 */
 
+
+
+void normal(){
+    std::cout << "normal function ..." << std::endl;
+}
+
+
+int main(int argc, char* argv[]){
     ThreadPool threadPool(10);
-    threadPool.enqueue([](){
-        for(int i = 0; i < 10; ++i){
-            std::cout << "hello" << std::endl;
-        }
-    });
 
-    threadPool.enqueue([](){
-        for(int i = 0; i < 10; ++i){
-            std::cout << "world" << std::endl;
-        }
-    });
+    threadPool.enqueue(normal);
 
-    student stu;
-    threadPool.enqueue(stu);
-
-    threadPool.shutdown();
-
+    threadPool.shutDown();
 
     return 0;
 }
