@@ -159,69 +159,67 @@ void function_test(){
 }
 
 
+/**
+ * 线程池：
+ *      存储任务的容器
+ *      存储线程的容器
+ *              线程例程：此处采用的是函数对象。功能是当无任务时线程阻塞，当有任务加入时，通知线程执行任务
+ *      互斥和同步：
+ *              在线程例程中同步
+ *              
+ * 
+ *      线程池支持的成员函数：
+ *          * 插入任务
+ *          * 线程池结束
+ * 
+*/
+
+
 class ThreadPool{
+private:
+    std::list<std::function<void()>> jobs_;
+    std::vector<thread> threads_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    bool shutdown_;
+
 public:
-    ThreadPool(int tasks) : shutdown_(false) {
-        while(tasks > 0){
+    ThreadPool(unsigned int jobsCount) : shutdown_(false){
+        for(unsigned int i = 0; i < jobsCount; ++i){
             threads_.emplace_back(worker(*this));
-            tasks--;
         }
     }
 
-    ThreadPool(const ThreadPool&) = delete;
 
-    bool enqueue(std::function<void()> fn){
-        {
-            std::lock_guard<std::mutex> lg(mutex_);
-            jobs_.push_back(std::move(fn));
-        }
-        cond_.notify_one();
-        return true;
-    }
-
-    void shutdown(){
-        {
-            std::lock_guard<std::mutex> lg(mutex_);
-            shutdown_ = true;
-        
-        }
-        cond_.notify_all();
-
-        for(auto& thread : threads_){
-            thread.join();
-        }
-    }
 
 private:
-    friend struct worker;
-    struct worker {
-        explicit worker(ThreadPool &pool) : pool_(pool){}
+    friend class worker;
+    struct worker{
+    private:
+        ThreadPool &threadPool_;
+
+    public:
+        explicit worker(ThreadPool& threadPool) : threadPool_(threadPool){}
 
         void operator()(){
-            for(;;){
+            while(true){
                 std::function<void()> fn;
                 {
-                    std::unique_lock<std::mutex> lg(pool_.mutex_);
-                    pool_.cond_.wait(lg, [&](){ return !pool_.jobs_.empty() || pool_.shutdown_;  });
-                    if(pool_.shutdown_ && pool_.jobs_.empty()){     //没有任务可执行时，
-                        break;
-                    }
-                    fn = std::move(pool_.jobs_.front());
-                    pool_.jobs_.pop_front();
+                    std::unique_lock<std::mutex> ul(threadPool_.mutex_);
+                    threadPool_.cond_.wait(ul, [this](){
+                        return !threadPool_.jobs_.empty() || threadPool_.shutdown_;
+                    });
+                    if(threadPool_.jobs_.empty() && threadPool_.shutdown_)  break;
+                    fn = std::move(threadPool_.jobs_.back());
+                    threadPool_.jobs_.pop_back();
                 }
                 fn();
             }
         }
-
-        ThreadPool& pool_;
     };
-
-    std::vector<thread> threads_;
-    std::list<std::function<void()>> jobs_;
-    std::mutex mutex_;
-    std::condition_variable cond_;
-    bool shutdown_;
 };
+
+
 
 
 
@@ -241,24 +239,7 @@ int main(int argc, char* argv[]){
  *  thread不支持拷贝构造，但是支持move构造
 */
 
-    ThreadPool threadPool(10);
-    threadPool.enqueue([](){
-        for(int i = 0; i < 10; ++i){
-            std::cout << "hello" << std::endl;
-        }
-    });
-
-    threadPool.enqueue([](){
-        for(int i = 0; i < 10; ++i){
-            std::cout << "world" << std::endl;
-        }
-    });
-
-    student stu;
-    threadPool.enqueue(stu);
-
-    threadPool.shutdown();
-
+    
 
     return 0;
 }
