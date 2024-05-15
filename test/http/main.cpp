@@ -213,6 +213,8 @@ private:
                     fn = std::move(threadPool_.jobs_.back());
                     threadPool_.jobs_.pop_back();
                 }
+
+                //执行任务
                 fn();
             }
         }
@@ -226,17 +228,13 @@ private:
 int main(int argc, char* argv[]){
 
 /**
- *  std::function   std::thread
+ * 普通函数
  * 
- *  复制一个对象、引用一个对象。对象的拷贝
+ * 成员函数
  * 
- *  普通函数
- *  成员函数
+ * 函数对象
  * 
- *  函数对象
- *  lamba
- * 
- *  thread不支持拷贝构造，但是支持move构造
+ * lambda
 */
 
     
