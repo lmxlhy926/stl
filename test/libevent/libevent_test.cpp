@@ -313,7 +313,7 @@ void event_base_loopexit_free_test(){
 #define MAXBYTES 1024
 
 //标准输入有数据到达、将数据写到bufferevent
-void* cmd_msg_cb(evutil_socket_t stdinfd, short what, void *arg){
+void cmd_msg_cb(evutil_socket_t stdinfd, short what, void *arg){
     struct bufferevent *bev = reinterpret_cast<struct bufferevent*>(arg);
     puts("get msg from stdin: ");
     char buffer[MAXBYTES];
@@ -328,6 +328,68 @@ void read_buf_cb(struct bufferevent *bev, void *cbarg){
     ssize_t readNum = bufferevent_read(bev, buf, sizeof(buf));
     write(STDOUT_FILENO, buf, readNum);
 }
+
+//事件回调函数
+void event_cb(struct bufferevent *bev, short event, void *cbarg){
+    struct event_base *base = reinterpret_cast<struct event_base *>(cbarg);
+    if(event & BEV_EVENT_READING)
+        puts("BEV_EVENT_READING");
+
+    if(event & BEV_EVENT_WRITING)
+        puts("BEV_EVENT_WRITING");
+
+    if(event & BEV_EVENT_ERROR)
+        puts("BEV_EVENT_ERROR"); 
+
+    if(event & BEV_EVENT_EOF){
+        puts("BEV_EVENT_EOF");
+        event_base_loopexit(base, nullptr);
+    }
+}
+
+
+/**
+ * 注册event、阻塞等待event发生。
+*/
+void main_loop(int clientfd){
+    struct event_base *base;
+    struct bufferevent *bev;
+    struct event *ev_stdin;
+
+    //创建event_base
+    base = event_base_new();
+
+    //创建并使能buffer_event
+    bev = bufferevent_socket_new(base, clientfd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+    //设置回调函数
+    bufferevent_setcb(bev, read_buf_cb, nullptr, event_cb, (void *)base);
+    //使能事件
+    bufferevent_enable(bev, EV_READ);
+
+    //监测标准输入
+    ev_stdin = event_new(base, STDIN_FILENO, EV_READ | EV_PERSIST, cmd_msg_cb, (void *)bev);
+    event_add(ev_stdin, nullptr);
+
+    //阻塞执行
+    event_base_dispatch(base);
+
+    //释放资源
+    bufferevent_free(bev);
+    event_free(ev_stdin);
+    event_base_free(base);
+    puts("exit now ...");
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
