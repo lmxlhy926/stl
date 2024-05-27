@@ -79,6 +79,7 @@
  * 建立父进程到子进程的管道
  * 子进程接收到父进程的数据后，将数据输出到标准输出
  * 注：
+ *      管道对象只有一个
  *      fork后有2个文件描述符指向管道的读端，有2个文件描述符指向管道的写端
 */
 void pipe1(){
@@ -286,7 +287,9 @@ void fifo(int argc, char* argv[]){
 
 int main(int argc, char* argv[]){
 
-    fifo(argc, argv);
+    // fifo(argc, argv);
+
+    pipe3(argc, argv);
 
     return 0;
 }

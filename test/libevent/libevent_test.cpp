@@ -1,14 +1,16 @@
 
-#include <event2/event.h>
-#include <event2/bufferevent.h>
-#include <cstdio>
-#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 #include <iostream>
-#include <unistd.h>
+#include <cstdio>
 #include <string>
 #include <thread>
-using namespace std;
+#include <unistd.h>
+#include <event2/event.h>
+#include <event2/bufferevent.h>
 
+using namespace std;
 
 /**
  * select:  EV_FEATURE_FDS
@@ -74,16 +76,15 @@ void printEventProperty(struct event* event){
 
     printf("event_base pointer: %p\n", event_base);
     printf("fd: %d\n", fd);
-    printf("trigger events: %s %s %s %s %s %s\n", (triggerEvents & EV_TIMEOUT) ? "EV_TIMEOUT" : "",
-                                                (triggerEvents & EV_READ) ? "EV_READ" : "",
-                                                (triggerEvents & EV_WRITE) ? "EV_WRITE" : "",
-                                                (triggerEvents & EV_SIGNAL) ? "EV_SIGNAL" : "",
-                                                (triggerEvents & EV_PERSIST) ? "EV_PERSIST" : "",
-                                                (triggerEvents & EV_ET) ? "EV_ET" : "");
+    printf("trigger events: %s %s %s %s %s %s\n",   (triggerEvents & EV_TIMEOUT) ? "EV_TIMEOUT" : "",
+                                                    (triggerEvents & EV_READ) ? "EV_READ" : "",
+                                                    (triggerEvents & EV_WRITE) ? "EV_WRITE" : "",
+                                                    (triggerEvents & EV_SIGNAL) ? "EV_SIGNAL" : "",
+                                                    (triggerEvents & EV_PERSIST) ? "EV_PERSIST" : "",
+                                                    (triggerEvents & EV_ET) ? "EV_ET" : "");
     printf("callback pointer: %p\n", fn);
     printf("callback args: %p\n", args);
     printf("priority: %d\n", priority);
-
 }
 
 /**
@@ -312,7 +313,9 @@ void event_base_loopexit_free_test(){
 
 #define MAXBYTES 1024
 
-//标准输入有数据到达、将数据写到bufferevent
+/**
+ * 监听标准输入，标准输入有数据后，将数据写入到bufferevent
+*/
 void cmd_msg_cb(evutil_socket_t stdinfd, short what, void *arg){
     struct bufferevent *bev = reinterpret_cast<struct bufferevent*>(arg);
     puts("get msg from stdin: ");
@@ -322,14 +325,20 @@ void cmd_msg_cb(evutil_socket_t stdinfd, short what, void *arg){
 }
 
 
-//bufferevent的读取回调函数，缓冲区中有足够的数据后，调用回调函数进行读取
+/**
+ * 当监测到bufferevent从socket读取数据到缓冲区后，会调用读取回调函数。
+ * 此函数从缓冲区中读取数据，然后将读取内容输出到标准输出
+*/
 void read_buf_cb(struct bufferevent *bev, void *cbarg){
     char buf[MAXBYTES];
     ssize_t readNum = bufferevent_read(bev, buf, sizeof(buf));
     write(STDOUT_FILENO, buf, readNum);
 }
 
-//事件回调函数
+
+/**
+ * bufferevent监测到某些事件发生后，会调用此回调函数
+*/
 void event_cb(struct bufferevent *bev, short event, void *cbarg){
     struct event_base *base = reinterpret_cast<struct event_base *>(cbarg);
     if(event & BEV_EVENT_READING)
@@ -340,6 +349,13 @@ void event_cb(struct bufferevent *bev, short event, void *cbarg){
 
     if(event & BEV_EVENT_ERROR)
         puts("BEV_EVENT_ERROR"); 
+    
+    if(event & BEV_EVENT_TIMEOUT){
+        puts("BEV_EVENT_TIMEOUT");
+    }
+        
+    if(event & BEV_EVENT_CONNECTED)
+        puts("BEV_EVENT_CONNECTED");
 
     if(event & BEV_EVENT_EOF){
         puts("BEV_EVENT_EOF");
@@ -351,19 +367,44 @@ void event_cb(struct bufferevent *bev, short event, void *cbarg){
 /**
  * 注册event、阻塞等待event发生。
 */
-void main_loop(int clientfd){
+#define SERVER_IP       "192.168.43.240"
+#define SERVER_PORT     60000
+void main_loop(){
     struct event_base *base;
-    struct bufferevent *bev;
-    struct event *ev_stdin;
+    struct bufferevent *bev;    //bufferevent事件
+    struct event *ev_stdin;     //普通的event事件
 
     //创建event_base
     base = event_base_new();
 
     //创建并使能buffer_event
+    int clientfd = socket(AF_INET, SOCK_STREAM, 0);
     bev = bufferevent_socket_new(base, clientfd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
     //设置回调函数
     bufferevent_setcb(bev, read_buf_cb, nullptr, event_cb, (void *)base);
-    //使能事件
+    /**
+     * 设置读写超时
+     *      只有在读取或者写入的时候才会计算超时。也就是说，如果bufferevent的读取被禁止，则读取超时被禁止。
+     *      类似的如果写入被禁止，或者没有数据写入，则写入超时被禁止。
+     *      
+     *      读取或者写入超时发生时，相应的读取或者写入操作被禁止，然后超时事件回调被调用。
+     *      bufferevent的读取或者写入操作被禁止时
+     * 
+    */
+    // const struct timeval timeout = {5, 0};
+    // bufferevent_set_timeouts(bev, &timeout, &timeout);
+
+    //建立连接
+    struct sockaddr_in serveraddr;
+    serveraddr.sin_family = AF_INET;
+    inet_pton(AF_INET, SERVER_IP, &serveraddr.sin_addr.s_addr);
+    serveraddr.sin_port = htons(SERVER_PORT);
+    int connectRet = bufferevent_socket_connect(bev, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+    if(connectRet == 0){
+        printf("connect successful ...\n");
+    }
+
+    //使能读取
     bufferevent_enable(bev, EV_READ);
 
     //监测标准输入
@@ -373,7 +414,7 @@ void main_loop(int clientfd){
     //阻塞执行
     event_base_dispatch(base);
 
-    //释放资源
+    //释放资源：释放bufferevent、event、event_base
     bufferevent_free(bev);
     event_free(ev_stdin);
     event_base_free(base);
@@ -381,21 +422,9 @@ void main_loop(int clientfd){
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 int main(int argc, char* argv[]){
    
-   event_base_loopexit_free_test();
+    main_loop();
 
 
     return 0;
