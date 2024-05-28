@@ -1,6 +1,4 @@
 
-
-
 /**
  * 常用的进程间通信方式
  *      管道（使用最简单）
@@ -25,13 +23,13 @@
  *      3.规定数据从管道的写端流入管道，从读端流出。
  *
  * 局限性
- *      数据自己读不能自己写
- *      数据一旦被读走，便不再在管道中存在，不可反复读取
  *      采用的是半双工通信方式，一条管道的数据只能有一个流动方向
+ *      数据自己读不能自己写
+ *      数据一旦被读走，便不再在管道中存在，不可反复读取      
  *      只能在有公共祖先的进程间使用管道
  * 
  * int pipe(int pipefd[2]); 成功:0； 失败:-1； 设置errno.
- *  函数调用成功后返回r/w两个文件描述符。无需open，但是需要手动close。fd[0] --> read; fd[1] --> write.
+ *      函数调用成功后返回r/w两个文件描述符。无需open，但是需要手动close。fd[0] --> read; fd[1] --> write.
  *
  * 使用方式：
  *      1. 父进程调用pipe函数创建管道，得到2个文件描述符fd[0],fd[1],指向管道的读端和写端。
@@ -42,10 +40,10 @@
  *      读管道：
  *          1.管道中有数据, read返回实际读到的字节数。
  *          2.管道中无数据：
- *              .管道写端被全部关闭, read返回0(读到文件结尾)
+ *              .管道写端被全部关闭, read返回0(读到文件结尾)*
  *              .写端没有全部关闭, read阻塞等待
 *        写管道：
- *          1.管道读端全部被关闭, 进程异常终止(也可捕捉SIGPIPE信号，使进程不终止)
+ *          1.管道读端全部被关闭, 进程异常终止(也可捕捉SIGPIPE信号，使进程不终止)*
  *          2.管道读端没有全部关闭：
  *              管道未满, write将数据写入，并返回实际写入的字节数
  *              管道已满, write阻塞。
@@ -55,6 +53,8 @@
  *      （1）当读一个写端已被关闭的管道时，在所有数据都被读取后，read返回0，表示文件结束。  
  *      （2）如果写一个读端已被关闭的管道，则产生信号SIGPIPE。如果忽略该信号或者捕捉该信号并从其处理程序返回，
  * 则write返回-1，errno设置为EPIPE。
+ * 
+ * 多进程写管道，避免交叉写入的方法:
  *      在写管道(FIFO)时，常量PIPE_BUF规定了内核的管道缓冲区大小。如果对管道调用write，而且要求写的字节数小于
  * 等于PIPE_BUF，则此操作不会与其它进程对同一管道(或FIFO)的write操作交叉进行。但是，若有多个进程同时写一个管道
  * 或FIFO，而且我们要求写的字节数超过PIPE_BUF，那么我们所写的数据可能会与其它进程所写的数据相互交叉。
@@ -74,6 +74,26 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+
+void print_process_exit_status(int status){
+    if(WIFEXITED(status)){  //正常退出，打印退出状态
+        printf("normal termination, exit status = %d\n", WEXITSTATUS(status));
+
+    }else if(WIFSIGNALED(status)){  //异常退出，打印造成退出的信号
+        printf("abnormal termination, signal<%s> %s\n", strsignal(WTERMSIG(status)),
+        #ifdef WCOREDUMP
+            WCOREDUMP(status) ? "(core file generated)" : "");
+        #else
+            "");
+        #endif
+
+    }else if(WIFSTOPPED(status)){   //进程暂停，打印造成暂停的信号
+        printf("child stopped, signal<> = %s\n", strsignal(WSTOPSIG(status)));
+
+    }else if(WIFCONTINUED(status)){
+        printf("child continued....\n");
+    }
+}
 
 /**
  * 建立父进程到子进程的管道
@@ -98,15 +118,24 @@ void pipe1(){
     if((pid = fork()) < 0){
         perror("fork err");
         exit(-1);
+
+    }else if(pid == 0){
+        close(fd[0]);   //关闭读
+        write(fd[1], "helloworld\n", 11);   //写管道：通过unix接口
+        dprintf(fd[1], "%d:%d\n", 1, 2);    //写管道：通过标准库
+        exit(0xffe);
+
     }else if(pid > 0){
-        close(fd[0]);
-        write(fd[1], "helloworld\n", 11);   //写管道
-        dprintf(fd[1], "%d:%d\n", 1, 2);
-    }else{
-        close(fd[1]);
+        close(fd[1]);   //关闭写
+        sleep(1);
         int n = read(fd[0], line, 1024);    //读管道
         write(STDOUT_FILENO, line, n);
     }
+
+    //回收子进程
+    int status;
+    waitpid(pid, &status, 0);
+    print_process_exit_status(status);
     exit(0);
 }
 
@@ -115,17 +144,15 @@ void pipe1(){
  * execl执行程序前，指定程序的标准输入、标准输出、标准错误
 */
 void pipe2(int argc, char* argv[]){
-    if(argc != 2){
-        printf("usage: a.out <pathname>\n");
-        exit(-1);
-    }
+    //创建管道
     int fd[2];
-    pid_t pid;
-    if(pipe(fd) < 0){   //管道创建失败
+    if(pipe(fd) < 0){   
         perror("pipe error");
         exit(-1);
     }
 
+    //fork进程
+    pid_t pid;
     if((pid = fork()) < 0){
         perror("fork error");
         exit(-1);
@@ -136,6 +163,8 @@ void pipe2(int argc, char* argv[]){
          * 将管道的读端指向的文件表复制到标准输入，此时标准输入和管道读端描述符都指向同一个文件表
          * 关闭管道读端描述符对管道文件表的索引，此时只有标准输入描述符索引管道文件表
         */
+
+        //修改标准输入为管道的读端
         close(fd[1]);   
         if(fd[0] != STDIN_FILENO){
             if(dup2(fd[0], STDIN_FILENO) != STDIN_FILENO){
@@ -144,42 +173,47 @@ void pipe2(int argc, char* argv[]){
             }
             close(fd[0]);
         }
-        
+
+        //修改标准输出为文件
+        int fdout = open("./output", O_CREAT | O_WRONLY | O_TRUNC, 0666);
+        dup2(fdout, STDOUT_FILENO);
+        close(fdout);
+
         /**
          * 执行分页进程
          * exec函数族继承当前进程的控制终端，即继承了当前进程的标准输入，即从管道读数据。
         */
-        if(execlp("less", "less", nullptr) < 0){
+        if(execlp("cat", "cat", nullptr) < 0){
             perror("execlp error");
             exit(-1);
         }
     }
 
-    close(fd[0]);   //关闭管道读端
-    FILE *fp;
-    if((fp = fopen(argv[1], "r")) == nullptr){  //打开要读取的文件
-        printf("cant no open %s\n", argv[1]);
+    close(fd[0]);  //关闭管道读端
+    FILE *fdout = fdopen(fd[1], "w");
+    if(fdout == nullptr){
+        printf("fdopen error ....\n");
         exit(-1);
     }
 
-    FILE * fdw = fdopen(fd[1], "w");    
     char line[1024]{};
-    while(fgets(line, 1024, fp) != nullptr){
-        fputs(line, fdw);
+    while(fgets(line, 1024, stdin) != nullptr){
+        fputs(line, fdout);
     }
 
-    if(ferror(fp)){
+    if(ferror(stdin)){
         perror("fgets error");
         exit(-1);
-    }else if(feof(fp)){
+
+    }else if(feof(stdin)){  //读到文件末尾
         printf("fgets end normal ... \n");
     }
-    fclose(fdw);   //关闭写端。这样管道的读端可以知道写端已结束
+    fclose(fdout);   //关闭写端。这样管道的读端可以知道写端已结束
 
-    if(waitpid(pid, nullptr, 0) < 0){
-        perror("waitpid error");
-        exit(-1);
-    }
+    printf("child pid: %d\n", pid);
+    int status;
+    waitpid(pid, &status, 0);
+    print_process_exit_status(status);
     exit(0);
 }
 
@@ -289,7 +323,11 @@ int main(int argc, char* argv[]){
 
     // fifo(argc, argv);
 
-    pipe3(argc, argv);
+    // pipe3(argc, argv);
+
+    // pipe1();
+
+    pipe2(argc, argv);
 
     return 0;
 }
