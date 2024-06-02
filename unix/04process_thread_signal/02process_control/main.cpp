@@ -230,7 +230,7 @@ void ioFlush(){
  * 获取进程终止状态：函数wait和waitpid
  *      当一个进程正常或异常终止时，内核就向其父进程发送SIGCHLD信号。因为子进程终止是个异步事件，所以这种信号
  *      也是内核向父进程发的异步通知。父进程可以选择忽略该信号，或者提供一个该信号发生时即被调用执行的函数，即
- *      信号处理程序。对于这种信号系统默认动作时忽略它。
+ *      信号处理程序。对于这种信号系统默认动作是忽略它。
  * 
  *      调用wait或waitpid的进程可能会发生什么：
  *          * 如果其所有子进程都还在运行，则阻塞。
@@ -260,7 +260,7 @@ void ioFlush(){
  *              -1：回收任意子进程（相当于 wait）
  *          status:
  *               接收进程返回状态
- *          options: 或者是0，或者是以下常量 按位或 运算的结果。
+ *          options: 或者是0，或者是以下常量按位或运算的结果。
  *              0:          阻塞等待
  *              WNOHANG:    不阻塞
  *              WUNTRACED:  进程处于停止状态，并且其状态自停止以来还未报告过，则返回其状态。
@@ -286,9 +286,9 @@ void pr_exit(int status){
         printf("normal termination, exit status = %d\n", WEXITSTATUS(status));
 
     }else if(WIFSIGNALED(status)){  //异常退出，打印造成退出的信号
-        printf("abnormal termination, signal<%s>%s\n", strsignal(WTERMSIG(status)),
+        printf("abnormal termination, signal<%s> %s\n", strsignal(WTERMSIG(status)),
         #ifdef WCOREDUMP
-            WCOREDUMP(status) ? " (core file generated)" : "");
+            WCOREDUMP(status) ? "(core file generated)" : "");
         #else
             "");
         #endif
