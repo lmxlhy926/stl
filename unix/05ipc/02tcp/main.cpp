@@ -16,6 +16,8 @@ using namespace std;
 
 
 /**
+ * 套接字地址-->ip、端口号
+ * 
  * getnameinfo：套接字地址 ---> 主机名、主机地址、服务名、服务端口号
 */
 string getNameInfo(struct sockaddr* ai_addr, socklen_t addrlen){
@@ -26,7 +28,10 @@ string getNameInfo(struct sockaddr* ai_addr, socklen_t addrlen){
 }
 
 
+
 /**
+ *  ip、端口号--->套接字地址
+ * 
  *  getaddrinfo：主机名、主机地址、服务名、服务端口号的字符串表示---> 套接字地址
  *  host默认是域名或者ip，service默认是服务名或者端口号
  *  通过AI_NUMERICHOST, 或AI_NUMERICSERV可将host限制为点分十进制形式的IP，将service限制为数字端口号
@@ -35,7 +40,7 @@ string getNameInfo(struct sockaddr* ai_addr, socklen_t addrlen){
  *      2. 点分十进制字符串地址转换为网络字节序地址
  *      3. 字符串端口号--> 主机字节序端口号--> 网络字节序端口号
 */
-void domain2decimal(const string& host, const string& service){
+void getAddressInfo(const string& host, const string& service){
     //填充过滤属性
     struct addrinfo hints;
     memset(&hints, 0, sizeof hints);
@@ -59,19 +64,24 @@ void domain2decimal(const string& host, const string& service){
 }
 
 
+
 /*
  *  连接服务器，发送消息，接收一次返回并输出到标准输出中
  */
-void simpleTcpClient(const string& ip, uint16_t port, const string& writeMesage){
-    //服务器地址
-    struct sockaddr_in servaddr{};      //IPV4地址结构
+void basicTcpClient(const string& serverAddress, uint16_t servicePort, const string& writeMesage){
+    //设置服务器地址
+    struct sockaddr_in servaddr{};      
     memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;      //指定为IPV4地址族
-    inet_pton(AF_INET, ip.c_str(), &servaddr.sin_addr.s_addr);  //点分十进制ip地址--->网络字节序二进制地址
-    servaddr.sin_port = htons(port);    //主机字节序端口号--->网络字节序端口号
+    servaddr.sin_family = AF_INET;  //指定为IPV4地址族
+    inet_pton(AF_INET, serverAddress.c_str(), &servaddr.sin_addr.s_addr);  //点分十进制ip地址--->网络字节序二进制地址
+    servaddr.sin_port = htons(servicePort);    //主机字节序端口号--->网络字节序端口号
 
     //创建套接字描述符
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockfd < 0){
+        perror("socket error");
+        exit(-1);
+    }
     std::cout << "sockfd: " << sockfd << std::endl;
 
     //阻塞，一直到连接成功建立或者发生错误
@@ -82,12 +92,14 @@ void simpleTcpClient(const string& ip, uint16_t port, const string& writeMesage)
         char buf[1024];
         ssize_t nRead = read(sockfd, buf,  1024);
         if(nRead <= 0){
+            perror("read error ...");
             close(sockfd);
             return;
         }
-        std::cout << "Response from server: ";
-        std::cout.flush();
+        std::cout << "Response from server: " << std::flush;
         write(STDOUT_FILENO, buf, nRead);
+    }else{
+        perror("connect error.....");
     }
 
     close(sockfd);
@@ -566,7 +578,8 @@ void tcpServer_epoll(uint16_t port){
 
 int main(int argc, char* argv[]){
 
-    tcpServer_epoll(9000);
+    basicTcpClient("172.26.16.1", 49999, "hello world");
+
     return 0;
 }
 
