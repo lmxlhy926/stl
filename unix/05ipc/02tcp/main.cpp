@@ -77,20 +77,23 @@ void basicTcpClient(const string& serverAddress, uint16_t servicePort, const str
     servaddr.sin_port = htons(servicePort);    //主机字节序端口号--->网络字节序端口号
 
     //创建套接字描述符
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd < 0){
+    int sockfd, conRet;
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("socket error");
         exit(-1);
     }
     std::cout << "sockfd: " << sockfd << std::endl;
 
-    //阻塞，一直到连接成功建立或者发生错误
-    int conRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr));
-    if(conRet == 0){    //成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
+    /**
+     *  阻塞，一直到连接成功建立或者发生错误
+     *  成功建立连接，sockfd成为完整打开的文件描述符，可进行读写
+    */
+    if((conRet = connect(sockfd, reinterpret_cast<const struct sockaddr* >(&servaddr), sizeof(servaddr))) == 0){ 
+        //向服务器写数据
         write(sockfd, writeMesage.c_str(), writeMesage.size());
 
         char buf[1024];
-        ssize_t nRead = read(sockfd, buf,  1024);
+        ssize_t nRead = read(sockfd, buf,  1024);   //从服务器读取数据
         if(nRead <= 0){
             perror("read error ...");
             close(sockfd);
@@ -102,16 +105,16 @@ void basicTcpClient(const string& serverAddress, uint16_t servicePort, const str
         perror("connect error.....");
     }
 
-    close(sockfd);
+    close(sockfd);  //和服务器断开连接
 }
 
 
 void simpleTcpServer(uint16_t port){
     int listenfd, ret;
+    int optval = 1;
     
     //创建描述符,设置地址可被重复利用
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    int optval = 1;
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)(&optval), sizeof(int));   //设置地址重用
 
     //服务器地址
@@ -123,12 +126,13 @@ void simpleTcpServer(uint16_t port){
 
     //描述符绑定地址
     if(bind(listenfd, reinterpret_cast<const sockaddr *>(&servaddr), sizeof(servaddr)) == -1){
-        printf("bind failed\n");
+        perror("bind failed ...");
         return;
     }
+
     //将主动套接字转换为监听套接字，声明该套接字可以接受来自客户端的连接请求
     if(listen(listenfd, 20) == -1){
-        printf("listen failed\n");
+        perror("listen failed ...");
         return;
     }
 
@@ -140,7 +144,7 @@ void simpleTcpServer(uint16_t port){
          */
         struct sockaddr_in cliaddr{};
         socklen_t cliaddr_len = sizeof(cliaddr);
-        int connfd = accept(listenfd, reinterpret_cast<sockaddr*>(&cliaddr), &cliaddr_len);
+        int connfd = accept(listenfd, reinterpret_cast<sockaddr*>(&cliaddr), &cliaddr_len); //返回和客户端建立的连接描述符
         if(connfd == -1){
             printf("accept failed\n");
             continue;
@@ -148,10 +152,12 @@ void simpleTcpServer(uint16_t port){
 
         char receiveBuf[1024], ipBuf[INET_ADDRSTRLEN];
         ssize_t readCount = read(connfd, receiveBuf, 1024);
-        if(readCount <= 0){
+        if(readCount <= 0){ //读取错误或者对方关闭
+            perror("read error");
             close(connfd);
             continue;
         }
+
         std::cout << "received from " << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ipBuf, sizeof(ipBuf))
                   << " at port " << ntohs(cliaddr.sin_port) << std::endl;
 
@@ -578,7 +584,9 @@ void tcpServer_epoll(uint16_t port){
 
 int main(int argc, char* argv[]){
 
-    basicTcpClient("172.26.16.1", 49999, "hello world");
+    // basicTcpClient("172.26.16.1", 49999, "hello world");
+
+    simpleTcpServer(59999);
 
     return 0;
 }
