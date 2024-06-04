@@ -233,13 +233,8 @@ void pipe2(int argc, char* argv[]){
  * 
 */
 void pipe3(int argc, char* argv[]){
-    char line[1024];
-    FILE *fpin, *fpout;
-    if(argc != 2){
-        printf("usage: a.out <pathname>");
-        exit(-1);
-    }
-    if((fpout = popen("less", "w")) == nullptr){    //创建通信标准流
+    FILE *fpWrite;
+    if((fpWrite = popen("cat > output", "w")) == nullptr){    //创建通信标准流
         perror("popen error");
         exit(-1);
     }
@@ -247,27 +242,24 @@ void pipe3(int argc, char* argv[]){
     /**
      * 从文件读取数据，将数据写入通信管道
     */
-    if((fpin = fopen(argv[1], "r")) == nullptr){    //打开要读取的文件
-        printf("cant open %s\n", argv[1]);
-        exit(-1);
-    }
-    while(fgets(line, 1024, fpin) != nullptr){
-        if(fputs(line, fpout) == EOF){
+    char line[1024];
+    while(fgets(line, 1024, stdin) != nullptr){
+        if(fputs(line, fpWrite) == EOF){
             perror("fputs error to pipe");
             exit(-1);
         }
     }
     
-    if(ferror(fpin)){
+    if(ferror(stdin)){
         printf("fgets error ... \n");
-    }else if(feof(fpin)){
+    }else if(feof(stdin)){
         printf("fgets end normal ... \n");
     }
 
     /**
      * 关闭父进程端通信管道，阻塞回收子进程。
     */
-    pclose(fpout);
+    pclose(fpWrite);
     exit(0);
 }
 
@@ -295,9 +287,9 @@ void fifo(int argc, char* argv[]){
         perror("fork error");
         exit(-1);
     }else if(pid == 0){
-        FILE* fpin = fdopen(open("./cfifo", O_RDONLY), "r");
+        FILE* fpRead = fdopen(open("./cfifo", O_RDONLY), "r");
         char line[1024];
-        while(fgets(line, 1024, fpin) != nullptr){
+        while(fgets(line, 1024, fpRead) != nullptr){
             if(strncmp(line, "quit", 4) == 0){
                 printf("child process end, pid = %d\n", getpid());
                 exit(0);
@@ -309,12 +301,64 @@ void fifo(int argc, char* argv[]){
     }
     
     char buffer[1024];
-    int fifoFd = open("./cfifo", O_WRONLY);
+    int fifoFd_write = open("./cfifo", O_WRONLY);
     while(fgets(buffer, 1024, stdin) != nullptr){
         int length = strlen(buffer);
-        write(fifoFd, buffer, length);
+        write(fifoFd_write, buffer, length);
     }
     printf("parent process end, pid = %d\n", getpid());
+}
+
+
+void pipe_test(){
+
+    //创建管道
+    int fd[2];
+    if(pipe(fd) < 0){
+        perror("pipeError");
+        exit(-1);
+    }
+
+
+    //fork
+    pid_t pid;
+    if((pid = fork()) < 0){
+        perror("fork error");
+        exit(-1);
+
+    }else if(pid == 0){
+        //子进程逻辑
+        close(fd[0]);
+        FILE *fdWrite = fdopen(fd[1], "w");
+        if(fdWrite != nullptr){
+            fprintf(fdWrite, "hello world from %s\n", "liuhiayang");
+            fflush(fdWrite);
+            sleep(3);
+            fprintf(fdWrite, "hello world from %s\n", "liuhiayang");
+            fflush(fdWrite);
+        }
+        fclose(fdWrite);
+        exit(0);
+
+    }else if(pid > 0){
+        //父进程逻辑
+        close(fd[1]);
+        while(true){
+            char buffer[1024]{};
+            int nRead = read(fd[0], buffer, 1024);
+            if(nRead != 0){
+                printf("readContent: %s\n", buffer);
+            }else{
+                printf("end of read ...\n");
+                break;
+            }
+        }
+        close(fd[0]);
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+    print_process_exit_status(status);
 }
 
 
@@ -323,11 +367,7 @@ int main(int argc, char* argv[]){
 
     // fifo(argc, argv);
 
-    // pipe3(argc, argv);
-
-    // pipe1();
-
-    pipe2(argc, argv);
+    pipe_test();
 
     return 0;
 }
