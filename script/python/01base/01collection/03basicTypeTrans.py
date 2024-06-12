@@ -34,7 +34,7 @@ print("------------------")
 
 #浮点数字符串相互转换
 numfloat = 12.34
-stringfloat = 34.12
+stringfloat = "34.12"
 print(f"str(numfloat):      {str(numfloat)}")       #浮点数--->字符串
 print(f"float(stringfloat): {float(stringfloat)}")  #字符串--->浮点数
 

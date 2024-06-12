@@ -12,7 +12,7 @@ print(str)                  #所有字符
 print("-----------------------------\n")
 
 
-#字符串是不可变类型
+#字符串是不可变类型，相同内容的字符串其实是一个对象，对象的索引ID是相同的
 string1 = "helloworld"
 string2 = "helloworld"
 print("id(string1): {}".format(id(string1)))
@@ -57,9 +57,9 @@ for c in string1:
 print("-----------------------------\n")
 
 
-# 成员运算符in，not in
-if ('h' in string1) :
-    print("h in string1")
+# 成员运算符in，not in : 判断子字符串是否在整体字符串中
+if ('he' in string1) :
+    print("he in string1")
 if ("a" not in string1) :
     print("a not in string1")
 print("-----------------------------\n")
@@ -71,7 +71,7 @@ print(f"hello {name}")
 print(f"hello {1 + 2}")
 
 
-#字符串<----整数
+#字符串<----整数：指定转换的字符串格式
 number_bin = bin(255)
 number_oct = oct(255)
 number_hex = hex(255)
