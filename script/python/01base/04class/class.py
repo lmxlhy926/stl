@@ -65,19 +65,24 @@
         本质是第一个参数为类对象且命名空间为类名的函数
 """
 class common:
+    #public成员变量
     name = None
     age = None
+    #private成员变量
     __weight__ = None
 
+    #构造函数
     def __init__(self, name, age, weight):
         print("common __init__ ...")
         self.name = name
         self.age = age
         self.__weight__ = weight
 
+    #析构函数
     def __del__(self):
         print("common __del__ ...")
 
+    #成员函数
     def show(self):
         print("name: {}, age: {}".format(self.name, self.age))
 

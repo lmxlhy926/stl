@@ -33,6 +33,7 @@ def changeTest():
    
 
 
+
 '''
 调用函数时可使用的正式参数类型
     必需参数
@@ -84,6 +85,7 @@ print("-------------------------------")
 
 
 
+
 """
     函数作为参数:
         python中函数和变量是一样的
@@ -109,6 +111,7 @@ funcTable = {"add": add, "sub": sub, "multi": multi}
 funcTable["div"] = div
 handle("div", funcTable, 100, 200)
 print("-------------------------------")
+
 
 
 
@@ -155,28 +158,19 @@ print("-------------------------------")
 
 #索引非全局非局部变量
 def outer():
-    num = 10
-    print("outer--id(num): {}, num: {}".format(id(num), num))
+    list = [1, 2, 3]
+    print("outer--id(num): {}, num: {}".format(id(list), list))
     def inner():
-        nonlocal num    #nonlocal关键字声明
-        num = 100
-        print("inner--id(num): {}, num: {}".format(id(num), num))
-    inner()
-    print("outer--id(num): {}, num: {}".format(id(num), num))
+        nonlocal list    #nonlocal关键字声明
+        list.append(1) 
+        print("inner--id(num): {}, num: {}".format(id(list), list))
+    return inner
 
-outer()
+inner = outer()
+inner()
+inner()
+inner()
 print("-------------------------------")
 
-
-
-#局部变量的形参
-def localArgs(arg1, arg2):
-    print("inner--id(arg1): {}".format(id(arg1)))
-    print("inner--id(arg2): {}".format(id(arg2)))
-
-a = 1
-b = 2
-print("id(a): {}, id(b): {}".format(id(a), id(b)))
-localArgs(a, b)
 
 
