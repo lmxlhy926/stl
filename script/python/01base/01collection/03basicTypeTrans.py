@@ -1,3 +1,15 @@
+
+'''
+    <class 'int'>
+    <class 'float'>
+    <class 'str'>
+    <class 'bool'>
+    <class 'tuple'>
+    <class 'list'>
+    <class 'set'>
+    <class 'dict'>
+'''
+
 """
 基础类型之间的互相转化
     int

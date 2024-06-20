@@ -29,7 +29,7 @@ while i < 10 :
     print("i: {}".format(i))
     i += 1
 else:
-    print("i >= 10")
+    print("比较条件不满足, 正常导致的结束时, 会执行。如果循环里面break导致跳出循环, 则不会执行")
 
 
 
