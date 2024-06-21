@@ -60,10 +60,8 @@ del tinydict        #删除字典
 print("-----------------------------")
 
 
-
-
 """
-    视图对象：
+    视图对象： 可迭代对象
         dict.keys()、dict.values()、dict.items()返回的都是视图对象, 提供了字典实体的动态视图
         这意味着字典改变, 视图也会跟着变化。不能对视图对象进行任何的修改, 因为字典的视图对象都是只读的。
         视图对象不是列表, 不支持索引, 可以使用list()来转换为列表
@@ -82,8 +80,13 @@ items = dict.items()
 print("keys: {}".format(keys))
 print("values: {}".format(values))
 print("items: {}".format(items))
+
 for item in items:
     print("     item: {}".format(item))
+
+for key, value in items:
+    print(f"{key} = {value}")
+
 
 #将视图对象转换为列表，按插入的顺序
 print("list(keys): {}".format(list(keys)))

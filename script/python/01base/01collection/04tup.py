@@ -12,6 +12,9 @@ print(type(tup1))           #打印类型
 print(tup1)
 print(tup2)
 print(tup3)
+tup4 = (10)         #int类型
+tup5 = ("aaa")      #str类型
+print("type(tup4): {}, type(tup5): {}".format(type(tup4), type(tup5)))
 print('----------------------------------------')
 
 
@@ -66,6 +69,12 @@ tuple2 = tuple(list2)
 print("tuple1: {}".format(tuple1))
 print("tuple2: {}".format(tuple2))
 print('----------------------------------------')
+
+
+#索引、计数
+tuple3 = (10, 20, 30)
+print("tuple3.count(10): {}".format(tuple3.count(10)))
+print("tuple3.index(40): {}".format(tuple3.index(40)))  #没有会抛异常
 
 
 # 操作元组的函数

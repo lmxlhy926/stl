@@ -28,15 +28,15 @@ list[0] = 100   #list中元素可被改变
 print('id(list): {}, list: {}'.format(id(list), list))
 
 #插入
-list.append(101)
-list.extend((1, 2))
+list.append(101)        #append函数追加数据的时候，如果数据是一个序列，则追加整个序列到列表结尾。
+list.extend((1, 2))     #extend追加数据是一个序列，把数据序列里面的数据拆分，然后逐一追加到列表的结尾
 list.extend([2, 3])
 list.insert(0, 0)
 print('id(list): {}, list: {}'.format(id(list), list))
 
 #删除元素
 del list[0]     #按索引删除
-list.pop(-1)    #按索引删除 
+list.pop(-1)    #按索引删除, 返回删除的值
 list.remove(2)  #按元素值删除（第一个匹配之的位置）
 print('id(list): {}, list: {}'.format(id(list), list))
 print("------------------------")
@@ -101,7 +101,7 @@ list1 = [1, 1, 2, 3]
 print("id(list1): {}, list1: {}".format(id(list1), list1))
 
 #列表长度
-print("len(list1): {}".format(list1.__len__()))
+print("len(list1): {}".format(len(list1)))
 
 #元素计数
 print("list1.count(1): {}".format(list1.count(1)))
