@@ -174,3 +174,38 @@ print("-------------------------------")
 
 
 
+
+"""
+拆包：
+    有序: tuple, list
+    无序: set
+    
+    set: 变量存储的是key值
+"""
+def return_num():
+    return (100, 200)
+
+def return_dict():
+    return {"b": "bbb", "a": "aaa"}
+
+a, b = return_num()
+print(f"a: {a}, b: {b}")
+
+a, b = return_dict()
+print(f"a: {a}, b: {b}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
