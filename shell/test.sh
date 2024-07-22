@@ -116,8 +116,8 @@ function localVariable_test(){
 #   文件其它标志
 #       -g file     (file存在并且设置了组ID)
 #       -G file     (file存在并且由有效组ID拥有)
-#       -k file     (file存在并且设置了它的"sticky bit")
 #       -O file     (file存在并且由有效用户ID拥有)
+#       -k file     (file存在并且设置了它的"sticky bit")
 #       -u file     (file存在并且设置了setuid位)
 #       -s file     (file存在并且长度大于0)
 #       -t fd       (fd是一个定向到终端/从终端定向的文件描述符)
