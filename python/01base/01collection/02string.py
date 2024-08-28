@@ -114,7 +114,7 @@ mystr = "**** and **** and **** and"
 # 查找到则返回相应索引，查找不到返回-1
 print("---find 正向查找----")
 print(mystr.find("and"))            #全范围查找
-print(mystr.find("and", 8, -1))    #指定范围查找
+print(mystr.find("and", 8, -1))     #指定范围查找
 print(mystr.find("ands"))           #查找不到返回-1
 # print(mystr.index("ands"))        #查找不到抛异常，其它效果和find一样
 
@@ -198,12 +198,5 @@ print(mystr.isalpha())
 print(mystr.isnumeric())
 print(mystr.isalnum())
 print(mystr.isspace())
-
-
-
-
-
-
-
 
 
