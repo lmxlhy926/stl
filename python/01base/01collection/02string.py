@@ -108,8 +108,12 @@ print("-----------------------------\n")
 
 
 """
-    查找子字符串、计数子字符串
-"""
+    查找子字符串    find
+    计数子字符串    count
+    子字符串替换    replace
+    分割字符串      split    
+    合并           join
+""" 
 mystr = "**** and **** and **** and"
 # 查找到则返回相应索引，查找不到返回-1
 print("---find 正向查找----")
@@ -128,12 +132,6 @@ print(mystr.count("and"))
 print(mystr.count("and", 8))
 
 
-
-"""
-    子字符串替换    replace
-    分割字符串      split    
-    合并           join
-"""
 print("-----字符串替换----------")
 mystr = "abcd;cdef;ssd;1234"
 new_str = mystr.replace(";", "***")     #无限替换
@@ -198,5 +196,4 @@ print(mystr.isalpha())
 print(mystr.isnumeric())
 print(mystr.isalnum())
 print(mystr.isspace())
-
 
