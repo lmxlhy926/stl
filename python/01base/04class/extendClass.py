@@ -1,68 +1,85 @@
-
-
-class person:
+#! /usr/bin/python3
+"""
+继承
+覆写
+基类、扩展类成员访问
+"""
+class base:
     name = None
     age = None
     weight = None
 
     def __init__(self, name, age, weight) -> None:
-        print("---person 构造---")
+        print("base__init__")
         self.name = name
         self.age = age
         self.weight = weight
-        print("person: id(name): {}".format(id(self.name)))
-    
+        pass
+
     def __del__(self):
-        print("---person 析构---")
+        print("base__del__")
+
+    def show_base(self):
+        print(f"base_show -> name: {self.name}, age: {self.age}, weight: {self.weight}")
+
+    def showNameAttribute_base(self):
+        print(f"id(name): {id(self.name)}")
 
     def show(self):
-        print("--person: name:{}, age:{}, weight:{}".format(self.name, self.age, self.weight))
-    
+        print('base_show()')
 
 
-class student(person):
+class extend(base):
     name = None
     grade = None
 
     def __init__(self, name, age, weight, grade) -> None:
-        print("--student 构造")
+        print("extend__init__")
         super().__init__(name, age, weight)
-        # person.__init__(self, name, age, weight)
-        self.name = name + "-student"
+        self.name = self.name + "_extend"
         self.grade = grade
-        print("person: id(name):{}; student: id(name):{}".format(id(super().name), id(self.name)))
 
     def __del__(self):
-        super().__del__()
-        # person.__del__(self)
-        print("--student 析构")
-        
+        base.__del__(self)
+        print("extend__del__")
+
+    def show_extend(self):
+        print(f"extend_show -> name: {self.name}, age: {self.age}, weight: {self.weight}, grade: {self.grade}")
+
+    def showNameAttribute_extend(self):
+        print(f"id(name): {id(self.name)}")
 
     def show(self):
-        print("--student: name:{}, grade:{}".format(self.name, self.grade))
+        print("extend_show()")
+        base.show(self)
+    
+
+def test1():
+    e = extend("peter", 25, 100, 3)
+    e.showNameAttribute_base()
+    e.showNameAttribute_extend()
+    e.show_base()
+    e.show_extend()
+    e.show()
 
 
 class Master():
     def __init__(self) ->None:
-        print("Master: __init__")
+        print("Master__init__")
         self.kongfu = "Master"
     
-    def make_cake(self):
-        print(f"运用<{self.kongfu}>制作煎饼果子---Master")
-
-    def addition_func(self):
-        print("additon function ...")
-
+    def showInfo(self):
+        print(f"master_kongfu: {self.kongfu}")
 
 class School():
     def __init__(self):
-        print("School: __init__")
+        print("School__init__")
         self.kongfu = "School"
     
-    def make_cake(self):
-        print(f"运用<{self.kongfu}>制作煎饼果子---School")
+    def showInfo(self):
+        print(f"school_kongfu: {self.kongfu}")
 
-    
+
 """
   继承类没有构造器，继承多个基类，默认调用第一个基类的构造器
 """
@@ -75,20 +92,19 @@ class Prentice(School, Master):
 """
 class Prentice_one(School, Master):
     def __init__(self) -> None:
-        print("Prentice_one: __init__()")
+        print("Prentice_one__init__")
         self.kongfu = "Prentice_one"
 
-    def make_cake(self):
-        print(f"运用<{self.kongfu}>制作煎饼果子---Prentice_one")
-
+    def printInfo(self):
+        print(f"Prentice_one_kongfu: {self.kongfu}")
 
 
 class Prentice_two(School, Master):
     def __init__(self) -> None:
-        print("Prentice_two: __init__()")
+        print("Prentice_two__init__()")
         self.kongfu = "Prentice_two"
 
-    def make_cake(self):
+    def printInfo(self):
         self.__init__()
         print(f"运用<{self.kongfu}>制作煎饼果子---Prentice_two")
 
@@ -113,22 +129,6 @@ class Prentice_two(School, Master):
         Master.make_cake(self)
 
 
-
-def test1():
-    p = Prentice()
-    print(f"self.kongfu: {p.kongfu}")
-    p.addition_func()
-
-
-def test2():
-    p = Prentice_one()
-    print(f"self.kongfu: {p.kongfu}")
-    p.addition_func()
-    p.make_cake()
-    # 打印类的继承关系
-    print(Prentice_one.__mro__)
-
-
 """
     使用更本质的调用格式：函数名 + 对象
     首先创建一个对象，然后使用"函数名 + 对象"的调用格式
@@ -137,23 +137,5 @@ def test3():
     p = Prentice_two()
     School.make_cake(p)
     Master.make_cake(p)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

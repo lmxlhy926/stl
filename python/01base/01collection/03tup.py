@@ -8,14 +8,9 @@
 tup1 = ()                   #0个元素
 tup2 = (20,)                #1个元素
 tup3 = (1, 2, 3, 4, 5, 6)   #多个元素
-print(type(tup1))           #打印类型
-print(tup1)
-print(tup2)
-print(tup3)
 tup4 = (10)         #int类型
 tup5 = ("aaa")      #str类型
-print("type(tup4): {}, type(tup5): {}".format(type(tup4), type(tup5)))
-print('----------------------------------------')
+print(type(tup1))   #打印类型
 
 
 # 元组是不可以变类型
@@ -66,9 +61,6 @@ string1 = "hello"
 list2 = [1, 2, 3, 4]
 tuple1 = tuple(string1)
 tuple2 = tuple(list2)
-print("tuple1: {}".format(tuple1))
-print("tuple2: {}".format(tuple2))
-print('----------------------------------------')
 
 
 #索引、计数
@@ -82,5 +74,4 @@ print("len: {}".format(len((1, 2, 3))))
 print("max: {}".format(max((1, 2, 3))))
 print("min: {}".format(min(1, 2, 3)))
 print('----------------------------------------')
-
 

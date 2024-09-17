@@ -11,27 +11,11 @@ def nonChange(a):
     print("after> id(a): {}, a: {}".format(id(a), a))
 
 
-def nonChangeTest():
-    a = "hello"
-    print("inital> id(a): {}, a: {}".format(id(a), a))
-    nonChange(a)
-    print("end> id(a): {}, a: {}".format(id(a), a))
-
-
 # 可变类型是指: 对变量所指的对象操作时，在原对象上进行操作
 def change(a):
     print("before> id(a): {}, a: {}".format(id(a), a))
     a.append(10)
     print("after> id(a): {}, a: {}".format(id(a), a))
-
-
-def changeTest():
-    a = [1, 2, 3]
-    print("inital> id(a): {}, a: {}".format(id(a), a))
-    change(a)
-    print("end> id(a): {}, a: {}".format(id(a), a))
-   
-
 
 
 '''
@@ -41,14 +25,12 @@ def changeTest():
     默认参数
     不定长参数
 '''
-
 #必需参数：以正确的顺序传入函数。调用时的数量必须和声明时的一样
 def printCommon(str1, str2) : 
     print("str1: {}".format(str1))
     print("str2: {}".format(str2))
     return
 printCommon("hello", "world")
-print("-------------------------------")
 
 
 #关键字参数： 允许函数调用时参数的顺序与声明时不一致，因为Python解释器能够用参数名匹配参数值
@@ -56,7 +38,6 @@ def printKey(name, age) :
     print("name: ", name)
     print("age: ", age)
 printKey(age = 20, name = "peter")
-print("-------------------------------")
 
 
 #默认参数：如果没有传递参数，则会使用默认参数
@@ -64,7 +45,6 @@ def printDefault(name, age = 35) :
     print("name: ", name)
     print("age: ", age)
 printDefault(name = "tom")
-print("-------------------------------")
    
 
 #不定长参数
@@ -73,7 +53,6 @@ def printVarTuple(arg1, *vartuple) :
     print("arg1: {}".format(arg1))
     print("vars: {}".format(vartuple))
 printVarTuple(50, 60, 70)
-print("-------------------------------")
 
 
 #加了2个星号**的参数会以字典的形式导入
@@ -81,16 +60,13 @@ def printVarDict(arg1, **vardict) :
     print("arg1:  {}".format(arg1))
     print("vars:  {}".format(vardict))
 printVarDict(10, name = {1, 2, 3}, age = [4, 5, 6], str = "hello")
-print("-------------------------------")
-
 
 
 
 """
     函数作为参数:
         python中函数和变量是一样的
-        lambda [arg1 [, arg2, ...argn]] : expression
-            匿名函数: python使用lambda来创建匿名函数
+        lambda [arg1 [, arg2, ...argn]] : expression;   匿名函数: python使用lambda来创建匿名函数
 """
 def add(a, b): 
     return a + b
@@ -101,17 +77,15 @@ def sub(a, b):
 def multi(a, b):
     return a * b
 
-div = lambda arg1, arg2 : arg1 / arg2
-
+# 从函数表中找到对应的函数，执行相应的函数
 def handle(operation, table, arg1, arg2):
     if operation in table:
         print("result: {}".format(table.get(operation)(arg1, arg2)))
 
-funcTable = {"add": add, "sub": sub, "multi": multi}
-funcTable["div"] = div
-handle("div", funcTable, 100, 200)
-print("-------------------------------")
-
+def funcTableTest():
+    funcTable = {"add": add, "sub": sub, "multi": multi}
+    funcTable["div"] = lambda arg1, arg2 : arg1 / arg2
+    handle("div", funcTable, 100, 200)
 
 
 
@@ -174,12 +148,63 @@ print("-------------------------------")
 
 
 
+"""
+    lambda本质上是一个匿名函数
+"""
+#无参数
+fn0 = lambda : 100
+print(fn0())
+
+#一个参数
+fn1 = lambda a : a
+print(fn1("hello world"))
+
+#默认参数
+fn2 = lambda a, b, c = 100 : a + b + c
+print(fn2(1, 2))
+print(fn2(1, 2, 3))
+
+#可变参数
+fn3 = lambda *args : args
+print(fn3(1))
+print(fn3(1, 2))
+print(fn3(1, 2, 3))
+
+#可变参数
+fn4 = lambda **args : args
+print(fn4(name = "python"))
+print(fn4(name = "python", age = 30))
+
+#排序
+students = [
+    {"name": "tom", "age": 20},
+    {"name": "rose", "age": 19},
+    {"name": "jack", "age": 22}
+]
+students.sort(key = lambda x : x["name"])
+students.sort(key = lambda x : x["name"], reverse=True)
+students.sort(key = lambda x : x["age"])
+
+#函数作为普通参数
+def sum_num(a, b, f):
+    return f(a) + f(b)
+print("abs: {}".format(sum_num(-1, -2, abs)))
+print("round: {}".format(sum_num(1.1, 1.5, round)))
+
+
+#操作可迭代对象
+list1 = [1, 2, 3, 4, 5]
+def func(x):
+    return x ** 2
+result = map(func, list1)
+print(list(result))
+
+
 
 """
 拆包：
     有序: tuple, list
     无序: set
-    
     set: 变量存储的是key值
 """
 def return_num():
@@ -193,19 +218,5 @@ print(f"a: {a}, b: {b}")
 
 a, b = return_dict()
 print(f"a: {a}, b: {b}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

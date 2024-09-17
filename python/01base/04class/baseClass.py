@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 
 '''
     面向对象：
@@ -12,7 +13,6 @@
 
         方法重写：实现差异化
 
-
     类对象：
         类对象支持2种操作: 属性引用和实例化
 
@@ -24,7 +24,6 @@
             类对象创建后，类命名空间中所有的命名都是有效属性名
             私有属性: __private_attrs
         
-
     类方法：
         在类内部, 使用def关键字来定义一个方法, 与一般函数定义不同, 类方法必须包括参数self, 且为第一个参数
         self代表的是类的实例
@@ -61,12 +60,11 @@
     类函数的使用：
         本质是第一个参数为类对象且命名空间为类名的函数
 """
-
 class student:
-    #公共成员变量
+#公共成员变量
     grade=None
     hobby=None
-    #私有成员变量
+#私有成员变量
     __count=None
 
     #构造器
@@ -82,24 +80,22 @@ class student:
     #公共成员函数
     def show(self):
         print("*********")
-        print("--grade: {}".format(self.grade))
-        print("--hobby: {}".format(self.hobby))
-        print("--__count: {}".format(self.__count))
+        print("grade: {}".format(self.grade))
+        print("hobby: {}".format(self.hobby))
+        print("__count: {}".format(self.__count))
         print("*********")
 
     #私有成员函数
     def __show_private(self):
         print("*********")
-        print("--__count: {}".format(self.__count))
+        print("__count: {}".format(self.__count))
         print("*********")
 
 
-    #运算符重载：将运算符与类方法关联起来，每个运算符对应一个指定的内置方法
-    #python通过重写一些内置方法，实现了运算符的重载功能
+    #运算符重载
+    #将运算符与类方法关联起来，每个运算符对应一个指定的内置方法;
     def __add__(self, other):
         print("__add__")
-        hobbys = self.hobby + other.hobby
-        return student(self.grade + other.grade, hobbys, self.__count + other.__count)
 
     def __sub__(self, other):
         print("__sub__")
@@ -127,16 +123,10 @@ class student:
     
     def __ge__(self, other):
         print("__ge__")
-
-
-    #打印重载：只有print()、str()方法可以调用__str__()方法转换
-    def __str__(self):
-        return "**{}-{}-{}**".format(self.grade, self.hobby, self.__count)
     
-    #__repr__()方法在多种操作下都能将对象转换为自定义的字符串形式
-    def __repr__(self):
-        return "__repr__()"
-    
+    def __le__(self, other):
+        print("__le__")
+
     """
         _getitem__()方法
             用于索引、切片操作,在对象执行索引、切片或者 for 迭代操作时,会自动调用该方法。
@@ -147,16 +137,23 @@ class student:
     """
     def __getitem__(self, data):
         print("__getitem__")
-        print("self: {}, data: {}".format(self, data))
+        print("data: {}".format(data))
 
     def __setitem__(self, index, value):
         print("__setitem__")
-        print("self:{}, index: {}, value: {}".format(self, index, value))
+        print("index: {}, value: {}".format(index, value))
 
     def __delitem__(self, index):
         print("__delitem__")
-        print("self: {}, index: {}".format(self, index))
+        print("index: {}".format(index))
 
+     #打印重载：只有print()、str()方法可以调用__str__()方法转换
+    def __str__(self):
+        return "**{}-{}-{}**".format(self.grade, self.hobby, self.__count)
+    
+    #__repr__()方法在多种操作下都能将对象转换为自定义的字符串形式
+    def __repr__(self):
+        return "__repr__()"
 
 
 stu1 = student(100, ["baseball"])
@@ -179,12 +176,8 @@ stu1 % stu2
 stu1 ** 2
 #ge
 stu1 >= stu2
-print("-------------------------------")
-
-print(stu1)
-print(stu2)
-str = repr(stu1)
-print(str)
+#le
+stu1 <= stu2
 print("-------------------------------")
 
 #__getitem__
@@ -195,6 +188,11 @@ stu1[2]
 stu1[2] = 100
 #__delitem__
 del stu1[2]
+print("-------------------------------")
+
+print(stu1)
+print(stu2)
+print(repr(stu1))
 print("-------------------------------")
 
 
@@ -209,6 +207,7 @@ s.show()
 #本质调用：函数 + 对象
 student.show(s)
 print("-------------------")
+
 
 
 """
