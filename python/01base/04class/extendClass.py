@@ -1,141 +1,66 @@
 #! /usr/bin/python3
 """
-继承
-覆写
-基类、扩展类成员访问
+    单继承：
+        扩展类没有显示指定构造器，生成一个默认的空参构造器。且其会调用基类的空参构造器；
+        扩展类如果指定了构造器，则不会生成默认的空参构造器
 """
-class base:
-    name = None
-    age = None
-    weight = None
-
-    def __init__(self, name, age, weight) -> None:
-        print("base__init__")
-        self.name = name
-        self.age = age
-        self.weight = weight
+class base():
+    def __init__(self, num) -> None:
+        print("base__init__(self, num)")
+        self.num = num
         pass
 
-    def __del__(self):
-        print("base__del__")
-
-    def show_base(self):
-        print(f"base_show -> name: {self.name}, age: {self.age}, weight: {self.weight}")
-
-    def showNameAttribute_base(self):
-        print(f"id(name): {id(self.name)}")
-
-    def show(self):
-        print('base_show()')
+    def __init__(self) -> None:
+        print("base__init__(self)")
+        self.num = 1
+        pass
+    
+    def info_print(self):
+        print(f"info_print: {self.num}")
 
 
+# 没有指定构造器，默认会生成一个空参构造器；且其会调用基类的空参构造器
 class extend(base):
-    name = None
-    grade = None
+    def __init__(self, num) -> None:
+        super().__init__(self, num)
+    pass
 
-    def __init__(self, name, age, weight, grade) -> None:
-        print("extend__init__")
-        super().__init__(name, age, weight)
-        self.name = self.name + "_extend"
-        self.grade = grade
-
-    def __del__(self):
-        base.__del__(self)
-        print("extend__del__")
-
-    def show_extend(self):
-        print(f"extend_show -> name: {self.name}, age: {self.age}, weight: {self.weight}, grade: {self.grade}")
-
-    def showNameAttribute_extend(self):
-        print(f"id(name): {id(self.name)}")
-
-    def show(self):
-        print("extend_show()")
-        base.show(self)
-    
-
-def test1():
-    e = extend("peter", 25, 100, 3)
-    e.showNameAttribute_base()
-    e.showNameAttribute_extend()
-    e.show_base()
-    e.show_extend()
-    e.show()
-
-
-class Master():
-    def __init__(self) ->None:
-        print("Master__init__")
-        self.kongfu = "Master"
-    
-    def showInfo(self):
-        print(f"master_kongfu: {self.kongfu}")
-
-class School():
-    def __init__(self):
-        print("School__init__")
-        self.kongfu = "School"
-    
-    def showInfo(self):
-        print(f"school_kongfu: {self.kongfu}")
-
+#########################################################################
 
 """
-  继承类没有构造器，继承多个基类，默认调用第一个基类的构造器
+    多继承：
+        扩展类没有显示指定构造器，会生成一个空参构造器，其默认调用第一个基类的空参构造器；
+        多个基类含有同名方法，默认继承第一个基类的方法
 """
-class Prentice(School, Master):
+class base1():
+    def __init__(self) -> None:
+        print("base1__init__")
+        self.str = 'base1'
+        pass
+
+    def info_print(self) -> None:
+        print(f"base1: {self.str}")
+
+
+class base2():
+    def __init__(self) -> None:
+        print("base2__init__")
+        self.str = "base2"
+        pass
+
+    def info_print(self) -> None:
+        print(f"base2: {self.str}")
+        pass
+
+class extend12(base1, base2):
+    def __init__(self) -> None:
+        base1.__init__(self)
+        base2.__init__(self)
     pass
 
 
-"""
-    继承类有构造器，继承多个基类，默认不调用基类的构造器
-"""
-class Prentice_one(School, Master):
-    def __init__(self) -> None:
-        print("Prentice_one__init__")
-        self.kongfu = "Prentice_one"
-
-    def printInfo(self):
-        print(f"Prentice_one_kongfu: {self.kongfu}")
 
 
-class Prentice_two(School, Master):
-    def __init__(self) -> None:
-        print("Prentice_two__init__()")
-        self.kongfu = "Prentice_two"
 
-    def printInfo(self):
-        self.__init__()
-        print(f"运用<{self.kongfu}>制作煎饼果子---Prentice_two")
-
-    """
-        基类方法的几种调用方式
-    """
-    def make_school_cake(self):
-        #1: 类名 + 函数 + 对象
-        School.__init__(self)
-        School.make_cake(self)
-
-        #2: 类名 + 函数 + 对象  --- super(当前类名，self).函数()
-        super(Prentice_two, self).__init__()
-        super(Prentice_two, self).make_cake()
-
-        #3: 函数：  如果是多继承，则这里的基类默认是继承的第一个基类
-        super().__init__()
-        super().make_cake()
-    
-    def make_master_cake(self):
-        Master.__init__(self)
-        Master.make_cake(self)
-
-
-"""
-    使用更本质的调用格式：函数名 + 对象
-    首先创建一个对象，然后使用"函数名 + 对象"的调用格式
-"""
-def test3():
-    p = Prentice_two()
-    School.make_cake(p)
-    Master.make_cake(p)
 
 

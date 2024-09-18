@@ -60,11 +60,12 @@
     类函数的使用：
         本质是第一个参数为类对象且命名空间为类名的函数
 """
-class student:
-#公共成员变量
+class student():
+    #公共成员变量
     grade=None
     hobby=None
-#私有成员变量
+
+    #私有成员变量
     __count=None
 
     #构造器
@@ -87,10 +88,9 @@ class student:
 
     #私有成员函数
     def __show_private(self):
-        print("*********")
+        print("---------")
         print("__count: {}".format(self.__count))
-        print("*********")
-
+        print(("---------"))
 
     #运算符重载
     #将运算符与类方法关联起来，每个运算符对应一个指定的内置方法;
@@ -156,10 +156,10 @@ class student:
         return "__repr__()"
 
 
+
 stu1 = student(100, ["baseball"])
 stu2 = student(200, ["basketball"])
 print("-------------------------------")
-
 #add
 stu1 + stu2 
 #sub
@@ -189,7 +189,6 @@ stu1[2] = 100
 #__delitem__
 del stu1[2]
 print("-------------------------------")
-
 print(stu1)
 print(stu2)
 print(repr(stu1))
