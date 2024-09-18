@@ -116,9 +116,10 @@ os.popen()              # 管道执行命令
 将读取到的字节类型解码为字符串
 """
 
-fd = os.open("a.txt", os.O_RDONLY | os.O_CREAT, 0o777)
-file = os.fdopen(fd, "r", newline="c")
-line = file.readlines()
-print("line: {}".format(line))
+# fd = os.open("a.txt", os.O_RDONLY | os.O_CREAT, 0o777)
+# file = os.fdopen(fd, "r", newline="c")
+# line = file.readlines()
+# print("line: {}".format(line))
 
 
+print("hello world")

@@ -35,7 +35,7 @@ print("------------------------")
 
 #时间戳转换为本地时间
 localtime = time.localtime(ticks)
-print("time.localtime(ticks): {}".format(time.localtime(ticks)))
+print("time.localtime(ticks): {}".format(localtime))
 print("time.localtime(): {}".format(time.localtime()))
 print("------------------------")
 

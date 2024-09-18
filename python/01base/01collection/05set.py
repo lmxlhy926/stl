@@ -6,57 +6,34 @@
 '''
 # 创建空集合
 setempty = set()
-print("空集合: setempty(): {}".format(setempty))
-print("--------------------------")
-
-# 创建集合并初始化
 set1 = {1, 2, 3}
-print("打印元素: set1: {}".format(set1))
-print("--------------------------")
 
 # 复制集合
 set2 = set1.copy()
-print("id(set1): {}, id(set2): {}, set2: {}".format(id(set1), id(set2), set2))
-print("--------------------------")
-
 
 # 添加元素
 set1.add(0)                     #添加一个元素，如果添加的元素在集合中已存在，则不进行任何操作。
 set1.update((3, 4), (5, 6))     #参数可以是列表、元组、字典等
 set1.update([7, 8], (9, 10))
-print("添加元素: set1: {}".format(set1))
-print("--------------------------")
-
 
 # 移除元素
 set1.remove(1)      # 如果元素不存在，则会发生错误
 set1.discard(1)     # 如果元素不存在，不会发生错误
-print("删除元素: set1: {}".format(set1))
-print("--------------------------")
 
 # 随机移除元素
 set1.pop()
 set1.pop()
-print("随机删除: set1: {}".format(set1))
-print("--------------------------")
-
 
 # 成员测试
 if 5 in set1:
     print("成员测试: 5 in set1")
-print("--------------------------")
-
 
 #遍历
 for element in set1:
     print("     element: {}".format(element))
-print("--------------------------")
-
 
 # 清空集合
 set1.clear()
-print("清空集合：{}".format(set1))
-print("--------------------------")
 
 
 """
@@ -71,49 +48,36 @@ print("--------------------------")
 x = {1, 2, 3}
 y = {3, 4, 5}
 z = {3, 6, 7}
-print("x.intersection(y, z): {}".format(x.intersection(y, z)))
+x.intersection(y, z)
 x.intersection_update(y, z)
-print("x: {}".format(x))
-print("--------------------------")
-
 
 # 并集：多个集合的元素的汇总，重复的元素只出现一次
 x = {1, 2, 3}
 y = {3, 4, 5}
 z = {3, 6, 7}
-print("x.union(y, z): {}".format(x.union(y, z)))
-print("--------------------------")
-
+x.union(y, z)
 
 # 差集：a中去除ab交集后剩余的元素集合
 x = {1, 2, 3}
 y = {3, 4, 5}
-print("x.difference(y): {}".format(x.difference(y)))
+x.difference(y)
 x.difference_update(y)
-print("x: {}".format(x))
-print("--------------------------")
-
 
 # 2个集合中不重复元素的集合
 x = {1, 2, 3}
 y = {3, 4, 5}
-print("x.symmetric_difference(y): {}".format(x.symmetric_difference(y)))
+x.symmetric_difference(y)
 x.symmetric_difference_update(y)
-print("x: {}".format(x))
-print("--------------------------")
-
 
 # 子集合
 x = {1, 2, 3}
 y = (1, 2, 3, 4, 5, 6)
-print("x.issubset(y): {}".format(x.issubset(y)))
-print("x.issuperset(y): {}".format(x.issuperset(y)))
-print("--------------------------")
-
+x.issubset(y)
+x.issuperset(y)
 
 # 集合是否有相同的元素
 x = {1, 2, 3}
 y = {3, 4, 5}
-print("x.isdisjoint(y): {}".format(x.isdisjoint(y)))
+x.isdisjoint(y)
 
 

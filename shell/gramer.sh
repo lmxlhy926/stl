@@ -129,38 +129,44 @@ fi
 
 
 
+#数组
+#创建数组并赋初值
+array=(a b c d)
+array[${#array[@]}]=e
+echo "${array[@]}"
+
+#删除元素
+unset array[$((${#array[@]} - 1))]
+echo "${array[@]}"
 
 
 
+#添加元素
+array+=(1 2 3)
+echo ${array[@]}
+
+
+#遍历元素
+for i in "${array[@]}"
+do
+    echo "element: $i"
+done
 
 
 
+#遍历索引
+for index in "${!array[@]}"
+do
+    echo "index: ${index}"
+done
+echo "final index: ${index}"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#关联数组
+declare -A Array
+Array["name"]=peter
+Array["age"]=30
+for index in "${!Array[@]}"
+do
+    echo "${index}: ${Array[${index}]}"
+done

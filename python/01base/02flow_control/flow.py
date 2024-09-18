@@ -51,5 +51,3 @@ for t in range(0, 5):
 
 for h in range(10, 1, -3) :
     print("h: {}".format(h))
-
-

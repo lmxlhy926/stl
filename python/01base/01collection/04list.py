@@ -11,8 +11,6 @@ import operator
 
 #创建数组
 list = ['abcd', 786, 2.23, 'runoob', 70.2]  #支持多种数据类型
-print("id(list): {}, list: {}".format(id(list), list))
-print("------------------------")
 
 #列表复制
 listcopy = list.copy()
@@ -21,32 +19,25 @@ print("id(list): {}, id(listcopy): {}".format(id(list), id(listcopy)))
 #索引
 print("list[0]: {}".format(list[0]))    #列表第一个元素
 print("list[-1]: {}".format(list[-1]))  #列表最后一个元素
-print("------------------------")
 
 #更新
 list[0] = 100   #list中元素可被改变
-print('id(list): {}, list: {}'.format(id(list), list))
 
 #插入
+list.insert(0, 0)
 list.append(101)        #append函数追加数据的时候，如果数据是一个序列，则追加整个序列到列表结尾。
 list.extend((1, 2))     #extend追加数据是一个序列，把数据序列里面的数据拆分，然后逐一追加到列表的结尾
 list.extend([2, 3])
-list.insert(0, 0)
-print('id(list): {}, list: {}'.format(id(list), list))
 
 #删除元素
 del list[0]     #按索引删除
 list.pop(-1)    #按索引删除, 返回删除的值
 list.remove(2)  #按元素值删除（第一个匹配之的位置）
-print('id(list): {}, list: {}'.format(id(list), list))
-print("------------------------")
-
 
 #子数组
 print("list[1:3]: {}".format(list[1 : 3]))     #前闭后开
 print("list[2:]: {}".format(list[2:]))       
 print("------------------------")
-
 
 #列表清空
 list.clear()
@@ -98,7 +89,6 @@ print("---------------------------------------------")
     list方法:
 """
 list1 = [1, 1, 2, 3]
-print("id(list1): {}, list1: {}".format(id(list1), list1))
 
 #列表长度
 print("len(list1): {}".format(len(list1)))
@@ -112,6 +102,4 @@ print("list1.index(2): {}".format(list1.index(2)))
 #列表翻转
 list1.reverse()
 print("id(list1): {}, list1.reverse(): {}".format(id(list1), list1))
-
-
 
