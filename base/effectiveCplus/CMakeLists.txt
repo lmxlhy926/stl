@@ -1,1 +1,0 @@
-add_executable(effective effect.cpp symbol.cpp)
