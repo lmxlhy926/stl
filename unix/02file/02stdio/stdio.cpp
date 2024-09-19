@@ -22,33 +22,38 @@
  *          FILE *fdopen(int fd, const char *type);
  *              返回值：若成功返回文件指针；若失败返回nullptr;
  * 
+ * 
  *      读取字符
  *          int fgetc(FILE *fp);
  *              返回值：若成功，返回下一个字符；若已到达文件尾端或出错，返回EOF。
  *      
+ *      读取一行：最多读取n-1个字符，一定以nullptr结尾。
+ *          char *fgets(char *buf, int n, FILE *fp);
+ *              返回值：若成功，返回buf；若已到达文件尾端或出错，返回nullptr.
+ * 
+ *       读取任意数据
+ *          size_t fread(void *ptr, size_t size, size_t nobj, FILE *fp);
+ *              返回值：读或写的对象数
+ * 
+ * 
  *       输出字符
  *           int fputc(int c, FILE *fp);
  *              返回值：若成功，返回c；若出错，返回EOF。
  * 
- *       出错函数：
- *            int ferror(FILE *fp);
- *            int feof(FILE *fp);
- *                  2个函数返回值：若条件为真，返回非0(真)；否则，返回0(假)；
- *             void clearerr(FILE *fp);
- *                  每个流在FILE对象中维护了2个标志：出错标志、文件结束标志。clearerr可以清除这2个标志。
- * 
- *       读取一行：最多读取n-1个字符，一定以nullptr结尾。
- *             char *fgets(char *buf, int n, FILE *fp);
- *                  返回值：若成功，返回buf；若已到达文件尾端或出错，返回nullptr.
- * 
  *       输出一行：其实是输出以nullptr结尾的字符串
- *             int fputs(const char *str, FILE *fp);
- *                  返回值：若成功，返回非负值；若出错，返回EOF。
- * 
- *       读写任意数据
- *             size_t fread(void *ptr, size_t size, size_t nobj, FILE *fp);
- *             size_t fwrite(const void *ptr, size_t size, size_t nobj, FILE *fp);
- *                      返回值：读或写的对象数
+ *           int fputs(const char *str, FILE *fp);
+ *              返回值：若成功，返回非负值；若出错，返回EOF。
+ *          
+ *       写入任意数据
+ *           size_t fwrite(const void *ptr, size_t size, size_t nobj, FILE *fp);
+ *               返回值：读或写的对象数
+ *          
+ *       格式化输出：
+ *          int printf(const char *format, ...);
+ *          int fprintf(FILE *fp, const char *format, ...);
+ *          int dprintf(int fd, const char *format, ...);
+ *          int snprintf(char *buf, size_t n, const char *format, ...);     
+ *       
  * 
  *       定位流：
  *          long ftell(FILE *fp);
@@ -57,11 +62,13 @@
  *                  返回值：若成功，返回0; 若出错，返回-1.
  *          void rewind(FILE *fp);
  * 
- *       格式化输出：
- *          int printf(const char *format, ...);
- *          int fprintf(FILE *fp, const char *format, ...);
- *          int dprintf(int fd, const char *format, ...);
- *          int snprintf(char *buf, size_t n, const char *format, ...);             
+ * 
+ *       出错函数：
+ *           int ferror(FILE *fp);
+ *           int feof(FILE *fp);
+ *                  2个函数返回值：若条件为真，返回非0(真)；否则，返回0(假)；
+ *           void clearerr(FILE *fp);
+ *                  每个流在FILE对象中维护了2个标志：出错标志、文件结束标志。clearerr可以清除这2个标志。
 */
 
 
@@ -77,7 +84,7 @@
  * 
 */
 void readChar(){
-    FILE* fp = fopen("./a.txt", "r+");
+    FILE* fp = fopen("a.txt", "r+");
     if(fp != nullptr){  //成功打开文件
         int charInt;
         while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾或出错返回EOF

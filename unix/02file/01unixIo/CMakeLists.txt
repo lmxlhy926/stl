@@ -1,2 +1,2 @@
-add_executable(sysio systemio.cpp)
-target_link_libraries(sysio PRIVATE pthread)
+add_executable(unixIo unixIo.cpp)
+target_link_libraries(unixIo PRIVATE pthread)

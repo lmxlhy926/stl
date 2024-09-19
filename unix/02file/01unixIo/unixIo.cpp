@@ -73,7 +73,7 @@ void filehole(){
     write(fd, "hello", 5);          
     lseek(fd, 1024, SEEK_SET);         
     write(fd, "world", 5);            
-    //读写写入的内容
+    //读取写入的内容
     lseek(fd, 0, SEEK_SET); //定位到文件开头
     char readBuf[1024 + 5];
     read(fd, readBuf, 1024 + 5);
@@ -151,15 +151,6 @@ void openFileMultiTime(){
 }
 
 
-
-
-#if 0
-
-
-
-
-
-
 /*
  *  复制文件描述符，使得多个文件描述符指向同一个文件
  */
@@ -181,6 +172,7 @@ void dupTest(){
             write(fd1, "hello-", 6);
         }
     });
+
     thread thread2([fd2]{
         for(int i = 0; i < 100; ++i){
             write(fd2, "world-", 6);
@@ -222,7 +214,7 @@ void printFlags(int flags){
 
 
 //设置标志位
-int set_fl(int fd, int flags){
+int set_flag(int fd, int flags){
     int val;
     if((val = fcntl(fd, F_GETFL, 0)) == -1){     //获取标志位
         perror("fcntl F_GETFL error");
@@ -242,10 +234,10 @@ int set_fl(int fd, int flags){
  * 文件状态位测试：
  *      有些状态位只能在打开文件的时候设置，有些标志位可以在打开文件后用fcntl设置
 */
-int fileFlags_test(){
-    int fd = open("./a.txt", O_RDONLY | O_CREAT, 0777);
-    set_fl(fd, O_RDWR | O_APPEND | O_SYNC | O_NONBLOCK);
-    int flags;
+int fileFlags(){
+    int fd, flags;
+    fd = open("a.txt", O_RDONLY | O_CREAT, 0777);
+    set_flag(fd, O_RDWR | O_APPEND | O_SYNC | O_NONBLOCK);
     if((flags = fcntl(fd, F_GETFL, 0))  == -1){
         perror("fcntl error");
         return -1;
@@ -254,13 +246,10 @@ int fileFlags_test(){
     return 0;
 }
 
-#endif
-
-
 
 int main(int argc, char* argv[]){
 
-    openFileMultiTime();
+    fileFlags();
 
     return 0;
 }
