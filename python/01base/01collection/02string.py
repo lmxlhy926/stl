@@ -144,3 +144,64 @@ print(mystr.isnumeric())
 print(mystr.isalnum())
 print(mystr.isspace())
 
+
+
+"""
+    将输出值转换为字符串
+        str():  函数返回一个用户易读的表达形式
+        repr(): 产生一个解释器易读的表达形式
+"""
+def repr_test():
+    x = 0.12
+    y = 3.45
+    s = "x的值为: " + repr(x) + ", y的值为: " + repr(y) + "..."
+    print(s)
+
+    #repr()可以保留字符串中的转义字符
+    s = "hello\nworld"
+    print(s)
+    print(repr(s))
+
+    #repr()的参数可以是python的任何对象
+    s = (1, 2, ("hello", "world"))
+    print(repr(s))
+
+
+"""
+    字符串对象的对齐方法：这些方法并不会写任何东西，它们仅仅返回新的字符串
+        rjust()
+        ljust()
+        center()
+"""
+def rightLeftCenter_test():
+    #右对齐
+    print("12345".rjust(10), "12345".rjust(10), "12345".rjust(10))
+    print("12345678".rjust(10), "12345678".rjust(10), "12345678".rjust(10))
+
+    #左对齐
+    print("12345".ljust(10), "12345".ljust(10), "12345".ljust(10))
+    print("12345678".ljust(10), "12345678".ljust(10), "12345678".ljust(10))
+
+    #中间对齐
+    print("12345".center(10), "12345".center(10), "12345".center(10))
+    print("12345678".center(10), "12345678".center(10), "12345678".center(10))
+
+
+"""
+    str.format():
+        括号及其里面的字符(称作格式化字段)将会被format()中的参数替换
+        在括号中的数字用于指示传入对象在format()中的位置
+        位置和关键字参数可以任意组合, 但是位置参数不能出现在关键字参数之后
+"""
+def str_format():
+    print('{}网址： "{}!"'.format("菜鸟教程", "www.runoob.com"))
+    print("常量PI的近似值为: {0:.3f}".format(math.pi))
+    print("{0:10} ===> {1:10d}".format("google", 1))
+
+    print("{0}, {1}".format("google", "runoob"))
+    print("{1}, {0}".format("google", "runoob"))
+    print("{1}, {0}, {name}".format("google", "alibaba", name = "runoob")) 
+
+    # 索引键值
+    table = {"goole":1, "runoob":2, "taobao":3}
+    print("runoob: {0[runoob]}; goole: {0[goole]}; taobao: {0[taobao]}".format(table))
