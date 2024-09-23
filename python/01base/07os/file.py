@@ -2,8 +2,7 @@
 
 import os
 import sys
-import stat
-
+from stat import *
 
 """
 # 文件属性
@@ -107,20 +106,20 @@ def access_test():
 
 
 #获取文件属性
-def stat_test():
-    path = "test.txt"
+def stat_test(path):
     info =  os.stat(path)
-    infol = os.lstat(path)
-    infof = os.fstat(os.open(path, os.O_RDWR))
+    infoLink = os.lstat(path)
+    infoFd = os.fstat(os.open(path, os.O_RDWR))
 
     print("文件信息: {}"     .format(info))
-
+    # 设备节点
     print("st_dev: {}"      .format(info.st_dev))
     print("st_ino: {}"      .format(info.st_ino))
     print("st_rdev: {}"     .format(info.st_rdev))
     print("st_nlink: {}"    .format(info.st_nlink))
-    # 
+    # 模式、用户名
     print("st_mode: {}"     .format(info.st_mode))
+    print("st_mode_str: {}".format(filemode(info.st_mode)))
     print("st_uid: {}"      .format(info.st_uid))
     print("st_gid: {}"      .format(info.st_gid))
     # 大小
@@ -133,26 +132,33 @@ def stat_test():
     print("st_ctime: {}"    .format(info.st_ctime))
 
 
+# 使用stat实现ls -lhi
+def stat_ls_lhi(path):
+    statInfo = os.stat(path)
+    print(f"{statInfo.st_ino} {filemode(statInfo.st_mode)} {statInfo.st_nlink} {statInfo.st_uid} \
+{statInfo.st_gid} {statInfo.st_size} {statInfo.st_ctime} {path}")
+
+
 #修改文件权限
 def chmod_test():
     path = "test.txt"
-    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)  #所有者
-    os.chmod(path, stat.S_IRWXU)
-    os.chmod(path, stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP)  #所属组
-    os.chmod(path, stat.S_IRWXG)
-    os.chmod(path, stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)  #其它
-    os.chmod(path, stat.S_IRWXO)
+    os.chmod(path, S_IRUSR | S_IWUSR | S_IXUSR)  #所有者
+    os.chmod(path, S_IRWXU)
+    os.chmod(path, S_IRGRP | S_IWGRP | S_IXGRP)  #所属组
+    os.chmod(path, S_IRWXG)
+    os.chmod(path, S_IROTH | S_IWOTH | S_IXOTH)  #其它
+    os.chmod(path, S_IRWXO)
 
     # #执行此文件其进程有效用户ID为文件所有者ID
-    os.chmod(path, stat.S_ISUID)
+    os.chmod(path, S_ISUID)
     # #执行此文件其进程有效组ID为文件所属组ID
-    os.chmod(path, stat.S_ISGID)
+    os.chmod(path, S_ISGID)
     # #设置文件粘滞位
-    os.chmod(path, stat.S_ISVTX)
+    os.chmod(path, S_ISVTX)
 
     fd = os.open(path, os.O_RDONLY)
-    os.fchmod(fd, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)  #设置所有者权限(同义词)
-    os.fchmod(fd, stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP)   #设置文件组权限
+    os.fchmod(fd, S_IREAD | S_IWRITE | S_IEXEC)  #设置所有者权限(同义词)
+    os.fchmod(fd, S_IRGRP | S_IWGRP  | S_IXGRP)   #设置文件组权限
 
 
 #修改文件所有者
@@ -519,4 +525,4 @@ def popen_test():
 
 
 
-stat_test()
+stat_ls_lhi("test.py")
