@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <unistd.h>
 #include <array>
 #include <thread>
@@ -334,54 +335,29 @@ void write2fullbuf(){
  *  1. 读取和写入使用同一个缓冲区？
  *  2. 以读写方式打开文件时，读写之间要使用fseek，重新定位位置。
 */
-void seek_test(){
-    FILE *fp = fopen("./a.txt", "r+");
+void readWrite(){
+    FILE *fp = fopen("a.txt", "r+");
     if(fp != nullptr){
         char buffer[1024];
         setvbuf(fp, buffer, _IOLBF, 1024);
 
-        fgetc(fp);  //触发读取，读满整个换冲过去
-        printf("--1buffer content start--\n");
-        for(int i = 0; i < 50; ++i){
-            printf("buf[%d]: %c\n", i, buffer[i]);
-        }
-        printf("--1buffer content end--\n");
-
-        for(int i = 0; i < 5; ++i){
-            printf("readChar: %c\n", fgetc(fp));
-        }
-
-        /**
-         * 如果上次读取到缓冲区的内容足够多，读取5个字节，不会触发重新读取缓冲区
-        */
-        printf("--2buffer content start--\n");
-        for(int i = 0; i < 50; ++i){
-            printf("buf[%d]: %c\n", i, buffer[i]);
-        }
-        printf("--2buffer content end--\n");
-        
+        fgetc(fp);
+        printf("file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
+        fgetc(fp);
+        printf("file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
+    
         /**
          * 转换读写方式时调用fseek，定位到当前位置
         */
-        fseek(fp, 0, SEEK_SET);
-        fputs("hello", fp);
-        printf("--3buffer content start--\n");
-        for(int i = 0; i < 50; ++i){
-            printf("buf[%d]: %c\n", i, buffer[i]);
-        }
-        printf("--3buffer content end--\n");
-        sleep(15);
-
         fseek(fp, 0, SEEK_CUR);
-        fgetc(fp);
-        printf("--4buffer content start--\n");
-        for(int i = 0; i < 50; ++i){
-            printf("buf[%d]: %c\n", i, buffer[i]);
-        }
-        printf("--4buffer content end--\n");
-        for(int i = 0; i < 5; ++i){
-            printf("readChar: %c\n", fgetc(fp));
-        }
+        printf("file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
+
+        fputs("hello", fp);
+        printf("file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
+        fflush(fp);
+        printf("file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
+
+        fclose(fp);
     }
 }
 
@@ -390,74 +366,52 @@ void seek_test(){
  * 读取到文件末尾后，压送字符后，可以再次读取
  * 一次成功的ungetc调用会清除该流的文件结束标志。
 */
-void putCharTest(){
-    FILE* fp = fopen("./a.txt", "r+");
+void ungetc_test(){
+    FILE* fp = fopen("a.txt", "r+");
     char buffer[1024]{};
     setvbuf(fp, buffer, _IOFBF, 1024);
+
     if(fp != nullptr){
         int charInt = fgetc(fp);
         if(charInt == EOF){    
-            printf("---end of file---\n");
+            printf("1-file loc: %ld, File loc: %ld, charInt: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
+            /**
+             * ungetc压送回字符时，并没有将它们写到底层文件或设备上，只是将它们写回标准I/O库的流缓冲区中。
+             * ungetc压送回的字符，存储在单独的缓冲区中
+            */
             ungetc('a', fp);
-            if(ferror(fp) != 0){    
-                fprintf(stdout, "fgets error ...\n");
-            }else if(feof(fp) != 0){    
-                fprintf(stdout, "end of file ....\n");
+            ungetc('b', fp);
+            fputs("--buffer content start--\n", stdout);
+            for(int i = 0; i < 2; ++i){
+                fprintf(stdout, "buffer[%d] == %c\n", i, buffer[i]);
             }
+            fputs("--buffer content end--\n", stdout);
+            printf("2-file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
         }
-        charInt = fgetc(fp);
-        printf("charInt: %c\n", charInt);
-        if(ferror(fp) != 0){    //读取文件错误
-            fprintf(stdout, "fgets error ...\n");
-        }else if(feof(fp) != 0){    //读取到文件末尾
-            fprintf(stdout, "end of file ....\n");
-        }
-        fclose(fp);
-    }
-}
-
-
-/**
- * 
-*/
-void putCharTest1(){
-    FILE* fp = fopen("./a.txt", "r+");
-    char buffer[1024]{};
-    setvbuf(fp, buffer, _IOFBF, 1024);
-    if(fp != nullptr){
-        int charInt = fgetc(fp);
-        printf("FILE loc: %ld, file loc: %ld, charInt: %c\n", ftell(fp), lseek(fileno(fp), 0, SEEK_CUR), charInt);
-
-        fputs("--buffer content start--\n", stdout);
-        for(int i = 0; i < 15; ++i){
-            fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
-        }
-        fputs("--buffer content end--\n", stdout);
-
-        /**
-         * ungetc压送回字符时，并没有将它们写到底层文件或设备上，只是将它们写回标准I/O库的流缓冲区中。
-         * ungetc压送回的字符，存储在单独的缓冲区中
-        */
-        ungetc('d', fp);
-        ungetc('e', fp);
-        printf("FILE loc: %ld, file loc: %ld\n", ftell(fp), lseek(fileno(fp), 0, SEEK_CUR));
-
-        fputs("--buffer content start--\n", stdout);
-        for(int i = 0; i < 15; ++i){
-            fprintf(stdout, "buf[%d] == %c\n", i, buffer[i]);
-        }
-        fputs("--buffer content end--\n", stdout);
 
         /**
          * 定位操作，会导致不读取压送字符所在的缓冲区。
          * 如果没有定位操作，先读取压送字符所在的缓冲区，后读取I/O缓冲区
         */
         fseek(fp, 0, SEEK_CUR);
-        while((charInt = fgetc(fp)) != EOF){   //读取到文件末尾或出错返回EOF
-           printf("FILE loc: %ld, file loc: %ld, charInt: %c\n", ftell(fp), lseek(fileno(fp), 0, SEEK_CUR), charInt);
+        printf("3-file loc: %ld, File loc: %ld, charInt: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
+
+        charInt = fgetc(fp);
+        printf("4-file loc: %ld, File loc: %ld, charInt: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
+
+        charInt = fgetc(fp);
+        printf("5-file loc: %ld, File loc: %ld, charInt: %c\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp), charInt);
+
+        fgetc(fp);
+        printf("6-file loc: %ld, File loc: %ld\n", lseek(fileno(fp), 0, SEEK_CUR), ftell(fp));
+
+        if(ferror(fp)){    //读取文件错误
+            fprintf(stdout, "fgets error ...\n");
+        }else if(feof(fp)){    //读取到文件末尾
+            fprintf(stdout, "end of file ....\n");
         }
+        fclose(fp);
     }
-    fclose(fp);
 }
 
 
@@ -468,21 +422,14 @@ void putCharTest1(){
  *      可以用于I/O重定向
 */
 void freopen_test(){
-    //在./b.txt上打开
-    FILE *fpb = fopen("./b.txt", "r+");
-    char bufb[1024];
-    fgets(bufb, 1024, fpb);
-    fputs(bufb, stdout);
-
-    //在./a.txt上重新打开
-    freopen("./a.txt", "r+", fpb);
-    while(true){
-        char buf[1024]{};
-        if(fgets(buf, 1024, stdin) != nullptr){
-            fprintf(fpb, "readStr: %s", buf);
-            fflush(fpb);
-        }else{
-            break;
+    if(freopen("a.txt", "r+", stdin) != nullptr){
+        while(true){
+            char buf[1024]{};
+            if(fgets(buf, 1024, stdin) != nullptr){
+                fprintf(stdout, "readStr: %s", buf);
+            }else{
+                break;
+            }
         }
     }
 }
@@ -493,12 +440,13 @@ void freopen_test(){
  * 对于fdopen, type参数的意义稍有区别，因为该描述符已经被打开。
 */
 void fdopen_test(){
-    FILE* stdinfp = fdopen(0, "r");
-    FILE* stdoutfp = fdopen(1, "w+");
+    int fd = open("a.txt", O_WRONLY);
+    FILE* fp = fdopen(fd, "w");
+    setvbuf(fp, nullptr, _IOLBF, 0);
     while(true){
         char buf[1024]{};
-        if(fgets(buf, 1024, stdinfp)){
-            fprintf(stdoutfp, "readStr: %s", buf);
+        if(fgets(buf, 1024, stdin)){
+            fputs(buf, fp);
         }else{
             break;
         }
@@ -506,14 +454,14 @@ void fdopen_test(){
 }
 
 
-/*
-    snprintf:
-        最多容纳n-1个字符，最后一位一定是'\0'
-        多余的输出字符被丢弃
-*/
+/**
+ * snprintf:
+ *      最多容纳n-1个字符，最后一位一定是'\0'
+ *      多余的输出字符被丢弃
+ */
 void snprintfTest(){
-    char buf[1024]{};
-    snprintf(buf, 1024, "%d:%d", 1, 2);
+    char buf[5] = {'a', 'b', 'c', 'd', 'e'};
+    snprintf(buf, 5, "%s:%s\n", "hello", "world");
     fputs(buf, stdout);
 }
  
@@ -521,7 +469,7 @@ void snprintfTest(){
 
 int main(int argc, char* argv[]){
 
-    write2fullbuf();
+    snprintfTest();
 
     return 0;
 }
