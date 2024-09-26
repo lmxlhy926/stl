@@ -2,73 +2,39 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <dirent.h>
 #include <string.h>
-
-/*
-
-Linux下的系统文件IO操作函数：
-1.open：打开一个文件
-	int open(const char *pathname, int flags);
-	int open(const char *pathname, int flags, mode_t mode);
-flags必选项：O_RDONLY,O_WRONLY,O_RDWR    	（三选一)
-flags可选项：O_CREAT(文件不存在时创建文件), O_APPEND, O_TRUNC, O_NONBLOCK
-说明：mode在使用O_CREAT选项创建文件时使用，指定创建的文件的权限。最终的权限：mode & ~umask
+#include <stdbool.h>
 
 
-2.read:读取fd指向的文件的内容到一个buffer中
-	ssize_t read(int fd, void *buf, size_t count);
-		fd:open的返回值
-		buf:存储数据的缓冲区(一般都是一个数组)
-		count:存储区能存储的最大字节数sizeof(buf)，读操作会尝试去读count字节数到buf中
-	返回值：
-		-1：失败
-		>0：读到buf中的字节数(实际读到的字节数)
-		=0：已读到文件末尾 **
+/**
+ * perror:打印出errno对应的错误信息
+ * 		void perror(const char *s);	
+ * 		格式：s指向的内容：错误信息
+ */
 
+void perror_test(void)
+{
+	int fd = open("a.txt", O_RDONLY | O_NONBLOCK, 0006);
+	if(fd < 0){
+		printf("%s\n", strerror(errno));
+		perror("open error");
+		exit(-1);
+	}	
 
-3.write：把buffer中的内容写到fd指向的文件中
-	ssize_t write(int fd, const void *buf, size_t count);
-		fd：open的返回值
-		buf：存放数据的缓冲区
-		count：要写入到文件中的字节数(指定buf中的有效字节数)
-	返回值：
-		-1：失败
-		 0：没有写入任何数据
-		>0：写入到文件中的字节数
+	while(true){
+		char buffer[100] = {};
+		int nRead = read(fd, buffer, 99);
+		printf("errno: %d\n", errno);
+		perror("read");
+		sleep(2);
+		printf("read content: %s", buffer);
+	}
+}
 
-		
-4.lseek：重定位文件偏移量
-	 off_t lseek(int fd, off_t offset, int whence);
-	 	fd：指向的文件
-	 	offset：相对于whence的偏移量
-	 	whence：指定offset的基数
-	 		SEEK_SET:文件开头处
-	 		SEEK_CUR:文件当前位置
-	 		SEEK_END:文件结尾处
-	 返回值：
-	 	相对于文件开头的偏移量。
-	 常见使用示例：
-		//文件指针移动到头部
-			lseek(fd, 0, SEEK_SET)
-		//获取文件指针当前位置
-			int len = lseek(fd, 0, SEEK_CUR)
-		//获取文件长度
-			int len = lseek(fd, 0, SEEK_END)
-		//文件扩展：例如扩展20个字节
-			1.lseek(fd, 20, SEEK_END)	//先扩展
-			2.write(fd, "a", 1)	//最后执行一次写操作
-			
-
-perror:打印出errno对应的错误信息
-	void perror(const char *s);
-	格式：  s指向的内容：错误信息
-
-*/
 
 
 /*
@@ -179,18 +145,6 @@ struct dirent
 
 */
 
-void func1_open(void);
-void func2_readwrite(void);
-void func3_lseek(void);
-void func4_read_block(void);
-void func4_read_nonblock(void);
-void func5_stat(void);
-void func6_access(void);
-void func7_chmodown(int argc, char *argv[]);
-void func8_chdirgetcwd(int argc, char *argv[]);
-int func9_getfilenum(char *root);
-int func10_dup(void);
-int func11_dup2(void);
 
 
 
@@ -198,7 +152,7 @@ int func11_dup2(void);
 int main(int argc, char* argv[])
 {
 
-	func11_dup2();
+	perror_test();
 
 	
 
@@ -206,115 +160,10 @@ int main(int argc, char* argv[])
 
 }
 
-void func1_open(void)
-{
-
-//打开一个文件，不存在时创建之。open返回值为文件描述符(非负值)，失败时返回-1.
-	int fd = open("test", O_RDONLY | O_CREAT, 0007);	//0007指定创建的文件权限描述符(8进制模式)
-	if(-1 == fd)
-	{
-		perror("open");
-		exit(-1);
-	}
-}
+#if 0
 
 
-void func2_readwrite(void)
-{
 
-//打开一个文件
-	int fd = open("english.txt", O_RDONLY);
-	if(-1 == fd)
-	{
-		perror("open");
-		exit(-1);
-	}
-	printf("fd == %d\n",fd);
-//打开另一个文件,不存在则创建之
-	int fd1 = open("temp", O_WRONLY | O_CREAT, 0664);
-	if(-1 == fd1)
-	{
-		perror("open");
-		exit(-1);
-	}
-	printf("fd1 == %d\n",fd1);
-//read
-	char buf[4096];
-	int len = read(fd, buf, sizeof(buf));	//sizeof(buf)为一次最大可读入的数量，len为实际读入的数量
-	while(len > 0)	//如果读取到数据
-	{
-	//数据写入到文件中
-		int ret = write(fd1, buf, len);		//将上一步读取的到字节数写入buf中(数量为len个)
-	//读取文件
-		len = read(fd, buf, sizeof(buf));	//再次读取文件
-	}
-	
-//关闭文件
-	close(fd);
-	close(fd1);
-}
-
-
-void func3_lseek(void)
-{
-	int fd = open("lseek.txt", O_RDWR);
-	if(fd == -1)
-	{
-		perror("open");
-		exit(-1);
-	}
-
-	lseek(fd, 2, SEEK_END);	//扩展2个字节
-	write(fd, "a", 1);		//在文件末尾写入一个字节，相当于文件总字节数扩展了3个字节
-	close(fd);
-
-}
-
-void func4_read_block(void)
-{
-	char buf[10];
-	int n;
-	n = read(STDIN_FILENO, buf, 10);	//STDIN_FILENO就是0即标准输入，意味着从终端读入字符。
-	if(n < 0)							//默认读终端是阻塞的。如果没有数据输入就会一直等待。
-	{
-		perror("read STDIN_FILENO");
-		exit(1);
-	}
-	
-	write(STDOUT_FILENO, buf, n);
-	
-	return;
-}
-
-void func4_read_nonblock(void)
-{
-	char buf[10];
-	int fd, n;
-	fd = open("/dev/tty", O_RDONLY | O_NONBLOCK);	//阻塞非阻塞是文件的属性
-	
-	if(fd < 0)
-	{
-		perror("open /dev/tty");
-		exit(1);
-	}
-	while((n = read(fd, buf, 10)) < 0){
-		if(errno == EAGAIN)	//如果read为非阻塞，但是当前没有数据可读，此时全局变量errno被设置为EAGAIN。
-		{			
-			sleep(2);
-			write(STDOUT_FILENO, "try again...\n",13);	
-		}
-		else{
-			perror("read /dev/tty");
-			exit(1);
-		}	
-	}
-
-	write(STDOUT_FILENO, buf, n);
-	close(fd);
-
-	return;
-
-}
 
 void func5_stat(void)
 {
@@ -535,4 +384,5 @@ int func11_dup2(void)
 
 }
 
+#endif
 
