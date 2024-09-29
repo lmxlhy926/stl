@@ -88,12 +88,23 @@ using namespace std;
  *      printf输出机制：
  *          (1) 将内容存入printf的缓冲区中，依据缓冲刷新机制，调用write系统调用将缓冲内容输出到设备驱动程序，设备驱动再将内容输出到终端。
 */
+
+
+
+/**
+ * @brief 
+ *      1. 进程层级在内核之上
+ *      2. 非阻塞IO的内容都是立即写入内核缓冲区的
+ *      3. printf的不同表现，取决于在fork之前，标准库缓冲区的内容有没有写入内核
+ *      4. 不同进程的相同虚拟地址，指向的是不同的物理空间；（父子进程，没有发生写时复制时，指向相同的物理空间）
+ */
 int globalData = 1;  //.data区域
 void parent_child_writeOnCoyp(){
     int stackVariable = 1;    //栈变量
     int* intPtr = reinterpret_cast<int *>(malloc(sizeof(int)));     //申请堆地址空间
-    *intPtr = 1;    
-    printf("parent process %d, intPtr: %p\n", getpid(), intPtr);
+    *intPtr = 1;
+    printf("pid = %d, globalData = %d, stackVariable = %d, intPtr = %p, *intPtr = %d\n", getpid(), globalData, stackVariable, intPtr, *intPtr);    
+
     write(STDOUT_FILENO, "helloworld\n", 11);     //无缓冲写
     printf("before fork\n");    //标准库带缓冲写；行缓冲或全缓冲，取决于标准输出对应的文件。
     fflush(stdout); //刷新缓冲。否则fork后printf输出内容会输出2次。
@@ -106,11 +117,12 @@ void parent_child_writeOnCoyp(){
         globalData++;       //修改.data区域变量
         stackVariable++;    //修改栈变量
         *intPtr = 2;        //修改堆变量
+        printf("pid = %d, globalData = %d, stackVariable = %d, intPtr = %p, *intPtr = %d\n", getpid(), globalData, stackVariable, intPtr, *intPtr);
     }else{  //父进程
         sleep(1);
+        printf("pid = %d, globalData = %d, stackVariable = %d, intPtr = %p, *intPtr = %d\n", getpid(), globalData, stackVariable, intPtr, *intPtr);
     }
 
-    printf("pid = %d, globalData = %d, stackVariable = %d, intPtr = %p, *intPtr = %d\n", getpid(), globalData, stackVariable, intPtr, *intPtr);
     exit(0);
 }
 
@@ -129,9 +141,8 @@ void parent_child_writeOnCoyp(){
  *          2. 调用exit函数。
  *                  exit(3)是标准C库中的一个函数。
  *                  此函数由ISO C定义，其操作包括调用各种终止处理程序(终止处理程序在调用atexit函数时登记)，然后关闭所有标准IO流等。
- *          3. 调用_Exit函数。
- *                  _exit(2)则是一个系统调用。  
- *                  ISO C定义_Exit，其目的是为进程提供一种无需运行终止处理程序或信号处理程序而终止的方法。
+ *          3. 调用_Exit/_exit函数。_exit(2)则是一个系统调用。
+ *                  ISO C定义_Exit，其目的是为进程提供一种无需运行终止处理程序或信号处理程序而终止的方法。  
  *                  在UNIX系统中,_exit函数和_Exit函数是同义的，并不冲洗标准IO流。_exit函数由exit函数调用，它处理UNIX系统特定细节。
  *          4. 进程的最后一个线程结束。
  * 
@@ -194,10 +205,10 @@ void atexitTest(){
     atexit(atExitHandler1);
     atexit(atExitHandler2);
     atexit(atExitHandler2);     //按照注册的相反顺序进行调用，单个函数多次注册会多次调用。
-    printf("-->commonFunc start...\n");
+    printf("-->commonFunc start...");
     abort();    //进程接收到信号而异常终止，不执行exit函数。
     _exit(0);   //不执行终止处理程序，不刷新I/O流
-     exit(0);   //调用终止处理程序，刷新标准I/O流(fflush(nullptr))。然后调用_exit(0);
+    exit(0);   //调用终止处理程序，刷新标准I/O流(fflush(nullptr))。然后调用_exit(0);
 }
 
 
@@ -709,6 +720,8 @@ void processid(){
 
 
 int main(int argc, char* argv[]){
+
+    ioFlush();
 
     return 0;
 }
