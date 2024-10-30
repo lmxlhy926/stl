@@ -1,0 +1,1 @@
+add_executable(cJsonTest cJSON.c test.c)

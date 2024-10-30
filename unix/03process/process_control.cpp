@@ -305,7 +305,7 @@ void pr_exit(int status){
         #endif
 
     }else if(WIFSTOPPED(status)){   //进程暂停，打印造成暂停的信号
-        printf("child stopped, signal<> = %s\n", strsignal(WSTOPSIG(status)));
+        printf("child stopped, signal<%s>\n", strsignal(WSTOPSIG(status)));
 
     }else if(WIFCONTINUED(status)){
         printf("child continued....\n");
