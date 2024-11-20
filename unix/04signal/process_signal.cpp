@@ -667,7 +667,7 @@ void printBlockedSet(const char* str, sigset_t set){
  * 把信号加到每个线程的信号屏蔽字中。然后可以安排专用线程处理信号。这些专用线程可以进行函数调用，不需要担心在信号
  * 处理程序中调用哪些函数是安全的，因为这些函数调用来自正常的线程上下文，而非会中断线程正常执行的传统信号处理程序。
  *      如果多个线程在sigwait的调用中因等待同一个信号而阻塞，那么在信号递送的时候，就只有一个线程可以从sigwait中
- * 返回。如果一个信号被捕获，而且一个线程正在sigwait调用中等待统一信号，那么这时将由操作系统实现来决定以何种方式递
+ * 返回。如果一个信号被捕获，而且一个线程正在sigwait调用中等待同一信号，那么这时将由操作系统实现来决定以何种方式递
  * 送信号。操作系统实现可以让sigwait返回，也可以激活信号处理程序，单这2种情况不会同时发生。
  * 
 */
@@ -769,7 +769,7 @@ void sig_multiThread_process(){
     printf("wait for 5 seconds....\n");
     sleep(5);
 
-    //新创建的额线程继承调用线程的信号屏蔽字
+    //新创建的线程继承调用线程的信号屏蔽字
     err = pthread_create(&tid, nullptr, thr_fn, nullptr);
     if(err != 0){
         printf("pthread_create error: %s\n", strerror(err));
