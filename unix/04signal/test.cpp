@@ -1,153 +1,94 @@
 
-#include <stdio.h>
-#include <string.h>
-#include <iostream>
-#include <unistd.h>
-#include <signal.h>
-
-using namespace std;
-
-void sig_handler(int signo){
-    printf("pid: %d, %s\n", getpid(), strsignal(signo));
-}
-
-void test(){
-    // 注册信号处理函数
-    if(signal(SIGQUIT, sig_handler) == SIG_ERR){
-        perror("signal");
-        exit(-1);
-    }
-
-    // 阻塞信号
-    sigset_t newset, oldset;
-    sigemptyset(&newset);
-    sigaddset(&newset, SIGQUIT);
-    if(sigprocmask(SIG_BLOCK, &newset, &oldset) == -1){
-        perror("sigprocmask");
-        exit(-1);
-    }
-
-    printf("wait 1 ...\n");
-    sleep(5);
-
-    // 查看阻塞信号
-    sigset_t pendingset;
-    if(sigpending(&pendingset) == 0){
-        if(sigismember(&pendingset, SIGQUIT)){
-            printf("sigquit has been caught ...\n");
-        }
-    }
-
-    printf("---------\n");
-
-    // 暂时设置新信号屏蔽字
-    sigsuspend(&oldset);
-
-    printf("wait 2 ...\n");
-    sleep(5);
-
-    // 恢复信号屏蔽字
-    sigprocmask(SIG_SETMASK, &oldset, nullptr);
-}
-
-
-int quitflag1 = 0;
-sigset_t mask;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t waitloc = PTHREAD_COND_INITIALIZER;
-
-void* thr_fn(void *arg){
-    int err, signo;
-    for(; ;){
-        //-------调用sigwait之前信号要先被阻塞，否则这里有时间窗口-------
-        err = sigwait(&mask, &signo);   //线程阻塞等待信号，直到被信号唤醒。
-        if(err != 0){
-            printf("sigwait error: %s\n", strerror(err));
-            exit(-1);
-        }
-       
-        //线程结束阻塞，开始执行后续逻辑
-        switch(signo){
-            case SIGINT:
-                printf("\ninterrupt\n");
-                break;
-            case SIGTSTP:
-                printf("\nsigtstp\n");
-                break;
-            case SIGQUIT:
-                pthread_mutex_lock(&lock);  //线程中的共享数据需要加锁保护
-                quitflag1 = 1;
-                printf("quitflag == 1\n");
-                pthread_mutex_unlock(&lock);
-                pthread_cond_signal(&waitloc);
-                return(0);
-            default:
-                printf("unexcepted signal %s\n", strsignal(signo));
-                break;
-        }
-    }
-}
-
 
 /**
- * 线程的阻塞信号和进程的阻塞信号：
- *      进程收到一个信号后，会随机发送给任意一个线程。因此sigpending获取到的线程的未决信号集合,
- * 包含明确发送给该线程但被阻塞的信号以及发送给该进程但被阻塞的信号。
- *      sigpending获取到的是线程的未决信号集合。
-*/
-void sig_multiThread_process(){
-    sigset_t oldmask;
+ * 信号：
+ *      内核之间的一种通信手段
+ * 
+ *      进程收到信号后，会执行默认的操作，如终止进程
+ * 
+ *      设置信号捕捉函数，在信号发生时执行；
+ * 
+ *      信号处理函数会打断正在执行的逻辑流，因此信号处理程序里必须调用可重入函数
+ * 
+ *      信号集合
+ * 
+ *      阻塞信号：记录信号是否发生，但是不执行信号对应的处理动作
+ * 
+ *      sigsuspend，sigwait：暂时恢复原来的屏蔽字，捕捉到信号后，恢复原来的屏蔽字；即一次捕捉一个信号
+ * 
+ *      多个信号同时发生时，由内核决定先执行哪个信号处理函数
+ * 
+ */
 
-    sigfillset(&mask);
-    if(pthread_sigmask(SIG_BLOCK, &mask, &oldmask) != 0){   //设置主线程信号屏蔽字
-        perror("pthread_sigmask");
-        exit(-1);
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/signal.h>
+
+typedef void (*sighandler_t)(int);
+
+sighandler_t signal_restart(int signo, sighandler_t sighandler)
+{
+    struct sigaction newact, oldact;
+    newact.sa_handler = sighandler;
+    sigemptyset(&newact.sa_mask);
+    newact.sa_flags = 0;
+
+    if(signo == SIGALRM){
+        newact.sa_flags |= SA_INTERRUPT;
+    }else{
+        newact.sa_flags |= SA_RESTART;
     }
 
-    //新创建的线程继承调用线程的信号屏蔽字
-    pthread_t tid;
-    int err = pthread_create(&tid, nullptr, thr_fn, nullptr);
-    if(err != 0){
-        printf("pthread_create error: %s\n", strerror(err));
-        exit(-1);
+    if(sigaction(signo, &newact, &oldact) == -1){
+        return SIG_ERR;
     }
 
-    printf("wait for 5 seconds....\n");
-    sleep(5);
-   
-    pthread_mutex_lock(&lock);
-    while(quitflag1 == 0){
-        pthread_cond_wait(&waitloc, &lock); //线程等待被唤醒，满足条件则执行后续逻辑，否则继续陷入等待
-    }
-    pthread_mutex_unlock(&lock);
-   
-    //恢复线程信号屏蔽字
-    // if(pthread_sigmask(SIG_SETMASK, &oldmask, nullptr) != 0){
-    //     perror("pthread_sigmask");
-    //     exit(-1);
-    // }
-
-    exit(0);
+    return oldact.sa_handler;
 }
+
+
+
+void printSigno(int signo){
+    printf("received signal: %s\n", strsignal(signo));
+}
+
+
+void sig_test()
+{
+    // 设置信号处理函数
+    signal_restart(SIGQUIT, printSigno);
+    signal_restart(SIGINT, printSigno);
+
+    // 阻塞指定信号
+    sigset_t sigBlockSet, sigOldSet;
+    sigemptyset(&sigBlockSet);
+    sigaddset(&sigBlockSet, SIGQUIT);
+    sigaddset(&sigBlockSet, SIGINT);
+    sigprocmask(SIG_BLOCK, &sigBlockSet, &sigOldSet);
+
+    // 执行关键代码
+    sleep(5);
+
+    // 接收阻塞信号，执行信号处理函数
+    sigsuspend(&sigOldSet);
+
+
+
+    // 恢复信号屏蔽字
+    printf("end of sig_test ....\n");
+}
+
+
 
 
 int main(int argc, char* argv[])
 {
-    sig_multiThread_process();
+    sig_test();
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
