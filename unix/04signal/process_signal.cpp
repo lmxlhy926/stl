@@ -229,7 +229,6 @@ void pr_exit(int status){
 }
 
 
-
 //打印当前线程的信号屏蔽字
 int pr_mask(const char* str){
     int err;

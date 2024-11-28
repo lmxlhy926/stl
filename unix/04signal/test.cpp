@@ -10,15 +10,29 @@
  * 
  *      信号处理函数会打断正在执行的逻辑流，因此信号处理程序里必须调用可重入函数
  * 
- *      信号集合
- * 
  *      阻塞信号：记录信号是否发生，但是不执行信号对应的处理动作
  * 
  *      sigsuspend，sigwait：暂时恢复原来的屏蔽字，捕捉到信号后，恢复原来的屏蔽字；即一次捕捉一个信号
  * 
  *      多个信号同时发生时，由内核决定先执行哪个信号处理函数
  * 
+ * 
+ * 信号相关的常见原语：
+ *      * 注册信号处理函数：signal、sigaction
+ * 
+ *      * 创建一个信号集合：sigset_t
+ * 
+ *      * 设置信号屏蔽字/获取信号屏蔽字: sigprocmask、pthread_sigmask
+ * 
+ *      * 执行关键函数：这里函数不会被阻塞的信号集合打断
+ * 
+ *      * 查询发生的阻塞信号集合：即该信号已经发生，但是被阻塞; sigpending
+ * 
+ *      * 调用sigsuspend、sigwait，处理信号
+ * 
+ *      * 像进程或线程发送信号; kill raise
  */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,10 +40,9 @@
 #include <unistd.h>
 #include <sys/signal.h>
 
-typedef void (*sighandler_t)(int);
+typedef void (*sighandler_t)(int signo);
 
-sighandler_t signal_restart(int signo, sighandler_t sighandler)
-{
+static sighandler_t signal_restart(int signo, sighandler_t sighandler){
     struct sigaction newact, oldact;
     newact.sa_handler = sighandler;
     sigemptyset(&newact.sa_mask);
@@ -49,50 +62,68 @@ sighandler_t signal_restart(int signo, sighandler_t sighandler)
 }
 
 
-
 void printSigno(int signo){
     printf("received signal: %s\n", strsignal(signo));
 }
 
 
-void sig_test()
-{
-    // 设置信号处理函数
-    signal_restart(SIGQUIT, printSigno);
-    signal_restart(SIGINT, printSigno);
+void sigtest(){
+    if(signal_restart(SIGQUIT, printSigno) == SIG_ERR){
+        perror("signal");
+        exit(-1);
+    }
 
-    // 阻塞指定信号
-    sigset_t sigBlockSet, sigOldSet;
-    sigemptyset(&sigBlockSet);
-    sigaddset(&sigBlockSet, SIGQUIT);
-    sigaddset(&sigBlockSet, SIGINT);
-    sigprocmask(SIG_BLOCK, &sigBlockSet, &sigOldSet);
+    if(signal_restart(SIGINT, printSigno) == SIG_ERR){
+        perror("signal");
+        exit(-1);
+    }
 
-    // 执行关键代码
+    sigset_t newsigset, oldsigset;
+    sigemptyset(&newsigset);
+    sigaddset(&newsigset, SIGQUIT);
+    sigaddset(&newsigset, SIGINT);
+
+    // 阻塞信号集合
+    sigprocmask(SIG_BLOCK, &newsigset, &oldsigset);
+
     sleep(5);
 
-    // 接收阻塞信号，执行信号处理函数
-    sigsuspend(&sigOldSet);
+    sigset_t pendingset;
+    sigpending(&pendingset);
+    if(sigismember(&pendingset, SIGQUIT)){
+        printf("sigpending: sigquit\n");
+    }
+    if(sigismember(&pendingset, SIGINT)){
+        printf("sigpending: sigint\n");
+    }
+
+    // sigsuspend(&oldsigset);
+    int signo;
+    sigwait(&newsigset, &signo);
+    printf("after sigsuspend ....\n");
+
+    sigpending(&pendingset);
+    if(sigismember(&pendingset, SIGQUIT)){
+        printf("sigpending: sigquit\n");
+    }
+    if(sigismember(&pendingset, SIGINT)){
+        printf("sigpending: sigint\n");
+    }
 
 
+    sleep(10);
+    sigprocmask(SIG_SETMASK, &oldsigset, nullptr);
 
-    // 恢复信号屏蔽字
-    printf("end of sig_test ....\n");
+    return;
 }
-
-
 
 
 int main(int argc, char* argv[])
 {
-    sig_test();
+    sigtest();
 
     return 0;
 }
-
-
-
-
 
 
 
