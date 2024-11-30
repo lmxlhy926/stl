@@ -132,6 +132,10 @@
  * 
  * int sigwait(const sigset_t *restrict set, int *restrict signop);
  *      set指定了线程等待的信号集。返回时signop指向触发返回的信号编号。
+ * 
+ *      The  sigwait()  function suspends execution of the calling thread until one of the signals specified
+ *   in the signal set set becomes pending.  The function accepts the signal (removes it from the pending
+ *   list of signals), and returns the signal number in sig
  *  
  * 
  * abort
