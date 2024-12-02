@@ -1,3 +1,4 @@
 add_subdirectory(02file)
 add_subdirectory(03process)
 add_subdirectory(04signal)
+add_subdirectory(05thread)

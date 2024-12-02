@@ -314,9 +314,68 @@ void signal_test(){
 }
 
 
+static int quitflag = 0;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
+void* signal_handler(void* arg){
+    while(true){
+        int signo;
+        if(sigwait((sigset_t*)arg, &signo) != 0){
+            perror("sigwait");
+            exit(-1);
+        }
+
+        switch(signo){
+            case SIGINT:
+                printf("received signal: %s\n", strsignal(signo));
+                break;
+            case SIGQUIT:
+                printf("received signal: %s\n", strsignal(signo));
+                pthread_mutex_lock(&mutex);
+                quitflag = 1;
+                pthread_mutex_unlock(&mutex);
+                pthread_cond_signal(&cond);
+                break;
+            default:
+                printf("other signal: %s\n", strsignal(signo));
+        }
+    }
+
+}
+
+
+void signal_test1(){
+    sigset_t newset, oldset;
+    sigaddset(&newset, SIGINT);
+    sigaddset(&newset, SIGQUIT);
+    if(pthread_sigmask(SIG_BLOCK, &newset, &oldset) != 0){
+        perror("pthread_sigmask");
+        exit(-1);
+    }
+
+    pthread_t thread_id;
+    pthread_create(&thread_id, nullptr, signal_handler, &newset);
+
+    pthread_mutex_lock(&mutex);
+    while(quitflag == 0){
+        pthread_cond_wait(&cond, &mutex);
+    }
+    printf("quitflag == %d\n", quitflag);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_sigmask(SIG_SETMASK, &oldset, nullptr);
+
+    return;
+}
+
+
+
+
+
 int main(int argc, char* argv[])
 {
-    signal_test();
+    signal_test1();
 
     return 0;
 }
