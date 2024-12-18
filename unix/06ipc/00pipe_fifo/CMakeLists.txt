@@ -1,1 +1,0 @@
-add_executable(pipe pipe_fifo.cpp)
