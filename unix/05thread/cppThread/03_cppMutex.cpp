@@ -38,6 +38,7 @@ using namespace std;
  *      unique_lock l(m):               建立一个lock_guard并锁定它
  *      unique_lock l(m, adopt_lock):   为已锁定的mutex m建立一个lock guard
  *      unique_lock l(m, defer_lock):   建立一个lock_guard但是不锁定它
+ * 
  *      unique_lock l(m, try_lock):     建立一个lock_guard并试图锁定它
  *      unique_lock l(m, dur):          建立一个lock guard并试图在时间段dur内锁定它
  *      unique_lock l(m, tp):           建立一个lock_guard并试图在时间点tp之前锁定它
@@ -118,7 +119,7 @@ void uniqueLock_adopt(){
     std::mutex mutex_;
     std::unique_lock<std::mutex> ula(mutex_, std::adopt_lock);  //接受一个已加锁的mutex, 即使没加锁也认为加锁
     // ula.lock();             //此时加锁，会抛异常，ula认为自己接受的锁已经加锁
-    mutex_.unlock();        //即使这里解锁，下面的判断依然认为是加锁状态，以为没有使用unique_lock对象来操作 
+    mutex_.unlock();        //即使这里解锁，下面的判断依然认为是加锁状态，因为没有使用unique_lock对象来操作 
     if(ula.owns_lock()){    //即使传递的锁没有上锁，ula认为其接受的是一个已经上锁的锁，此处会认为已上锁
         std::cout << "---locked---" << std::endl;
     }else{
