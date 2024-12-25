@@ -1,10 +1,45 @@
-import matplotlib.pyplot as plt
+#! /usr/bin/python3
 
-# Plotting a simple line graph
-x = [1, 2, 3, 4, 5]
-y = [2, 4, 6, 8, 10]
-plt.plot(x, y)
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.title('Simple Line Graph')
-plt.show()
+import requests
+import json
+
+data = {
+    "service_id":"get_self_info",
+    "to":"config",
+    "request":{}
+}
+
+response = requests.post('http://192.168.1.148:9006/', json=data)
+
+str = json.dumps(response.json()).encode("utf-8")
+
+print(str)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
