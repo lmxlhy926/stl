@@ -2,10 +2,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <thread>
+#include <string>
+#include <map>
+#include <fcntl.h>
 
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
 
 
 void tcp_client(){
@@ -144,16 +149,113 @@ void udp_server(){
 
 
 
+// 获取网卡信息
+
+void ifaddress_test(){
+    // 获取网卡信息列表
+    struct ifaddrs* ifaddr;
+    struct ifaddrs* ifa;
+    if(getifaddrs(&ifaddr) < 0){
+        perror("getifaddr");
+        exit(-1);
+    }
+
+    for(ifa = ifaddr; ifa; ifa = ifa->ifa_next){
+        if(!ifa->ifa_addr){
+            continue;
+        }
+
+        if(ifa->ifa_addr->sa_family == AF_INET){
+            int up = 0, loopback = 0, multicast = 0, broadcast = 0;
+            if(ifa->ifa_flags & IFF_LOOPBACK){
+                loopback = 1;
+            }
+            if(ifa->ifa_flags & IFF_UP){
+                up = 1;
+            }
+            if(ifa->ifa_flags & IFF_MULTICAST){
+                multicast = 1;
+            }
+            if(ifa->ifa_flags & IFF_BROADCAST){
+                broadcast = 1;
+            }
+            if(loopback != 1){
+                sockaddr_in *addr = (sockaddr_in*)ifa->ifa_addr;
+                printf("%s, %s, up=%d, loopback=%d, multicast=%d, broadcast=%d\n", ifa->ifa_name, inet_ntoa(addr->sin_addr), 
+                                                                                    up, loopback, multicast, broadcast);
+            }
+        } 
+    }
+
+    // 释放申请到的列表
+    freeifaddrs(ifaddr);
+}
+
+
+int create_multicast_sock(){
+    // 创建端点
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock == -1){
+        perror("socket");
+        exit(-1);
+    }
+
+    // 配置发送多播时的使用的网卡
+    struct sockaddr_in ifaddr = {};
+    ifaddr.sin_family = AF_INET;
+    ifaddr.sin_addr.s_addr = inet_addr("172.29.90.147");
+    ifaddr.sin_port = htons(0);
+    setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &ifaddr, sizeof(ifaddr));
+
+    // 配置多播属性
+    unsigned int loopback = 0;
+    unsigned int ttl = 2;
+    setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
+    setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback));
+   
+    // 设置为非阻塞模式
+    const int flags = fcntl(sock, F_GETFL, 0);
+    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
+    return sock;
+}
+
+void send_multicast_data(){
+    // 创建端点
+    int sock = create_multicast_sock();
+
+    // 构建组播地址
+    struct sockaddr_in addr = {};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("224.0.0.253");
+    addr.sin_port = htons(9999);
+
+    // 发送数据
+    sendto(sock, "hello", 5, 0, (sockaddr*)&addr, sizeof(addr));
+
+    // 接收数据
+    // char buf[1024] = {};
+    // struct sockaddr_in clientaddr;
+    // socklen_t size = sizeof(clientaddr);
+    // int nRead = recvfrom(sock, buf, 5, 0, (sockaddr*)&clientaddr, &size);
+    // if(nRead != -1){
+    //     printf("read %d bytes from %s, %s\n", nRead, inet_ntoa(clientaddr.sin_addr), buf);
+    // }
+
+    close(sock);
+}
+
+
+
+
 int main(int argc, char* argv[]){
-
-    std::thread server_thread(udp_server);
-    sleep(3);
-    std::thread client_thread(udp_client);
     
-    server_thread.join();
-    client_thread.join();
-
-
+    while(true){
+        send_multicast_data();
+        printf("------------\n");
+        sleep(5);
+    }
+    
     return 0;
 }
 

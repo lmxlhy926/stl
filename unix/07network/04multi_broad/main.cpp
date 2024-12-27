@@ -22,9 +22,14 @@ int mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr){
 	unsigned int reuseaddr = 1;
 	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddr, sizeof(reuseaddr));
 	setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuseaddr, sizeof(reuseaddr));
+
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (const char*)&ttl, sizeof(ttl));
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, (const char*)&loopback, sizeof(loopback));
 
+    /**
+     * 设置组播组地址：
+     *      将某个网卡，加入某个多播组
+     */
     struct ip_mreq req;
 	memset(&req, 0, sizeof(req));
 	req.imr_multiaddr.s_addr = htonl((((uint32_t)224U) << 24U) | ((uint32_t)251U));
@@ -33,19 +38,24 @@ int mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr){
 	if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&req, sizeof(req)))
 		return -1;
 
+
+
 	struct sockaddr_in sock_addr;
 	if (!saddr) {
 		memset(&sock_addr, 0, sizeof(struct sockaddr_in));
 		sock_addr.sin_family = AF_INET;
 		sock_addr.sin_addr.s_addr = INADDR_ANY;
+
 	} else {
 		memcpy(&sock_addr, saddr, sizeof(struct sockaddr_in));
 		setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&sock_addr.sin_addr, sizeof(sock_addr.sin_addr));
 		sock_addr.sin_addr.s_addr = INADDR_ANY;
 	}
 
+
 	if (bind(sock, (struct sockaddr*)&sock_addr, sizeof(struct sockaddr_in)))
 		return -1;
+
 	const int flags = fcntl(sock, F_GETFL, 0);
 	fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 	return 0;
@@ -53,25 +63,35 @@ int mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr){
 
 
 int mdns_socket_open_ipv4(const struct sockaddr_in* saddr){
+    // 创建udp端点
     int sock = (int)socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (sock < 0)
 		return -1;
+
+    // 绑定地址、加入组播组
 	if (mdns_socket_setup_ipv4(sock, saddr)) {
 		close(sock);
 		return -1;
 	}
+
+    // 返回端点
 	return sock;
 }
 
 void mdns_server(){
     struct sockaddr_in sock_addr;
     memset(&sock_addr, 0, sizeof(struct sockaddr_in));
+
+    // 服务端点的地址
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_addr.s_addr = INADDR_ANY;
     sock_addr.sin_port = htons(MDNS_PORT);
+
+    // 创建端点、绑定地址、加入组播组
     int sock = mdns_socket_open_ipv4(&sock_addr);
     if (sock < 0)   return;
     
+
     send(sock, "hello", 5, 0);
 
 
