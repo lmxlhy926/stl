@@ -1,4 +1,8 @@
 #include "httplib.h"
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <cstdlib>
 
 using namespace httplib;
 
@@ -7,11 +11,10 @@ int main(int argc, char* argv[])
 
     httplib::Server svr;
 
-    svr.Get(R"(/numbers/(\d+))", [&](const Request& req, Response& res) {
-        auto numbers = req.matches[1];
-        res.set_content(numbers, "text/plain");
-    });
-
+    svr.Get("/content", [&](const Request &req, Response &res) {
+        res.set_file_content("/home/lhy/ownproject/stl/unix/test/a.webp");
+      });
+    
     svr.listen("0.0.0.0", 60000);
 
 
